@@ -14,18 +14,6 @@
 
 ---
 
-## 📚 Mục lục
-- [Giới thiệu](#giới-thiệu)
-- [Tính năng](#tính-năng)
-- [Công nghệ sử dụng](#công-nghệ-sử-dụng)
-- [Hướng dẫn cài đặt nhanh](#hướng-dẫn-cài-đặt-nhanh)
-- [Tutorial chi tiết](#tutorial-hướng-dẫn-chi-tiết-cho-người-mới-bắt-đầu)
-- [Các lệnh crawl dữ liệu](#các-lệnh-crawl-dữ-liệu)
-- [Lưu ý](#lưu-ý)
-- [Đóng góp & phát triển](#đóng-góp--phát-triển)
-
----
-
 ## 👋 Giới thiệu
 **Crime Alert Web** là ứng dụng web giúp cảnh báo tội phạm, cập nhật tin tức pháp luật và danh sách truy nã mới nhất từ các nguồn uy tín (VnExpress, Bộ Công An).
 
@@ -46,32 +34,15 @@
 
 ---
 
-## 🚀 Hướng dẫn cài đặt nhanh
+## 🚀 Hướng dẫn chạy server
+
+Chạy lệnh sau để khởi động server và tự động crawl dữ liệu:
 
 ```bash
-# 1. Clone project
- git clone <https://github.com/chi-trung/crime-alert-web>
- cd crime-alert-web
-
-# 2. Cài đặt package
- composer install
- npm install
-
-# 3. Tạo file .env và cấu hình
- cp .env.example .env
- php artisan key:generate
-# Sửa DB_DATABASE, DB_USERNAME, DB_PASSWORD trong .env
-
-# 4. Tạo database và migrate
- php artisan migrate
-
-# 5. Build frontend (nếu dùng Vite/Tailwind)
- npm run dev
-
-# 6. Chạy server và crawl dữ liệu tự động
- php artisan serve:all
-# Truy cập http://127.0.0.1:8000
+php artisan serve:all
 ```
+
+> Lệnh này sẽ vừa chạy server Laravel vừa tự động crawl tin tức pháp luật và danh sách truy nã mới nhất. Không cần chạy thêm lệnh nào khác.
 
 ---
 
