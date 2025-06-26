@@ -49,7 +49,16 @@ php artisan serve:all
 ## 📖 Tutorial: Hướng dẫn chi tiết cho người mới bắt đầu
 
 ### Bước 1: Tải mã nguồn về máy
-- Dùng Git hoặc tải ZIP trên GitHub, giải nén và mở thư mục dự án.
+- **Cách 1: Dùng Git (khuyên dùng)**
+  ```bash
+  git clone https://github.com/chi-trung/crime-alert-web.git
+  cd crime-alert-web
+  ```
+- **Cách 2: Tải file ZIP trên GitHub**
+  - Nhấn nút "Code" > "Download ZIP"
+  - Giải nén và mở thư mục dự án
+
+> **Lưu ý:** Không cần cài Laravel thủ công. Chỉ cần chạy `composer install`, Laravel và các package sẽ tự động được cài đặt theo composer.json.
 
 ### Bước 2: Cài đặt các package cần thiết
 ```bash
