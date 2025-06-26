@@ -19,6 +19,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        //
+        // Đã xóa gọi crawl:wanted-list để tránh lỗi vòng lặp khi boot
     }
 }

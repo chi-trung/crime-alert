@@ -57,4 +57,16 @@ class ProfileController extends Controller
 
         return Redirect::to('/');
     }
+
+    public function changePassword(Request $request)
+    {
+        $request->validate([
+            'current_password' => ['required', 'current_password'],
+            'new_password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+        $user = $request->user();
+        $user->password = bcrypt($request->new_password);
+        $user->save();
+        return back()->with('success', 'Đổi mật khẩu thành công!');
+    }
 }
