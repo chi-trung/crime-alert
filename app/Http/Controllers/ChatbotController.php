@@ -88,7 +88,7 @@ class ChatbotController extends Controller
     public function askOpenRouter(\Illuminate\Http\Request $request)
     {
         $question = $request->input('question');
-        $apiKey = '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';
+        $apiKey = env('OPENROUTER_API_KEY');
 
         $response = \Illuminate\Support\Facades\Http::withHeaders([
             'Authorization' => 'Bearer ' . $apiKey,
