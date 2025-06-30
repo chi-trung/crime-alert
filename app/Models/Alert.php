@@ -17,6 +17,7 @@ class Alert extends Model
         'type',
         'latitude',
         'longitude',
+        'view_count',
     ];
 
     public function user(): BelongsTo

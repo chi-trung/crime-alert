@@ -6,7 +6,9 @@ use App\Http\Controllers\CommentController;
 use App\Http\Controllers\WantedListController;
 use App\Http\Controllers\NewsController;
 use App\Http\Controllers\ExperienceController;
+use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ChatbotController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -23,6 +25,9 @@ Route::get('/dashboard', function () {
         $latestAlerts = \App\Models\Alert::orderByDesc('created_at')->take(5)->get();
         $latestPending = \App\Models\Alert::where('status', 'pending')->orderByDesc('created_at')->take(5)->get();
         $latestAlert = \App\Models\Alert::orderByDesc('created_at')->first();
+        $pendingExperiences = \App\Models\Experience::where('status', 'pending')->orderByDesc('created_at')->get();
+        $latestPendingExperience = \App\Models\Experience::where('status', 'pending')->orderByDesc('created_at')->first();
+        $latestExperience = \App\Models\Experience::orderByDesc('created_at')->first();
 
         // Thống kê cảnh báo theo tháng (số liệu thật)
         $currentYear = now()->year;
@@ -76,6 +81,21 @@ Route::get('/dashboard', function () {
             $approvedData[] = $alertsApproved[$i] ?? 0;
         }
 
+        $latestNews = \App\Models\News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
+        $hotWanted = \App\Models\WantedPerson::orderByDesc('id')->take(3)->get();
+        $topExperiences = \App\Models\Experience::where('status', 'approved')
+            ->withCount('comments')
+            ->orderByDesc('comments_count')
+            ->orderByDesc('created_at')
+            ->take(3)
+            ->get();
+        $topAlerts = \App\Models\Alert::where('status', 'approved')
+            ->withCount('comments')
+            ->orderByDesc('comments_count')
+            ->orderByDesc('created_at')
+            ->take(3)
+            ->get();
+
         return view('dashboard', [
             'totalAlerts' => $totalAlerts,
             'pendingAlerts' => $pendingAlerts,
@@ -92,16 +112,64 @@ Route::get('/dashboard', function () {
             'approvedPercent' => $approvedPercent ?? 0,
             'rejectedPercent' => $rejectedPercent ?? 0,
             'totalUsersPercent' => $totalUsersPercent ?? 0,
+            'latestNews' => $latestNews,
+            'hotWanted' => $hotWanted,
+            'topExperiences' => $topExperiences,
+            'topAlerts' => $topAlerts,
+            'myExperience' => null,
+            'pendingExperiences' => $pendingExperiences,
+            'latestPendingExperience' => $latestPendingExperience,
+            'latestExperience' => $latestExperience,
         ]);
     } else {
-        $myAlerts = \App\Models\Alert::where('user_id', $user->id)->get();
+        $currentYear = now()->year;
+        $currentMonth = now()->month;
+        $myAlerts = \App\Models\Alert::where('user_id', $user->id)
+            ->whereYear('created_at', $currentYear)
+            ->whereMonth('created_at', $currentMonth)
+            ->get();
         $myApproved = $myAlerts->where('status', 'approved')->count();
         $myTotal = $myAlerts->count();
         $myLatest = $myAlerts->sortByDesc('created_at')->first();
+        $latestNews = \App\Models\News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
+        $hotWanted = \App\Models\WantedPerson::orderByDesc('id')->take(3)->get();
+        $topExperiences = \App\Models\Experience::where('status', 'approved')
+            ->withCount('comments')
+            ->orderByDesc('comments_count')
+            ->orderByDesc('created_at')
+            ->take(3)
+            ->get();
+        $topAlerts = \App\Models\Alert::where('status', 'approved')
+            ->withCount('comments')
+            ->orderByDesc('comments_count')
+            ->orderByDesc('created_at')
+            ->take(3)
+            ->get();
+        // Tính tỷ lệ các loại tội phạm trong cảnh báo của user (tháng hiện tại)
+        $typeCounts = $myAlerts->groupBy('type')->map->count();
+        $typePercents = [];
+        foreach (["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực", "Khác"] as $type) {
+            $typePercents[$type] = $myTotal > 0 ? round(($typeCounts[$type] ?? 0) / $myTotal * 100) : 0;
+        }
+        $monthLabel = now()->format('m/Y');
+        $myExperience = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
+        $myExperiencesThisMonth = \App\Models\Experience::where('user_id', $user->id)
+            ->whereYear('created_at', $currentYear)
+            ->whereMonth('created_at', $currentMonth)
+            ->get();
         return view('dashboard', [
             'myTotal' => $myTotal,
             'myApproved' => $myApproved,
-            'myLatest' => $myLatest
+            'myLatest' => $myLatest,
+            'latestNews' => $latestNews,
+            'hotWanted' => $hotWanted,
+            'topExperiences' => $topExperiences,
+            'topAlerts' => $topAlerts,
+            'typePercents' => $typePercents,
+            'monthLabel' => $monthLabel,
+            'myExperience' => $myExperience,
+            'myExperiencesThisMonth' => $myExperiencesThisMonth,
+            'myAlerts' => $myAlerts,
         ]);
     }
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -115,6 +183,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::get('/alerts/map', [AlertController::class, 'mapView'])->name('alerts.map');
     Route::get('/alerts/{alert}', [AlertController::class, 'show'])->name('alerts.show');
+    Route::get('/alerts/{alert}/edit', [AlertController::class, 'edit'])->name('alerts.edit');
+    Route::put('/alerts/{alert}', [AlertController::class, 'update'])->name('alerts.update');
+    Route::delete('/alerts/{alert}', [AlertController::class, 'destroy'])->name('alerts.destroy');
     Route::middleware('admin')->group(function () {
         Route::get('/admin/alerts', [AlertController::class, 'adminIndex'])->name('admin.alerts');
         Route::post('/admin/alerts/{alert}/approve', [AlertController::class, 'approve'])->name('admin.alerts.approve');
@@ -128,6 +199,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::get('/comments/{comment}/edit', [CommentController::class, 'edit'])->name('comments.edit');
+    Route::get('/experiences/{experience}/edit', [\App\Http\Controllers\ExperienceController::class, 'edit'])->name('experiences.edit');
+    Route::put('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'update'])->name('experiences.update');
+    Route::delete('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'destroy'])->name('experiences.destroy');
 });
 
 Route::get('/test-map', function() {
@@ -143,9 +217,18 @@ Route::get('/experiences/{experience}', [ExperienceController::class, 'show'])->
 Route::middleware(['auth', 'can:admin'])->group(function() {
     Route::get('/admin/experiences', [ExperienceController::class, 'adminIndex'])->name('admin.experiences');
     Route::post('/admin/experiences/{experience}/approve', [ExperienceController::class, 'approve'])->name('admin.experiences.approve');
+    Route::post('/admin/experiences/{experience}/reject', [ExperienceController::class, 'reject'])->name('admin.experiences.reject');
     Route::delete('/admin/experiences/{experience}', [ExperienceController::class, 'destroy'])->name('admin.experiences.destroy');
 });
 Route::view('/community-alerts', 'community_alerts.index')->name('community_alerts.index');
 Route::get('/wanted-list', [WantedListController::class, 'index'])->name('wanted_list.index');
+Route::get('/my-history', [App\Http\Controllers\ProfileController::class, 'myHistory'])->middleware(['auth'])->name('my-history');
+Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index')->middleware('auth');
+Route::get('/notifications/read/{id}', [NotificationController::class, 'read'])->name('notifications.read')->middleware('auth');
+Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.readAll')->middleware('auth');
+Route::post('/chatbot/gemini', [ChatbotController::class, 'askGemini'])->name('chatbot.gemini');
+Route::post('/chatbot/openai', [App\Http\Controllers\ChatbotController::class, 'askOpenAI'])->name('chatbot.openai');
+Route::post('/chatbot/deepseek', [App\Http\Controllers\ChatbotController::class, 'askDeepSeek'])->name('chatbot.deepseek');
+Route::post('/chatbot/openrouter', [App\Http\Controllers\ChatbotController::class, 'askOpenRouter'])->name('chatbot.openrouter');
 
 require __DIR__.'/auth.php';

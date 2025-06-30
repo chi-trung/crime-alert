@@ -69,4 +69,12 @@ class ProfileController extends Controller
         $user->save();
         return back()->with('success', 'Đổi mật khẩu thành công!');
     }
+
+    public function myHistory()
+    {
+        $user = auth()->user();
+        $myAlerts = \App\Models\Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        $myExperiences = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        return view('profile.my_history', compact('myAlerts', 'myExperiences'));
+    }
 }

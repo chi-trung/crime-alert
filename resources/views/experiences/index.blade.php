@@ -11,7 +11,7 @@
     </div>
     @auth
     <div class="d-flex justify-content-end mb-4">
-        <a href="{{ route('experiences.create') }}" class="btn btn-success btn-lg px-4">
+        <a href="{{ route('experiences.create') }}" class="btn btn-success btn-lg rounded-pill px-4">
             <i class="fas fa-plus-circle me-2"></i> Gửi bài chia sẻ
         </a>
     </div>
@@ -22,18 +22,29 @@
     <div class="row g-4">
         @forelse($experiences as $item)
         <div class="col-md-6 col-lg-4">
-            <div class="card h-100 shadow-sm border-0">
-                <div class="card-body">
+            <div class="card h-100 shadow rounded-4 border-0">
+                <div class="card-body d-flex flex-column">
                     <div class="d-flex align-items-center mb-3">
-                        <img src="{{ $item->avatar ? asset('storage/'.$item->avatar) : 'https://randomuser.me/api/portraits/men/32.jpg' }}" class="rounded-circle me-3" width="48" height="48" alt="avatar">
+                        <img src="{{ $item->user && $item->user->avatar ? asset('storage/'.$item->user->avatar) : 'https://ui-avatars.com/api/?name='.urlencode($item->user->name ?? 'U').'&background=0D8ABC&color=fff' }}" class="rounded-circle border me-3" width="48" height="48" alt="avatar">
                         <div>
                             <strong>{{ $item->name }}</strong>
                             <div class="text-muted small">{{ $item->created_at->format('d/m/Y') }}</div>
                         </div>
                     </div>
-                    <h5 class="card-title text-success">{{ $item->title }}</h5>
-                    <p class="card-text">{{ Str::limit($item->content, 120) }}</p>
-                    <a href="{{ route('experiences.show', $item) }}" class="btn btn-outline-success btn-sm mt-2">Xem chi tiết</a>
+                    <h5 class="card-title text-success fw-bold">{{ $item->title }}</h5>
+                    <p class="card-text flex-grow-1">{{ Str::limit($item->content, 120) }}</p>
+                    <div class="d-flex align-items-center gap-2 mt-auto">
+                        <a href="{{ route('experiences.show', $item) }}" class="btn btn-outline-success btn-sm rounded-pill px-3"><i class="fas fa-eye me-1"></i> Xem chi tiết</a>
+                        @if($item->status == 'pending')
+                            <span class="badge bg-warning text-dark px-3 py-2 rounded-pill d-flex align-items-center" style="font-size: 0.95em;">
+                                <i class="fas fa-hourglass-half me-1"></i> Chờ duyệt
+                            </span>
+                        @elseif($item->status == 'rejected')
+                            <span class="badge bg-danger px-3 py-2 rounded-pill d-flex align-items-center" style="font-size: 0.95em;">
+                                Từ chối
+                            </span>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -47,4 +58,50 @@
         {{ $experiences->links() }}
     </div>
 </div>
+<style>
+.card {
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+    margin-bottom: 0;
+    overflow: hidden;
+}
+.card-header {
+    font-size: 1.15rem;
+    font-weight: 600;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1.25rem 1.5rem;
+}
+.table th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    border-top: none;
+    white-space: nowrap;
+}
+.table > :not(:first-child) {
+    border-top: none;
+}
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.02);
+}
+.badge {
+    font-weight: 500;
+    padding: 0.35em 0.65em;
+    font-size: 0.85em;
+    letter-spacing: 0.5px;
+}
+.btn {
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-sm {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.825rem;
+}
+.text-muted {
+    color: #6c757d !important;
+}
+</style>
 @endsection 

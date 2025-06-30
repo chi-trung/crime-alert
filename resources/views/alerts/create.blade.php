@@ -26,7 +26,7 @@
                                 <i class="fas fa-check-circle me-3 fs-4"></i>
                                 <div class="flex-grow-1">
                                     <h5 class="alert-heading mb-1">Thành công!</h5>
-                                    <div class="mb-0">{{ session('success') }}</div>
+                                    <div class="mb-0">Báo cáo đã được gửi và đang chờ duyệt. Cảm ơn bạn đã đóng góp cho cộng đồng!</div>
                                 </div>
                                 <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                             </div>
@@ -85,7 +85,7 @@
                         <!-- Mô tả -->
                         <div class="mb-4">
                             <label for="description" class="form-label fw-bold fs-5 text-gray-700">
-                                <i class="fas fa-align-left me-2 text-danger"></i>Mô tả chi tiết <span class="text-danger">*</span>
+                                <i class="fas fa-align-left me-2 text-danger"></i>Nội dung cảnh báo <span class="text-danger">*</span>
                             </label>
                             <textarea class="form-control border-2 py-3 px-4 @error('description') is-invalid @enderror" 
                                       id="description" name="description" rows="6" 
@@ -118,6 +118,15 @@
                             @error('image')
                                 <div class="invalid-feedback d-block">{{ $message }}</div>
                             @enderror
+                        </div>
+                        
+                        <!-- Checkbox cam đoan -->
+                        <div class="form-check mb-4">
+                            <input class="form-check-input" type="checkbox" value="1" id="confirmCheckbox" name="confirmCheckbox" required style="accent-color: #495057; border: 2px solid #e63946; width: 1.2em; height: 1.2em;">
+                            <label class="form-check-label fw-semibold text-danger" for="confirmCheckbox">
+                                Tôi cam đoan thông tin trên là đúng sự thật, chịu trách nhiệm trước pháp luật.
+                            </label>
+                            <div class="invalid-feedback">Bạn phải xác nhận cam đoan thông tin là đúng sự thật.</div>
                         </div>
                         
                         <!-- Nút submit -->

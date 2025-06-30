@@ -45,6 +45,11 @@ $user = auth()->user();
         </li>
         @endif
         @endauth
+        <li class="nav-item">
+          <a class="nav-link px-3 {{ request()->routeIs('my-history') ? 'active' : '' }}" href="{{ route('my-history') }}">
+            <i class="fas fa-history me-1"></i> Lịch sử của tôi
+          </a>
+        </li>
         <li class="nav-item dropdown nav-animate">
           <a class="nav-link dropdown-toggle px-3 {{ request()->routeIs('news.index') || request()->routeIs('experiences.index') || request()->routeIs('community_alerts.index') || request()->routeIs('wanted_list.index') ? 'active' : '' }}" href="#" id="resourcesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="fas fa-book me-1"></i> Chuyên mục
@@ -60,6 +65,78 @@ $user = auth()->user();
       <!-- Right section -->
       <ul class="navbar-nav ms-auto align-items-lg-center flex-row gap-2">
         @if($user)
+        <!-- Notification Bell -->
+        <li class="nav-item dropdown ms-2">
+          @php
+            $unreadNotifications = $user->unreadNotifications()->take(10)->get();
+            $unreadCount = $unreadNotifications->count();
+          @endphp
+          <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding-right: 18px;">
+            <i class="fas fa-bell fa-lg"></i>
+            @if($unreadCount > 0)
+              <span class="notification-badge badge bg-danger">{{ $unreadCount }}</span>
+            @endif
+          </a>
+          <ul class="dropdown-menu dropdown-menu-end shadow fade-in-menu notification-dropdown-menu" aria-labelledby="notificationDropdown" style="min-width: 420px; max-width: 520px;">
+            <li class="dropdown-header fw-bold text-primary">Thông báo mới</li>
+            @forelse($unreadNotifications as $notification)
+              <li>
+                @if(isset($notification->data['reply_id']))
+                  <a class="dropdown-item py-3 px-3 notification-item d-flex align-items-start gap-2 notification-unread" href="{{ route('notifications.read', $notification->id) }}" style="white-space: normal; word-break: break-word;">
+                    <div class="me-2 mt-1 flex-shrink-0">
+                      <i class="fas fa-reply text-info fa-lg"></i>
+                    </div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                      <div class="mb-1 notification-title" style="white-space: normal; word-break: break-word;">
+                        <b>{{ $notification->data['reply_user'] }}</b> đã trả lời bình luận của bạn trong <span class="text-primary">{{ $notification->data['post_type'] == 'alert' ? 'cảnh báo' : 'kinh nghiệm' }}</span>:
+                        <b>{{ $notification->data['post_title'] }}</b>
+                      </div>
+                      <div class="small text-muted mb-1 notification-content" style="white-space: normal; word-break: break-word;">"{{ $notification->data['reply_content'] }}"</div>
+                      <div class="d-flex align-items-center gap-1">
+                        <i class="far fa-clock text-secondary small"></i>
+                        <span class="small text-secondary">{{ $notification->created_at->diffForHumans() }}</span>
+                        <span class="badge bg-info text-dark ms-2">Reply</span>
+                      </div>
+                    </div>
+                  </a>
+                @else
+                  <a class="dropdown-item py-3 px-3 notification-item d-flex align-items-start gap-2 @if(is_null($notification->read_at)) notification-unread @endif" href="{{ route('notifications.read', $notification->id) }}" style="white-space: normal; word-break: break-word;">
+                    <div class="me-2 mt-1 flex-shrink-0">
+                      <i class="fas fa-comment-dots text-success fa-lg"></i>
+                    </div>
+                    <div class="flex-grow-1" style="min-width:0;">
+                      <div class="mb-1 notification-title" style="white-space: normal; word-break: break-word;">
+                        @if(isset($notification->data['comment_user'], $notification->data['post_type'], $notification->data['post_title']))
+                          <b>{{ $notification->data['comment_user'] }}</b> đã bình luận vào <span class="text-primary">{{ $notification->data['post_type'] == 'alert' ? 'cảnh báo' : 'kinh nghiệm' }}</span>:
+                          <b>{{ $notification->data['post_title'] }}</b>
+                        @else
+                          {{ $notification->data['message'] ?? 'Bạn có thông báo mới' }}
+                        @endif
+                      </div>
+                      @if(isset($notification->data['comment_content']))
+                        <div class="small text-muted mb-1 notification-content" style="white-space: normal; word-break: break-word;">"{{ $notification->data['comment_content'] }}"</div>
+                      @endif
+                      <div class="d-flex align-items-center gap-1">
+                        <i class="far fa-clock text-secondary small"></i>
+                        <span class="small text-secondary">{{ $notification->created_at->diffForHumans() }}</span>
+                        @if(is_null($notification->read_at))
+                          <span class="badge bg-warning text-dark ms-2">Chưa đọc</span>
+                        @endif
+                      </div>
+                    </div>
+                  </a>
+                @endif
+              </li>
+            @empty
+              <li><span class="dropdown-item text-muted">Không có thông báo mới.</span></li>
+            @endforelse
+            <li><hr class="dropdown-divider"></li>
+            <li>
+              <a class="dropdown-item text-center text-primary" href="{{ route('notifications.index') }}">Xem tất cả thông báo</a>
+            </li>
+          </ul>
+        </li>
+        <!-- End Notification Bell -->
         <li class="nav-item dropdown ms-2 user-dropdown">
           <a class="nav-link dropdown-toggle d-flex align-items-center user-avatar-hover" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
             <div class="avatar bg-white text-primary rounded-circle d-flex align-items-center justify-content-center me-2 avatar-animate" style="width: 36px; height: 36px; font-weight: bold;">
@@ -299,5 +376,51 @@ $user = auth()->user();
   border-bottom: none !important;
   background: rgba(230,57,70,0.06);
   color: #e63946 !important;
+}
+/* Thêm style cho dropdown notification */
+.notification-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 0.75rem;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  z-index: 2;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.12);
+}
+.notification-dropdown-menu {
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  border: 1.5px solid #e63946;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+  max-width: 520px;
+  min-width: 420px;
+  word-break: break-word;
+}
+.notification-item {
+  border-left: 4px solid transparent;
+  transition: background 0.18s, border-color 0.18s;
+  border-radius: 8px;
+  white-space: normal;
+  word-break: break-word;
+}
+.notification-item:hover {
+  background: #f3f6fa;
+  border-left: 4px solid #e63946;
+}
+.notification-unread {
+  background: #fffbe6;
+  border-left: 4px solid #e63946;
+}
+.notification-title, .notification-content {
+  white-space: normal;
+  word-break: break-word;
+  overflow-wrap: break-word;
 }
 </style>

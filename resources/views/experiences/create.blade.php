@@ -27,11 +27,6 @@
             <textarea name="content" rows="6" class="form-control @error('content') is-invalid @enderror" required>{{ old('content') }}</textarea>
             @error('content')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
-        <div class="mb-3">
-            <label class="form-label fw-bold">Ảnh đại diện (tùy chọn)</label>
-            <input type="file" name="avatar" class="form-control @error('avatar') is-invalid @enderror" accept="image/*">
-            @error('avatar')<div class="invalid-feedback">{{ $message }}</div>@enderror
-        </div>
         <div class="d-grid">
             <button type="submit" class="btn btn-success btn-lg">Gửi bài chia sẻ</button>
         </div>

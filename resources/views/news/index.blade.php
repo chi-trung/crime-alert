@@ -36,6 +36,9 @@
     <div class="d-flex justify-content-center mt-4">
         {{ $news->links() }}
     </div>
+    <div class="text-end mt-3" style="font-size: 0.95rem;">
+      <em>Nguồn: <a href="https://vnexpress.net/phap-luat" target="_blank" rel="noopener">VnExpress Pháp luật</a></em>
+    </div>
     @endif
 </div>
 @endsection 

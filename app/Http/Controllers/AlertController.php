@@ -20,6 +20,7 @@ class AlertController extends Controller
             'description' => 'required|string',
             'location' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'confirmCheckbox' => 'accepted',
         ]);
 
         $data = $request->only(['title', 'description', 'location', 'type']);
@@ -33,7 +34,21 @@ class AlertController extends Controller
             $data['image'] = $imagePath;
         }
 
-        Alert::create($data);
+        $alert = Alert::create($data);
+        // Gửi notification
+        if (Auth::user()->isAdmin) {
+            // Admin đăng bài: gửi cho tất cả user thường
+            $users = \App\Models\User::where('isAdmin', false)->get();
+            foreach ($users as $user) {
+                $user->notify(new \App\Notifications\NewPostNotification($alert, Auth::user(), 'alert'));
+            }
+        } else {
+            // User thường đăng bài: gửi cho tất cả admin
+            $admins = \App\Models\User::where('isAdmin', true)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new \App\Notifications\NewPostPendingApprovalNotification($alert, Auth::user(), 'alert'));
+            }
+        }
 
         return redirect()->route('alerts.create')->with('success', 'Đăng cảnh báo thành công!');
     }
@@ -41,6 +56,7 @@ class AlertController extends Controller
     public function index(Request $request)
     {
         $query = Alert::query();
+        $query->withCount('comments');
 
         // Chỉ hiện cảnh báo đã duyệt
         $query->where('status', 'approved');
@@ -97,15 +113,9 @@ class AlertController extends Controller
         return back()->with('success', 'Đã từ chối cảnh báo!');
     }
 
-    public function destroy(Alert $alert)
-    {
-        $alert->delete();
-        return back()->with('success', 'Đã xóa cảnh báo!');
-    }
-
     public function edit(Alert $alert)
     {
-        // Chỉ cho admin hoặc chủ bài được sửa
+        // Cho phép admin hoặc chủ bài được sửa
         if (!auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }
@@ -126,12 +136,32 @@ class AlertController extends Controller
         $data = $request->only(['title', 'description', 'location', 'type']);
         $data['latitude'] = $request->input('latitude');
         $data['longitude'] = $request->input('longitude');
+        // Xử lý xóa ảnh nếu có chọn
+        if ($request->has('remove_image') && $alert->image) {
+            \Storage::disk('public')->delete($alert->image);
+            $data['image'] = null;
+        }
         if ($request->hasFile('image')) {
+            // Nếu upload ảnh mới, xóa ảnh cũ trước (nếu có)
+            if ($alert->image) {
+                \Storage::disk('public')->delete($alert->image);
+            }
             $imagePath = $request->file('image')->store('alerts', 'public');
             $data['image'] = $imagePath;
         }
         $alert->update($data);
-        return redirect()->route('admin.alerts')->with('success', 'Cập nhật cảnh báo thành công!');
+        // Sau khi cập nhật, redirect về dashboard
+        return redirect()->route('dashboard')->with('success', 'Cập nhật cảnh báo thành công!');
+    }
+
+    public function destroy(Alert $alert)
+    {
+        if (!auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
+            abort(403);
+        }
+        $alert->delete();
+        // Sau khi xoá, redirect về dashboard
+        return redirect()->route('dashboard')->with('success', 'Đã xoá cảnh báo!');
     }
 
     public function show(Alert $alert)

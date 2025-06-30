@@ -82,10 +82,10 @@
                             <a href="{{ route('admin.alerts.edit', $alert) }}" class="btn btn-primary rounded-pill">
                                 <i class="fas fa-edit me-1"></i> Sửa
                             </a>
-                            <form action="{{ route('admin.alerts.destroy', $alert) }}" method="POST" class="d-inline">
+                            <form action="{{ route('admin.alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
                                 @csrf
                                 @method('DELETE')
-                                <button class="btn btn-danger rounded-pill" onclick="return confirm('Bạn có chắc chắn muốn xóa cảnh báo này?')">
+                                <button class="btn btn-danger rounded-pill">
                                     <i class="fas fa-trash-alt me-1"></i> Xóa
                                 </button>
                             </form>
@@ -103,63 +103,50 @@
                             {{ $alert->comments()->count() }}
                         </span>
                     </h4>
-                    
                     @if(session('success'))
                         <div class="alert alert-success alert-dismissible fade show rounded-3">
                             {{ session('success') }}
                             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
                     @endif
-                    
-                    @auth
-                        <form action="{{ route('comments.store') }}" method="POST" class="mb-4">
-                            @csrf
-                            <input type="hidden" name="alert_id" value="{{ $alert->id }}">
-                            <div class="mb-3">
-                                <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
-                                @error('content')
-                                    <div class="text-danger small mt-1">{{ $message }}</div>
-                                @enderror
-                            </div>
-                            <button type="submit" class="btn btn-primary rounded-pill px-4">
-                                <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
-                            </button>
-                        </form>
-                    @else
-                        <div class="alert alert-info rounded-3">
-                            <i class="fas fa-info-circle me-2"></i> Vui lòng <a href="{{ route('login') }}" class="alert-link">đăng nhập</a> để bình luận.
+                    @if(session('error'))
+                        <div class="alert alert-danger alert-dismissible fade show rounded-3">
+                            {{ session('error') }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                         </div>
-                    @endauth
+                    @endif
+                    @if($alert->status == 'approved')
+                        @auth
+                            <form action="{{ route('comments.store') }}" method="POST" class="mb-4">
+                                @csrf
+                                <input type="hidden" name="alert_id" value="{{ $alert->id }}">
+                                <div class="mb-3">
+                                    <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
+                                    @error('content')
+                                        <div class="text-danger small mt-1">{{ $message }}</div>
+                                    @enderror
+                                </div>
+                                <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                    <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
+                                </button>
+                            </form>
+                        @else
+                            <div class="alert alert-info rounded-3">
+                                <i class="fas fa-info-circle me-2"></i> Vui lòng <a href="{{ route('login') }}" class="alert-link">đăng nhập</a> để bình luận.
+                            </div>
+                        @endauth
+                    @else
+                        <div class="alert alert-warning rounded-3">
+                            <i class="fas fa-info-circle me-2"></i> Chỉ bình luận khi cảnh báo đã được duyệt.
+                        </div>
+                    @endif
                     
                     <div class="comments-section">
-                        @forelse($alert->comments()->latest()->get() as $comment)
-                            <div class="comment-item mb-3 pb-3 border-bottom">
-                                <div class="d-flex justify-content-between align-items-center mb-2">
-                                    <div class="d-flex align-items-center">
-                                        <div class="avatar bg-primary bg-opacity-10 text-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
-                                            <i class="fas fa-user"></i>
-                                        </div>
-                                        <div class="ms-2">
-                                            <strong class="d-block">{{ $comment->user->name ?? 'Ẩn danh' }}</strong>
-                                            <span class="text-muted small">
-                                                <i class="far fa-clock me-1"></i> {{ $comment->created_at->diffForHumans() }}
-                                            </span>
-                                        </div>
-                                    </div>
-                                    @if(auth()->check() && (auth()->user()->isAdmin || auth()->id() === $comment->user_id))
-                                        <form action="{{ route('comments.destroy', $comment) }}" method="POST" class="d-inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" onclick="return confirm('Xóa bình luận này?')">
-                                                <i class="fas fa-trash-alt"></i>
-                                            </button>
-                                        </form>
-                                    @endif
-                                </div>
-                                <div class="comment-content ps-4">
-                                    {{ $comment->content }}
-                                </div>
-                            </div>
+                        @php
+                            $comments = $alert->comments()->whereNull('parent_id')->latest()->get();
+                        @endphp
+                        @forelse($comments as $comment)
+                            @include('comments._item', ['comment' => $comment, 'parentType' => 'alert', 'parentId' => $alert->id])
                         @empty
                             <div class="text-center py-4">
                                 <i class="far fa-comment-dots text-muted fa-2x mb-2"></i>

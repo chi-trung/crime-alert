@@ -12,14 +12,13 @@ class WantedListController extends Controller
         if ($request->filled('q')) {
             $q = $request->q;
             $query->where(function($sub) use ($q) {
-                $sub->where('name', 'like', "%$q%")
-                    ->orWhere('birth_year', 'like', "%$q%")
-                    ->orWhere('address', 'like', "%$q%")
-                    ->orWhere('parents', 'like', "%$q%")
-                    ->orWhere('crime', 'like', "%$q%")
-                    ->orWhere('decision', 'like', "%$q%")
-                    ->orWhere('agency', 'like', "%$q%")
-                ;
+                $sub->where(function($query) use ($q) {
+                    $query->where('name', 'like', "$q")
+                        ->orWhere('name', 'like', "$q %")
+                        ->orWhere('name', 'like', "% $q %")
+                        ->orWhere('name', 'like', "% $q")
+                        ->orWhere('name', 'like', "$q");
+                });
             });
         }
         $wantedPeople = $query->orderByDesc('id')->paginate(20)->withQueryString();

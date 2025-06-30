@@ -141,11 +141,16 @@
                             </div>
                         </div>
                         
-                        <!-- Footer với số lượt xem -->
+                        <!-- Footer với số lượt xem và người đăng -->
                         <div class="card-footer bg-transparent border-0 pt-0">
                             <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary me-2">
+                                        <i class="fas fa-user"></i> {{ $alert->user->name ?? 'Ẩn danh' }}
+                                    </span>
+                                </div>
                                 <small class="text-muted">
-                                    <i class="fas fa-eye me-1"></i> {{ rand(50, 500) }} lượt xem
+                                    <i class="fas fa-comments me-1"></i> {{ $alert->comments_count ?? 0 }} bình luận
                                 </small>
                                 <a href="{{ route('alerts.show', $alert) }}" class="btn btn-sm btn-outline-primary">
                                     Xem chi tiết <i class="fas fa-arrow-right ms-1"></i>

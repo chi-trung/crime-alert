@@ -193,6 +193,23 @@
                 <p class="text-gray-600 mt-2">Vui lòng nhập thông tin của bạn</p>
             </div>
             
+            @if (session('error'))
+                <div class="mb-4 text-red-600 font-semibold text-center">
+                    {{ session('error') }}
+                </div>
+            @endif
+
+            @if (
+                isset(
+                    $errors
+                ) && $errors->any())
+                <div class="mb-4 text-red-600 font-semibold text-center">
+                    @foreach ($errors->all() as $error)
+                        <div>{{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
+
             <form method="POST" action="{{ route('login') }}">
                 @csrf
                 <!-- Email -->
