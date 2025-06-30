@@ -43,6 +43,7 @@
 - <img src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white"/> **Leaflet.js** (bản đồ)
 - <img src="https://img.shields.io/badge/Guzzle-6DB33F?logo=php&logoColor=white"/> **Guzzle** (HTTP client crawl dữ liệu)
 - <img src="https://img.shields.io/badge/Symfony%20Process-000000?logo=symfony&logoColor=white"/> **Symfony Process** (chạy đa tiến trình crawl + serve)
+<<<<<<< HEAD
 - <img src="https://img.shields.io/badge/Symfony%20DomCrawler-000000?logo=symfony&logoColor=white"/> **Symfony DomCrawler** (phân tích HTML khi crawl)
 
 ---
@@ -51,6 +52,8 @@
 - PHP >= 8.x
 - Composer >= 2.x
 - Node.js >= 16.x và npm
+=======
+>>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 
 ---
 
@@ -66,6 +69,7 @@ php artisan serve:all
 
 ---
 
+<<<<<<< HEAD
 ## 📦 <b>Cài đặt các package cần thiết</b>
 
 Chạy các lệnh sau để cài đặt đầy đủ package cho backend và frontend:
@@ -80,6 +84,10 @@ composer require guzzlehttp/guzzle symfony/dom-crawler symfony/process
 
 ## 📖 <b>Hướng dẫn chi tiết cho người mới bắt đầu</b>
 
+=======
+## 📖 <b>Hướng dẫn chi tiết cho người mới bắt đầu</b>
+
+>>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ### 1️⃣ Tải mã nguồn về máy
 - **Cách 1: Dùng Git (khuyên dùng)**
   ```bash
@@ -154,6 +162,7 @@ php artisan migrate
 npm run dev
 ```
 
+<<<<<<< HEAD
 ### 5️⃣ Crawl dữ liệu thủ công (nếu muốn)
 - Crawl tin tức pháp luật:
   ```bash
@@ -165,6 +174,8 @@ npm run dev
   ```
 > Có thể bỏ qua bước này nếu dùng lệnh `php artisan serve:all` ở bước tiếp theo.
 
+=======
+>>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ### 6️⃣ Chạy server và crawl dữ liệu tự động
 ```bash
 php artisan serve:all
@@ -185,6 +196,7 @@ php artisan serve:all
   php artisan crawl:wanted-list
   ```
 
+<<<<<<< HEAD
 > Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh **php artisan serve:all**.
 
 ---
@@ -212,6 +224,33 @@ php artisan serve:all
 
 ---
 
+=======
+---
+
+## ⚠️ **Lưu ý quan trọng**
+
+<div align="center">
+
+<table>
+  <tr>
+    <td width="40" align="center">🚫</td>
+    <td><b>Không override lệnh <code>php artisan serve</code></b> trong <code>routes/console.php</code> hoặc các command khác để tránh lỗi không vào được server.</td>
+  </tr>
+  <tr>
+    <td width="40" align="center">🔄</td>
+    <td>Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh <b><code>php artisan serve:all</code></b>.</td>
+  </tr>
+  <tr>
+    <td width="40" align="center">🛠️</td>
+    <td>Nếu gặp lỗi, <b>kiểm tra lại cấu hình <code>.env</code> và database</b>.</td>
+  </tr>
+</table>
+
+</div>
+
+---
+
+>>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ## 🤝 <b>Đóng góp & phát triển</b>
 - Fork, tạo branch mới và gửi pull request nếu muốn đóng góp code.
 - Nếu có vấn đề, vui lòng tạo issue trên GitHub.
