@@ -11,7 +11,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-borderless align-middle mb-0">
+                        <table class="table table-striped table-bordered align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Tiêu đề</th>
@@ -70,7 +70,7 @@
                 </div>
                 <div class="card-body p-0">
                     <div class="table-responsive">
-                        <table class="table table-borderless align-middle mb-0">
+                        <table class="table table-striped table-bordered align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th>Tiêu đề</th>
@@ -165,6 +165,9 @@
 }
 .text-muted {
     color: #6c757d !important;
+}
+.table tbody tr {
+    border-bottom: 2px solid #f1f1f1;
 }
 </style>
 @endsection 

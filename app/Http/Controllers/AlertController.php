@@ -171,6 +171,14 @@ class AlertController extends Controller
 
     public function mapView()
     {
+        // Debug: Ghi log để kiểm tra ai gọi vào đây
+        \Log::info('Truy cập mapView', [
+            'user_id' => auth()->id(),
+            'is_guest' => auth()->guest(),
+            'url' => request()->fullUrl(),
+            'session' => session()->all(),
+        ]);
+        
         $alerts = Alert::where('status', 'approved')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')

@@ -212,19 +212,4 @@
 
 @section('scripts')
 @parent
-<script>
-document.getElementById('getLocationBtn').onclick = function() {
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(function(position) {
-            document.getElementById('lat').value = position.coords.latitude;
-            document.getElementById('lng').value = position.coords.longitude;
-            alert('Đã lấy vị trí của bạn! Bấm Lọc để áp dụng.');
-        }, function() {
-            alert('Không thể lấy vị trí của bạn!');
-        });
-    } else {
-        alert('Trình duyệt không hỗ trợ định vị!');
-    }
-};
-</script>
 @endsection

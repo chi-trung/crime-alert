@@ -29,10 +29,17 @@
                 <div class="mb-3 mb-md-0">
                     <h5 class="fw-bold text-white mb-2">Chào mừng trở lại, {{ auth()->user()->name }}!</h5>
                     <p class="text-white-50 mb-0">Hệ thống đã sẵn sàng để bạn quản lý các cảnh báo tội phạm</p>
-                    <a href="{{ auth()->user()->isAdmin ? '#' : route('alerts.create') }}" 
+                    <a href="{{ auth()->user()->isAdmin ? route('admin.alerts') : route('alerts.create') }}" 
                        class="btn btn-light btn-sm mt-3">
                        {{ auth()->user()->isAdmin ? 'Xem báo cáo' : 'Tạo cảnh báo mới' }}
                     </a>
+                    @if(auth()->user()->isAdmin)
+                        
+                    @else
+                        <a href="{{ route('support.create') }}" class="btn btn-warning btn-sm mt-3 ms-2">
+                            <i class="fas fa-life-ring me-1"></i> Yêu cầu hỗ trợ
+                        </a>
+                    @endif
                     <a href="{{ route('alerts.map') }}" class="btn btn-outline-light btn-lg mt-3">
                         <i class="fas fa-map-marked-alt me-1"></i> Xem bản đồ tội phạm
                     </a>
@@ -43,6 +50,78 @@
             </div>
         </div>
     </div>
+
+    {{-- Block: Yêu cầu hỗ trợ gần đây của bạn (user thường) --}}
+    @if(!auth()->user()->isAdmin && isset($latestSupportRequest))
+        <div class="card border-0 shadow-sm mb-4 mt-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-life-ring me-2 text-warning"></i>
+                    Yêu cầu hỗ trợ gần đây của bạn
+                </h5>
+                <a href="{{ route('support.index') }}" class="btn btn-outline-warning btn-sm rounded-pill px-3">Xem tất cả</a>
+            </div>
+            <div class="card-body">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="flex-grow-1">
+                        <div class="d-flex align-items-center mb-1 flex-wrap gap-2">
+                            <h6 class="fw-bold mb-0 me-2">{{ $latestSupportRequest->subject }}</h6>
+                            <span class="badge {{ $latestSupportRequest->status == 'open' ? 'bg-warning text-dark' : 'bg-secondary' }} px-3 py-2 rounded-pill d-flex align-items-center" style="font-size: 0.95em;">
+                                @if($latestSupportRequest->status == 'open')
+                                    <i class="fas fa-hourglass-half me-1"></i> Đang mở
+                                @else
+                                    Đã đóng
+                                @endif
+                            </span>
+                        </div>
+                        <div class="text-muted small mb-2">
+                            <i class="far fa-calendar-alt me-1"></i> {{ $latestSupportRequest->created_at->format('d/m/Y H:i') }}
+                        </div>
+                        <a href="{{ route('support.show', $latestSupportRequest) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+                            <i class="fas fa-eye me-1"></i> Xem chi tiết
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    @endif
+
+    @if(auth()->user()->isAdmin && isset($latestSupportRequest))
+    <div class="card border-0 shadow-sm mb-4 mt-4">
+        <div class="card-header bg-white d-flex justify-content-between align-items-center border-bottom-0">
+            <h5 class="card-title mb-0"><i class="fas fa-life-ring me-2 text-warning"></i>Yêu cầu hỗ trợ gần đây</h5>
+            <a href="{{ route('admin.support.index') }}" class="btn btn-outline-warning btn-sm rounded-pill px-3">Xem tất cả</a>
+        </div>
+        <div class="card-body">
+            <div class="d-flex align-items-center gap-3">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center mb-1 flex-wrap gap-2">
+                        <h6 class="fw-bold mb-0 me-2">{{ $latestSupportRequest->subject }}</h6>
+                        <span class="badge {{ $latestSupportRequest->status == 'open' ? 'bg-warning text-dark' : 'bg-secondary' }} px-3 py-2 rounded-pill d-flex align-items-center" style="font-size: 0.95em;">
+                            @if($latestSupportRequest->status == 'open')
+                                <i class="fas fa-hourglass-half me-1"></i> Đang mở
+                            @else
+                                Đã đóng
+                            @endif
+                        </span>
+                        <span class="ms-2 text-muted small"><i class="fas fa-user me-1"></i> {{ $latestSupportRequest->user->name ?? 'N/A' }}</span>
+                    </div>
+                    <div class="text-muted small mb-2"><i class="far fa-calendar-alt me-1"></i> {{ $latestSupportRequest->created_at->format('d/m/Y H:i') }}</div>
+                    <a href="{{ route('support.show', $latestSupportRequest) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3"><i class="fas fa-eye me-1"></i> Xem chi tiết</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    @elseif(auth()->user()->isAdmin)
+    <div class="card border-0 shadow-sm mb-4 mt-4">
+        <div class="card-header bg-white border-bottom-0">
+            <h5 class="card-title mb-0"><i class="fas fa-life-ring me-2 text-warning"></i>Yêu cầu hỗ trợ gần đây</h5>
+        </div>
+        <div class="card-body text-center text-muted">
+            Chưa có yêu cầu hỗ trợ nào cả.
+        </div>
+    </div>
+    @endif
 
     @if(!auth()->user()->isAdmin)
         <div class="mb-2 text-center">
@@ -111,15 +190,11 @@
                         <span class="avatar-title bg-info bg-opacity-10 text-info rounded fs-3 mb-2 d-inline-block">
                             <i class="fas fa-pen-alt"></i>
                         </span>
-                        @php
-                            $totalPostsThisMonth = ($myAlerts->count() ?? 0) + ($myExperiencesThisMonth->count() ?? 0);
-                            $totalApprovedPostsThisMonth = ($myAlerts->where('status', 'approved')->count() ?? 0) + ($myExperiencesThisMonth->where('status', 'approved')->count() ?? 0);
-                        @endphp
-                        <div class="fw-bold fs-4">{{ $totalPostsThisMonth }}</div>
-                        <div class="text-muted small">Bài viết tháng này</div>
-                        @if($totalPostsThisMonth > 0)
+                        <div class="fw-bold fs-4">{{ isset($totalPosts) ? $totalPosts : 0 }}</div>
+                        <div class="text-muted small">Tổng bài viết</div>
+                        @if(isset($totalPosts) && $totalPosts > 0)
                             <div class="text-muted small mb-1">
-                                {{ $totalApprovedPostsThisMonth }}/{{ $totalPostsThisMonth }} được duyệt
+                                {{ $totalApprovedPosts }}/{{ $totalPosts }} được duyệt
                             </div>
                         @endif
                     </div>
@@ -569,7 +644,7 @@
                         </div>
                     </div>
                     <div class="card-body pt-0">
-                        <canvas id="alertsChart" height="300"></canvas>
+                        <canvas id="alertsChart" height="180"></canvas>
                     </div>
                 </div>
             </div>
@@ -580,21 +655,29 @@
                     </div>
                     <div class="card-body d-flex flex-column">
                         <div class="flex-grow-1">
-                            <canvas id="alertsPieChart" height="250"></canvas>
+                            <canvas id="alertsPieChart" height="180"></canvas>
                         </div>
                         <div class="mt-3">
                             <div class="row text-center">
-                                <div class="col-4">
-                                    <span class="d-block fw-bold">35%</span>
+                                <div class="col-2">
+                                    <span class="d-block fw-bold">{{ $typePercentsAdmin['Cướp giật'] ?? 0 }}%</span>
+                                    <span class="text-muted small">Cướp giật</span>
+                                </div>
+                                <div class="col-2">
+                                    <span class="d-block fw-bold">{{ $typePercentsAdmin['Trộm cắp'] ?? 0 }}%</span>
                                     <span class="text-muted small">Trộm cắp</span>
                                 </div>
-                                <div class="col-4">
-                                    <span class="d-block fw-bold">25%</span>
+                                <div class="col-2">
+                                    <span class="d-block fw-bold">{{ $typePercentsAdmin['Lừa đảo'] ?? 0 }}%</span>
                                     <span class="text-muted small">Lừa đảo</span>
                                 </div>
-                                <div class="col-4">
-                                    <span class="d-block fw-bold">20%</span>
+                                <div class="col-2">
+                                    <span class="d-block fw-bold">{{ $typePercentsAdmin['Bạo lực'] ?? 0 }}%</span>
                                     <span class="text-muted small">Bạo lực</span>
+                                </div>
+                                <div class="col-2">
+                                    <span class="d-block fw-bold">{{ $typePercentsAdmin['Khác'] ?? 0 }}%</span>
+                                    <span class="text-muted small">Khác</span>
                                 </div>
                             </div>
                         </div>
@@ -694,17 +777,21 @@
                                 </div>
                                 <div class="d-flex gap-2 mt-2">
                                     <a href="{{ route('experiences.show', $latestExperience) }}" class="btn btn-outline-info btn-sm rounded-pill px-3"><i class="fas fa-eye me-1"></i> Xem</a>
-                                    @if($latestExperience->status != 'approved')
+                                    @if($latestExperience->status == 'pending')
                                         <form action="{{ route('admin.experiences.approve', $latestExperience) }}" method="POST" class="d-inline">
                                             @csrf
                                             <button class="btn btn-success btn-sm rounded-pill px-3" title="Duyệt"><i class="fas fa-check me-1"></i> Duyệt</button>
                                         </form>
-                                        <form action="{{ route('admin.experiences.destroy', $latestExperience) }}" method="POST" class="d-inline form-delete">
+                                        <form action="{{ route('admin.experiences.reject', $latestExperience) }}" method="POST" class="d-inline form-reject">
                                             @csrf
-                                            @method('DELETE')
-                                            <button class="btn btn-danger btn-sm rounded-pill px-3" title="Từ chối"><i class="fas fa-times me-1"></i> Từ chối</button>
+                                            <button class="btn btn-warning btn-sm rounded-pill px-3" title="Từ chối"><i class="fas fa-times me-1"></i> Từ chối</button>
                                         </form>
                                     @endif
+                                    <form action="{{ route('admin.experiences.destroy', $latestExperience) }}" method="POST" class="d-inline form-delete">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button class="btn btn-danger btn-sm rounded-pill px-3" title="Xóa"><i class="fas fa-trash me-1"></i> Xóa</button>
+                                    </form>
                                 </div>
                             </div>
                         @else
@@ -741,116 +828,82 @@
         const createdData = @json($createdData);
         const approvedData = @json($approvedData);
 
-        // Alert Statistics Chart
+        // Bar Chart (Cảnh báo theo tháng)
         const ctx = document.getElementById('alertsChart').getContext('2d');
         const alertsChart = new Chart(ctx, {
-            type: 'line',
+            type: 'bar',
             data: {
                 labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
                 datasets: [
                     {
                         label: 'Cảnh báo đã tạo',
                         data: typeof createdData !== 'undefined' ? createdData : [],
-                        backgroundColor: 'rgba(13, 110, 253, 0.05)',
-                        borderColor: '#0d6efd',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#0d6efd',
-                        pointBorderWidth: 2
+                        backgroundColor: 'rgba(13, 110, 253, 0.7)',
+                        borderRadius: 10,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5,
+                        maxBarThickness: 32,
                     },
                     {
                         label: 'Cảnh báo đã duyệt',
                         data: typeof approvedData !== 'undefined' ? approvedData : [],
-                        backgroundColor: 'rgba(25, 135, 84, 0.05)',
-                        borderColor: '#198754',
-                        borderWidth: 2,
-                        tension: 0.4,
-                        fill: true,
-                        pointBackgroundColor: '#fff',
-                        pointBorderColor: '#198754',
-                        pointBorderWidth: 2
+                        backgroundColor: 'rgba(25, 135, 84, 0.7)',
+                        borderRadius: 10,
+                        barPercentage: 0.5,
+                        categoryPercentage: 0.5,
+                        maxBarThickness: 32,
                     }
                 ]
             },
             options: {
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
-                    legend: {
-                        position: 'top',
-                        labels: {
-                            usePointStyle: true,
-                            padding: 20
-                        }
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false,
-                        backgroundColor: '#fff',
-                        titleColor: '#000',
-                        bodyColor: '#000',
-                        borderColor: 'rgba(0,0,0,0.1)',
-                        borderWidth: 1,
-                        padding: 12,
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                        callbacks: {
-                            label: function(context) {
-                                return context.dataset.label + ': ' + context.raw;
-                            }
-                        }
-                    }
+                    legend: { position: 'top', labels: { font: { size: 15 } } },
+                    tooltip: { enabled: true }
                 },
                 scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: {
-                            drawBorder: false
-                        },
-                        ticks: {
-                            padding: 10
-                        }
-                    },
-                    x: {
-                        grid: {
-                            display: false,
-                            drawBorder: false
-                        },
-                        ticks: {
-                            padding: 10
-                        }
-                    }
+                    x: { grid: { display: false } },
+                    y: { beginAtZero: true, grid: { color: '#f0f0f0' } }
                 }
             }
         });
 
-        // Alert Types Pie Chart
+        // Donut Chart (Phân loại cảnh báo)
         const pieCtx = document.getElementById('alertsPieChart').getContext('2d');
+        const typePercentsAdmin = @json($typePercentsAdmin);
         const alertsPieChart = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Trộm cắp', 'Lừa đảo', 'Bạo lực', 'Khác'],
+                labels: ['Cướp giật', 'Trộm cắp', 'Lừa đảo', 'Bạo lực', 'Khác'],
                 datasets: [{
-                    data: [35, 25, 20, 20],
-                    backgroundColor: [
-                        '#0d6efd',
-                        '#fd7e14',
-                        '#dc3545',
-                        '#6c757d'
+                    data: [
+                        typePercentsAdmin['Cướp giật'] ?? 0,
+                        typePercentsAdmin['Trộm cắp'] ?? 0,
+                        typePercentsAdmin['Lừa đảo'] ?? 0,
+                        typePercentsAdmin['Bạo lực'] ?? 0,
+                        typePercentsAdmin['Khác'] ?? 0
                     ],
-                    borderWidth: 0
+                    backgroundColor: [
+                        '#e63946', // Cướp giật
+                        '#0d6efd', // Trộm cắp
+                        '#fd7e14', // Lừa đảo
+                        '#198754', // Bạo lực
+                        '#6c757d'  // Khác
+                    ],
+                    borderWidth: 4,
+                    borderColor: '#fff',
+                    hoverOffset: 16
                 }]
             },
             options: {
+                cutout: '70%',
                 responsive: true,
-                maintainAspectRatio: false,
+                maintainAspectRatio: true,
                 plugins: {
-                    legend: {
-                        position: 'right',
-                    }
-                },
-                cutout: '70%'
+                    legend: { position: 'right', labels: { font: { size: 16 } } },
+                    tooltip: { enabled: true }
+                }
             }
         });
     });

@@ -24,11 +24,25 @@
                             </div>
                         </div>
                     </div>
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="info-item">
+                                <h5 class="text-muted">Xác thực email</h5>
+                                <p class="h6 mb-0">
+                                    @if(auth()->user()->email_verified_at)
+                                        Đã xác thực lúc {{ auth()->user()->email_verified_at->format('d/m/Y H:i') }}
+                                    @else
+                                        <span class="text-danger">Chưa xác thực</span>
+                                    @endif
+                                </p>
+                            </div>
+                        </div>
+                    </div>
                     
                     <div class="info-item mb-4">
                         <h5 class="text-muted">Loại tài khoản</h5>
                         <span class="badge bg-{{ auth()->user()->isAdmin ? 'danger' : 'success' }}">
-                            {{ auth()->user()->isAdmin ? 'Admin' : 'User' }}
+                            {{ auth()->user()->isAdmin ? 'Quản trị viên' : 'Người dùng' }}
                         </span>
                     </div>
                     

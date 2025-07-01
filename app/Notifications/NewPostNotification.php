@@ -53,12 +53,15 @@ class NewPostNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'trải nghiệm';
+        $actionText = $this->postType === 'alert' ? 'đã đăng cảnh báo mới' : 'đã đăng trải nghiệm mới';
         return [
             'post_id' => $this->post->id,
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'user_name' => $this->user->name,
             'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id) : route('experiences.show', $this->post->id),
+            'message' => $this->user->name . ' ' . $actionText . ': ' . ($this->post->title ?? $this->post->name),
         ];
     }
 }

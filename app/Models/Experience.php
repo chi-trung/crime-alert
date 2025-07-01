@@ -19,4 +19,9 @@ class Experience extends Model
     {
         return $this->hasMany(\App\Models\Comment::class);
     }
+
+    public function likes()
+    {
+        return $this->morphMany(\App\Models\Like::class, 'likeable');
+    }
 }

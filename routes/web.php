@@ -9,6 +9,8 @@ use App\Http\Controllers\ExperienceController;
 use App\Http\Controllers\NotificationController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\LikeController;
+use App\Http\Controllers\SupportRequestController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -28,6 +30,7 @@ Route::get('/dashboard', function () {
         $pendingExperiences = \App\Models\Experience::where('status', 'pending')->orderByDesc('created_at')->get();
         $latestPendingExperience = \App\Models\Experience::where('status', 'pending')->orderByDesc('created_at')->first();
         $latestExperience = \App\Models\Experience::orderByDesc('created_at')->first();
+        $latestSupportRequest = \App\Models\SupportRequest::with('user')->latest()->first();
 
         // Thống kê cảnh báo theo tháng (số liệu thật)
         $currentYear = now()->year;
@@ -96,6 +99,25 @@ Route::get('/dashboard', function () {
             ->take(3)
             ->get();
 
+        // Thống kê phân loại cảnh báo cho admin (chỉ lấy cảnh báo đã duyệt)
+        $alertsForStats = \App\Models\Alert::where('status', 'approved')->get();
+        $alertTypes = ["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực"];
+        $typeCountsAdmin = array_fill_keys($alertTypes, 0);
+        $typeCountsAdmin['Khác'] = 0;
+        foreach ($alertsForStats as $alert) {
+            $type = trim($alert->type ?? '');
+            if (in_array($type, $alertTypes)) {
+                $typeCountsAdmin[$type]++;
+            } else {
+                $typeCountsAdmin['Khác']++;
+            }
+        }
+        $totalAlertsAll = array_sum($typeCountsAdmin);
+        $typePercentsAdmin = [];
+        foreach ($typeCountsAdmin as $type => $count) {
+            $typePercentsAdmin[$type] = $totalAlertsAll > 0 ? round($count / $totalAlertsAll * 100) : 0;
+        }
+
         return view('dashboard', [
             'totalAlerts' => $totalAlerts,
             'pendingAlerts' => $pendingAlerts,
@@ -120,17 +142,50 @@ Route::get('/dashboard', function () {
             'pendingExperiences' => $pendingExperiences,
             'latestPendingExperience' => $latestPendingExperience,
             'latestExperience' => $latestExperience,
+            'typePercentsAdmin' => $typePercentsAdmin,
+            'latestSupportRequest' => $latestSupportRequest,
         ]);
     } else {
+        $user = auth()->user();
         $currentYear = now()->year;
         $currentMonth = now()->month;
-        $myAlerts = \App\Models\Alert::where('user_id', $user->id)
+        // Lấy cảnh báo của user/tháng này
+        $myAlertsThisMonth = \App\Models\Alert::where('user_id', $user->id)
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
+            ->orderByDesc('created_at')
             ->get();
-        $myApproved = $myAlerts->where('status', 'approved')->count();
-        $myTotal = $myAlerts->count();
-        $myLatest = $myAlerts->sortByDesc('created_at')->first();
+        // Lấy kinh nghiệm của user/tháng này
+        $myExperiencesThisMonth = \App\Models\Experience::where('user_id', $user->id)
+            ->whereYear('created_at', $currentYear)
+            ->whereMonth('created_at', $currentMonth)
+            ->orderByDesc('created_at')
+            ->get();
+        // Tổng bài viết/tháng này
+        $totalPosts = $myAlertsThisMonth->count() + $myExperiencesThisMonth->count();
+        // Đã duyệt/tháng này
+        $totalApprovedPosts = $myAlertsThisMonth->where('status', 'approved')->count() + $myExperiencesThisMonth->where('status', 'approved')->count();
+        // Chuẩn hóa type/tháng này
+        $alertTypes = ["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực"];
+        $typeCounts = array_fill_keys($alertTypes, 0);
+        $typeCounts['Khác'] = 0;
+        foreach ($myAlertsThisMonth as $alert) {
+            $type = trim($alert->type ?? '');
+            if (in_array($type, $alertTypes)) {
+                $typeCounts[$type]++;
+            } else {
+                $typeCounts['Khác']++;
+            }
+        }
+        $myTotal = array_sum($typeCounts);
+        $typePercents = [];
+        foreach ($typeCounts as $type => $count) {
+            $typePercents[$type] = $myTotal > 0 ? round($count / $myTotal * 100) : 0;
+        }
+        $monthLabel = now()->format('m/Y');
+        $myExperience = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
+        $myAlerts = \App\Models\Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        $latestSupportRequest = \App\Models\SupportRequest::where('user_id', $user->id)->latest()->first();
         $latestNews = \App\Models\News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
         $hotWanted = \App\Models\WantedPerson::orderByDesc('id')->take(3)->get();
         $topExperiences = \App\Models\Experience::where('status', 'approved')
@@ -145,21 +200,11 @@ Route::get('/dashboard', function () {
             ->orderByDesc('created_at')
             ->take(3)
             ->get();
-        // Tính tỷ lệ các loại tội phạm trong cảnh báo của user (tháng hiện tại)
-        $typeCounts = $myAlerts->groupBy('type')->map->count();
-        $typePercents = [];
-        foreach (["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực", "Khác"] as $type) {
-            $typePercents[$type] = $myTotal > 0 ? round(($typeCounts[$type] ?? 0) / $myTotal * 100) : 0;
-        }
-        $monthLabel = now()->format('m/Y');
-        $myExperience = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
-        $myExperiencesThisMonth = \App\Models\Experience::where('user_id', $user->id)
-            ->whereYear('created_at', $currentYear)
-            ->whereMonth('created_at', $currentMonth)
-            ->get();
+        // Cảnh báo mới nhất (toàn bộ của user)
+        $myLatest = $myAlerts->first();
         return view('dashboard', [
             'myTotal' => $myTotal,
-            'myApproved' => $myApproved,
+            'myApproved' => $myAlertsThisMonth->where('status', 'approved')->count(),
             'myLatest' => $myLatest,
             'latestNews' => $latestNews,
             'hotWanted' => $hotWanted,
@@ -170,6 +215,9 @@ Route::get('/dashboard', function () {
             'myExperience' => $myExperience,
             'myExperiencesThisMonth' => $myExperiencesThisMonth,
             'myAlerts' => $myAlerts,
+            'totalPosts' => $totalPosts,
+            'totalApprovedPosts' => $totalApprovedPosts,
+            'latestSupportRequest' => $latestSupportRequest,
         ]);
     }
 })->middleware(['auth', 'verified'])->name('dashboard');
@@ -202,6 +250,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/experiences/{experience}/edit', [\App\Http\Controllers\ExperienceController::class, 'edit'])->name('experiences.edit');
     Route::put('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'update'])->name('experiences.update');
     Route::delete('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'destroy'])->name('experiences.destroy');
+    Route::post('/like', [LikeController::class, 'store'])->name('like.store');
+    Route::delete('/like', [LikeController::class, 'destroy'])->name('like.destroy');
+    // Hỗ trợ trực tuyến - user
+    Route::get('/support', [SupportRequestController::class, 'index'])->name('support.index');
+    Route::get('/support/create', [SupportRequestController::class, 'create'])->name('support.create');
+    Route::post('/support', [SupportRequestController::class, 'store'])->name('support.store');
+    Route::get('/support/{supportRequest}', [SupportRequestController::class, 'show'])->name('support.show');
+    Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->name('support.sendMessage');
+});
+
+// Hỗ trợ trực tuyến - admin
+Route::middleware(['auth', 'admin'])->group(function() {
+    Route::get('/admin/support', [SupportRequestController::class, 'adminIndex'])->name('admin.support.index');
+    Route::post('/admin/support/{supportRequest}/close', [SupportRequestController::class, 'close'])->name('admin.support.close');
+    Route::delete('/admin/support/{supportRequest}', [SupportRequestController::class, 'destroy'])->name('admin.support.destroy');
 });
 
 Route::get('/test-map', function() {

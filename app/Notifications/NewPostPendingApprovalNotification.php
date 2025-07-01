@@ -53,12 +53,15 @@ class NewPostPendingApprovalNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'trải nghiệm';
+        $actionText = $this->postType === 'alert' ? 'đã đăng cảnh báo mới, vui lòng kiểm duyệt' : 'đã đăng trải nghiệm mới, vui lòng kiểm duyệt';
         return [
             'post_id' => $this->post->id,
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'user_name' => $this->user->name,
-            'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id) : route('experiences.show', $this->post->id),
+            'url' => $this->postType === 'alert' ? route('admin.alerts') : route('admin.experiences'),
+            'message' => 'Người dùng ' . $this->user->name . ' ' . $actionText . ': ' . ($this->post->title ?? $this->post->name),
         ];
     }
 }

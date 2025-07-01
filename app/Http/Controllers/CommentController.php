@@ -30,26 +30,32 @@ class CommentController extends Controller
             $data['experience_id'] = $request->experience_id;
         }
         $comment = \App\Models\Comment::create($data);
-        // Gửi notification cho chủ bài viết
+        // Gửi notification hợp lý
+        $currentUserId = auth()->id();
+        $post = null;
+        $postType = null;
+        $postOwnerId = null;
         if ($request->filled('alert_id')) {
-            $alert = \App\Models\Alert::find($request->alert_id);
-            if ($alert && $alert->user_id != auth()->id()) {
-                $alert->user->notify(new \App\Notifications\NewCommentOnPost($comment, $alert, 'alert'));
-            }
+            $post = \App\Models\Alert::find($request->alert_id);
+            $postType = 'alert';
+            $postOwnerId = $post ? $post->user_id : null;
+        } elseif ($request->filled('experience_id')) {
+            $post = \App\Models\Experience::find($request->experience_id);
+            $postType = 'experience';
+            $postOwnerId = $post ? $post->user_id : null;
         }
-        if ($request->filled('experience_id')) {
-            $exp = \App\Models\Experience::find($request->experience_id);
-            if ($exp && $exp->user_id != auth()->id()) {
-                $exp->user->notify(new \App\Notifications\NewCommentOnPost($comment, $exp, 'experience'));
-            }
-        }
+        $parentComment = null;
+        $parentOwnerId = null;
         if ($request->filled('parent_id')) {
             $parentComment = \App\Models\Comment::find($request->parent_id);
-            if ($parentComment && $parentComment->user_id != auth()->id()) {
-                $post = $comment->alert_id ? $comment->alert : $comment->experience;
-                $postType = $comment->alert_id ? 'alert' : 'experience';
-                $parentComment->user->notify(new \App\Notifications\NewReplyOnComment($comment, $parentComment, $post, $postType));
-            }
+            $parentOwnerId = $parentComment ? $parentComment->user_id : null;
+        }
+        // Nếu là reply, chỉ gửi cho chủ comment cha (nếu khác người gửi)
+        if ($parentComment && $parentOwnerId && $parentOwnerId != $currentUserId) {
+            $parentComment->user->notify(new \App\Notifications\NewReplyOnComment($comment, $parentComment, $post, $postType));
+        } elseif ($post && $postOwnerId && $postOwnerId != $currentUserId) {
+            // Nếu là bình luận gốc, chỉ gửi cho chủ bài viết (nếu khác người gửi)
+            $post->user->notify(new \App\Notifications\NewCommentOnPost($comment, $post, $postType));
         }
         if ($request->filled('experience_id')) {
             return redirect()->route('experiences.show', $request->experience_id)->with('success', 'Bình luận đã được gửi!');

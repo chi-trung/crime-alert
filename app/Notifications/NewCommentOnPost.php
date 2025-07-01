@@ -53,6 +53,7 @@ class NewCommentOnPost extends Notification
      */
     public function toArray(object $notifiable): array
     {
+        $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'kinh nghiệm';
         return [
             'comment_id' => $this->comment->id,
             'comment_content' => $this->comment->content,
@@ -61,6 +62,7 @@ class NewCommentOnPost extends Notification
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id) : route('experiences.show', $this->post->id),
+            'message' => $this->comment->user->name . ' đã bình luận vào ' . $typeText . ': ' . ($this->post->title ?? $this->post->name),
         ];
     }
 }

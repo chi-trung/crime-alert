@@ -14,7 +14,7 @@
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-borderless align-middle mb-0">
+                <table class="table table-striped table-bordered align-middle mb-0">
                     <thead class="table-light">
                         <tr>
                             <th>ID</th>
@@ -62,23 +62,25 @@
                                 <span class="fw-semibold">{{ $alert->created_at->format('d/m/Y') }}</span>
                                 <div class="text-muted small">{{ $alert->created_at->format('H:i') }}</div>
                             </td>
-                            <td>
-                                <div class="d-flex flex-wrap gap-2">
+                            <td class="text-center" style="min-width: 120px;">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <a href="{{ route('alerts.show', $alert) }}" class="btn btn-outline-info btn-sm rounded-pill px-3 mb-1">
+                                        <i class="fas fa-eye me-1"></i> Xem
+                                    </a>
                                     @if($alert->status == 'pending')
-                                    <form action="{{ route('admin.alerts.approve', $alert) }}" method="POST" class="d-inline">
-                                        @csrf
-                                        <button type="submit" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-check me-1"></i> Duyệt</button>
-                                    </form>
-                                    <form action="{{ route('admin.alerts.reject', $alert) }}" method="POST" class="d-inline" onsubmit="return confirm('Từ chối cảnh báo này?');">
-                                        @csrf
-                                        <button type="submit" class="btn btn-warning btn-sm rounded-pill px-3"><i class="fas fa-times me-1"></i> Từ chối</button>
-                                    </form>
+                                        <form action="{{ route('admin.alerts.approve', $alert) }}" method="POST" class="d-inline mb-1">
+                                            @csrf
+                                            <button class="btn btn-success btn-sm rounded-pill px-3" title="Duyệt"><i class="fas fa-check me-1"></i> Duyệt</button>
+                                        </form>
+                                        <form action="{{ route('admin.alerts.reject', $alert) }}" method="POST" class="d-inline mb-1 form-reject">
+                                            @csrf
+                                            <button class="btn btn-warning btn-sm rounded-pill px-3" title="Từ chối"><i class="fas fa-times me-1"></i> Từ chối</button>
+                                        </form>
                                     @endif
-                                    <a href="{{ route('admin.alerts.edit', $alert) }}" class="btn btn-primary btn-sm rounded-pill px-3"><i class="fas fa-edit me-1"></i> Sửa</a>
                                     <form action="{{ route('admin.alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3"><i class="fas fa-trash me-1"></i> Xóa</button>
+                                        <button class="btn btn-danger btn-sm rounded-pill px-3" title="Xóa"><i class="fas fa-trash me-1"></i> Xóa</button>
                                     </form>
                                 </div>
                             </td>
@@ -150,5 +152,32 @@
 .text-muted {
     color: #6c757d !important;
 }
+.table tbody tr {
+    border-bottom: 2px solid #f1f1f1;
+}
 </style>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('form.form-reject').forEach(function(form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            Swal.fire({
+                title: 'Bạn có chắc chắn muốn từ chối cảnh báo này?',
+                text: 'Hành động này sẽ từ chối cảnh báo và không thể hoàn tác!',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ffc107',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Từ chối',
+                cancelButtonText: 'Hủy',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    form.submit();
+                }
+            });
+        });
+    });
+});
+</script>
 @endsection

@@ -113,6 +113,41 @@
                         });
                     });
                 });
+                // Hiệu ứng xác nhận cho form-reject
+                document.querySelectorAll('form.form-reject').forEach(function(form) {
+                    form.addEventListener('submit', function(e) {
+                        e.preventDefault();
+                        Swal.fire({
+                            title: 'Bạn có chắc chắn muốn từ chối bài này?',
+                            text: 'Sau khi từ chối, bài sẽ không được hiển thị công khai!',
+                            icon: 'warning',
+                            showCancelButton: true,
+                            confirmButtonColor: '#ffc107',
+                            cancelButtonColor: '#6c757d',
+                            confirmButtonText: 'Từ chối',
+                            cancelButtonText: 'Hủy',
+                            reverseButtons: true
+                        }).then((result) => {
+                            if (result.isConfirmed) {
+                                form.submit();
+                            }
+                        });
+                    });
+                });
+                // Xử lý toggle menu 3 gạch thủ công nếu Bootstrap JS lỗi
+                var toggler = document.querySelector('.navbar-toggler');
+                var menu = document.getElementById('mainNavbar');
+                if (toggler && menu) {
+                    toggler.addEventListener('click', function(e) {
+                        menu.classList.toggle('show');
+                    });
+                    // Đóng menu khi click ra ngoài (trên mobile)
+                    document.addEventListener('click', function(e) {
+                        if (!menu.contains(e.target) && !toggler.contains(e.target)) {
+                            menu.classList.remove('show');
+                        }
+                    });
+                }
             });
         </script>
         @if(auth()->check())
@@ -346,5 +381,13 @@
         </script>
         @endif
         @yield('scripts')
+        <style>
+        #mainNavbar {
+          display: flex !important;
+          opacity: 1 !important;
+          visibility: visible !important;
+          height: auto !important;
+        }
+        </style>
     </body>
 </html>

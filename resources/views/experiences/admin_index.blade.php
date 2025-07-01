@@ -1,117 +1,118 @@
 @extends('layouts.app')
 @section('content')
 <div class="container py-5">
-    <h1 class="display-5 fw-bold mb-4 text-primary"><i class="fas fa-cogs me-2"></i>Quản lý bài chia sẻ kinh nghiệm</h1>
+    <h1 class="display-5 fw-bold mb-4 text-success"><i class="fas fa-comments me-2"></i>Quản lý bài chia sẻ kinh nghiệm</h1>
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
-    <div class="card shadow rounded-4 border-0">
-        <div class="card-header bg-primary text-white rounded-top-4 d-flex align-items-center gap-2">
+    <div class="card shadow rounded-4 border-0 mb-4">
+        <div class="card-header bg-success text-white rounded-top-4 d-flex align-items-center gap-2">
             <i class="fas fa-comments"></i>
             <h4 class="mb-0 fw-bold">Danh sách bài chia sẻ</h4>
         </div>
         <div class="card-body p-0">
             <div class="table-responsive">
-                <table class="table table-borderless align-middle mb-0">
+                <table class="table table-hover align-middle mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>#</th>
+                            <th class="text-center">#</th>
                             <th>Tiêu đề</th>
                             <th>Người gửi</th>
-                            <th>Ngày gửi</th>
-                            <th>Trạng thái</th>
-                            <th>Hành động</th>
+                            <th class="text-center">Ngày gửi</th>
+                            <th class="text-center">Trạng thái</th>
+                            <th class="text-center">Hành động</th>
                         </tr>
                     </thead>
                     <tbody>
-                        @foreach($experiences as $i => $item)
-                        <tr>
-                            <td>{{ $experiences->firstItem() + $i }}</td>
-                            <td class="fw-semibold">{{ $item->title }}</td>
-                            <td>{{ $item->name }}</td>
-                            <td>{{ $item->created_at->format('d/m/Y H:i') }}</td>
-                            <td>
-                                @if($item->status == 'approved')
-                                    <span class="badge bg-success">Đã duyệt</span>
-                                @elseif($item->status == 'pending')
-                                    <span class="badge bg-warning text-dark">Chờ duyệt</span>
+                        @foreach($experiences as $i => $exp)
+                        <tr class="align-middle">
+                            <td class="text-center text-muted">{{ ($experiences->currentPage() - 1) * $experiences->perPage() + $i + 1 }}</td>
+                            <td class="fw-semibold">{{ $exp->title }}</td>
+                            <td>{{ $exp->name }}</td>
+                            <td class="text-center">{{ $exp->created_at->format('d/m/Y H:i') }}</td>
+                            <td class="text-center">
+                                @if($exp->status == 'approved')
+                                    <span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill">Đã duyệt</span>
+                                @elseif($exp->status == 'pending')
+                                    <span class="badge bg-warning text-dark px-3 py-2 rounded-pill">Chờ duyệt</span>
                                 @else
-                                    <span class="badge bg-danger">Từ chối</span>
+                                    <span class="badge bg-danger px-3 py-2 rounded-pill">Từ chối</span>
                                 @endif
                             </td>
-                            <td>
-                                <a href="{{ route('experiences.show', $item) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3"><i class="fas fa-eye me-1"></i> Xem</a>
-                                @if($item->status == 'pending')
-                                    <form action="{{ route('admin.experiences.approve', $item) }}" method="POST" class="d-inline">
+                            <td class="text-center" style="min-width: 120px;">
+                                <div class="d-flex flex-column align-items-center gap-1">
+                                    <a href="{{ route('experiences.show', $exp) }}" class="btn btn-outline-info btn-sm rounded-pill px-3 mb-1">
+                                        <i class="fas fa-eye me-1"></i> Xem
+                                    </a>
+                                    @if($exp->status == 'pending')
+                                        <form action="{{ route('admin.experiences.approve', $exp) }}" method="POST" class="d-inline mb-1">
+                                            @csrf
+                                            <button class="btn btn-success btn-sm rounded-pill px-3" title="Duyệt"><i class="fas fa-check me-1"></i> Duyệt</button>
+                                        </form>
+                                        <form action="{{ route('admin.experiences.reject', $exp) }}" method="POST" class="d-inline mb-1 form-reject">
+                                            @csrf
+                                            <button class="btn btn-warning btn-sm rounded-pill px-3" title="Từ chối"><i class="fas fa-times me-1"></i> Từ chối</button>
+                                        </form>
+                                    @endif
+                                    <form action="{{ route('admin.experiences.destroy', $exp) }}" method="POST" class="d-inline form-delete">
                                         @csrf
-                                        <button type="submit" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-check me-1"></i> Duyệt</button>
+                                        @method('DELETE')
+                                        <button class="btn btn-danger btn-sm rounded-pill px-3" title="Xóa"><i class="fas fa-trash me-1"></i> Xóa</button>
                                     </form>
-                                    <form action="{{ route('admin.experiences.reject', $item) }}" method="POST" class="d-inline" onsubmit="return confirm('Từ chối bài này?');">
-                                        @csrf
-                                        <button type="submit" class="btn btn-warning btn-sm rounded-pill px-3"><i class="fas fa-times me-1"></i> Từ chối</button>
-                                    </form>
-                                @endif
-                                <form action="{{ route('admin.experiences.destroy', $item) }}" method="POST" class="d-inline form-delete">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="btn btn-danger btn-sm rounded-pill px-3"><i class="fas fa-trash me-1"></i> Xóa</button>
-                                </form>
+                                </div>
                             </td>
                         </tr>
                         @endforeach
                     </tbody>
                 </table>
             </div>
-        </div>
-        <div class="d-flex justify-content-center mt-4 mb-3">
-            {{ $experiences->links() }}
+            <div class="p-3">
+                {{ $experiences->links() }}
+            </div>
         </div>
     </div>
 </div>
 <style>
-.card {
-    border-radius: 1.25rem;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-    margin-bottom: 0;
-    overflow: hidden;
-}
-.card-header {
-    font-size: 1.15rem;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    padding: 1.25rem 1.5rem;
-}
-.table th {
+.table thead th {
     font-weight: 600;
     text-transform: uppercase;
     font-size: 0.85rem;
     letter-spacing: 0.5px;
-    color: #6c757d;
+    background: #f8fafc;
     border-top: none;
-    white-space: nowrap;
 }
-.table > :not(:first-child) {
-    border-top: none;
+.table td, .table th {
+    vertical-align: middle;
 }
 .table-hover tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.02);
+    background-color: #f6fff7;
+}
+.card {
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
 }
 .badge {
+    font-size: 0.95em;
     font-weight: 500;
-    padding: 0.35em 0.65em;
-    font-size: 0.85em;
-    letter-spacing: 0.5px;
+    border-radius: 1.5em;
+    padding: 0.5em 1.1em;
 }
 .btn {
     font-weight: 500;
     transition: all 0.2s;
 }
 .btn-sm {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.825rem;
+    padding: 0.35rem 0.85rem;
+    font-size: 0.92rem;
 }
-.text-muted {
-    color: #6c757d !important;
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.98em;
+    }
+    .card-header {
+        font-size: 1.1em;
+        padding: 1rem 1.2rem;
+    }
 }
 </style>
 @endsection 

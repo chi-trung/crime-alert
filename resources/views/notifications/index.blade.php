@@ -13,26 +13,24 @@
     </div>
     <div class="row g-3">
         @forelse($notifications as $notification)
-            <div class="col-12 col-md-8 col-lg-6 mx-auto">
+            <div class="col-12">
                 <div class="card shadow-sm notification-card mb-2 @if(is_null($notification->read_at)) notification-unread-card @endif">
-                    <div class="card-body d-flex align-items-start gap-3">
+                    <a href="{{ route('notifications.read', $notification->id) }}" class="d-flex align-items-center gap-3 text-decoration-none text-dark p-3">
                         <div class="pt-1">
                             <i class="fas fa-comment-dots text-success fa-2x"></i>
                         </div>
                         <div class="flex-grow-1">
-                            <a href="{{ route('notifications.read', $notification->id) }}" class="text-decoration-none text-dark">
-                                <div class="mb-1">
-                                    @if(isset($notification->data['comment_user'], $notification->data['post_type'], $notification->data['post_title']))
-                                        <b>{{ $notification->data['comment_user'] }}</b> đã bình luận vào <span class="text-primary">{{ $notification->data['post_type'] == 'alert' ? 'cảnh báo' : 'kinh nghiệm' }}</span>:
-                                        <b>{{ $notification->data['post_title'] }}</b>
-                                    @else
-                                        {{ $notification->data['message'] ?? 'Bạn có thông báo mới' }}
-                                    @endif
-                                </div>
-                                @if(isset($notification->data['comment_content']))
-                                    <div class="small text-muted mb-1">"{{ $notification->data['comment_content'] }}"</div>
+                            <div class="mb-1">
+                                @if(isset($notification->data['comment_user'], $notification->data['post_type'], $notification->data['post_title']))
+                                    <b>{{ $notification->data['comment_user'] }}</b> đã bình luận vào <span class="text-primary">{{ $notification->data['post_type'] == 'alert' ? 'cảnh báo' : 'kinh nghiệm' }}</span>:
+                                    <b>{{ $notification->data['post_title'] }}</b>
+                                @else
+                                    {{ $notification->data['message'] ?? 'Bạn có thông báo mới' }}
                                 @endif
-                            </a>
+                            </div>
+                            @if(isset($notification->data['comment_content']))
+                                <div class="small text-muted mb-1">"{{ $notification->data['comment_content'] }}"</div>
+                            @endif
                             <div class="d-flex align-items-center gap-2 mt-1">
                                 <i class="far fa-clock text-secondary small"></i>
                                 <span class="small text-secondary">{{ $notification->created_at->diffForHumans() }}</span>
@@ -41,11 +39,11 @@
                                 @endif
                             </div>
                         </div>
-                    </div>
+                    </a>
                 </div>
             </div>
         @empty
-            <div class="col-12 col-md-8 col-lg-6 mx-auto">
+            <div class="col-12">
                 <div class="alert alert-info text-center">Không có thông báo nào.</div>
             </div>
         @endforelse
