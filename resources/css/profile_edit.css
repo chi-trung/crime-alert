@@ -1,0 +1,14 @@
+.info-item {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    margin-bottom: 10px;
+}
+.card {
+    border-radius: 12px;
+    border: none;
+}
+.form-control {
+    padding: 10px 15px;
+    border-radius: 8px;
+} 

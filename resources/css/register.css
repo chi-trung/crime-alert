@@ -1,0 +1,162 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #f5f7ff 0%, #e2e8f0 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.register-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.register-card:hover {
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.input-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    z-index: 10;
+}
+
+.form-input {
+    /* padding-left: 45px !important; */
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+.btn-register {
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.btn-register:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 14px rgba(79, 70, 229, 0.3);
+}
+
+.password-strength {
+    height: 4px;
+    margin-top: 8px;
+    border-radius: 2px;
+    transition: all 0.3s ease;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #94a3b8;
+}
+
+.password-toggle:hover {
+    color: #4f46e5;
+}
+
+.animate-bounce-slow {
+    animation: bounce-slow 2s infinite;
+}
+
+@keyframes bounce-slow {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.wave svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 100px;
+}
+
+.tooltip {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip .tooltiptext {
+    visibility: hidden;
+    width: 200px;
+    background-color: #1e293b;
+    color: #fff;
+    text-align: center;
+    border-radius: 6px;
+    padding: 8px;
+    position: absolute;
+    z-index: 1;
+    bottom: 125%;
+    left: 50%;
+    transform: translateX(-50%);
+    opacity: 0;
+    transition: opacity 0.3s;
+    font-size: 12px;
+}
+
+.tooltip:hover .tooltiptext {
+    visibility: visible;
+    opacity: 1;
+}
+
+.password-requirements {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #64748b;
+}
+
+.requirement {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+}
+
+.requirement i {
+    margin-right: 4px;
+    font-size: 14px;
+    position: relative;
+    top: 1px;
+}
+
+.valid {
+    color: #10b981;
+}
+
+.invalid {
+    color: #ef4444;
+} 

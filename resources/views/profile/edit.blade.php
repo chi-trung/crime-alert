@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@vite(['resources/css/profile_edit.css'])
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8">
@@ -92,20 +93,5 @@
     </div>
 </div>
 
-<style>
-    .info-item {
-        padding: 15px;
-        background-color: #f8f9fa;
-        border-radius: 8px;
-        margin-bottom: 10px;
-    }
-    .card {
-        border-radius: 12px;
-        border: none;
-    }
-    .form-control {
-        padding: 10px 15px;
-        border-radius: 8px;
-    }
-</style>
+
 @endsection

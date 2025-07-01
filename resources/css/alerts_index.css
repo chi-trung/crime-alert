@@ -1,0 +1,26 @@
+.alert-header {
+    background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.hover-shadow-lg {
+    transition: all 0.3s ease;
+}
+
+.hover-shadow-lg:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
+}
+
+.hover-text-primary:hover {
+    color: #0d6efd !important;
+}
+
+.object-fit-cover {
+    object-fit: cover;
+}
+
+.transition-all {
+    transition: all 0.3s ease;
+} 

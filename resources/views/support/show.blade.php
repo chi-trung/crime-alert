@@ -1,81 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-<style>
-.support-chat-container {
-    background: #fff;
-    border-radius: 18px;
-    box-shadow: 0 8px 32px rgba(0,0,0,0.10);
-    padding: 0;
-    max-width: 600px;
-    margin: 0 auto;
-}
-.support-chat-messages {
-    background: #f6f7fa;
-    border-radius: 12px;
-    padding: 18px 16px 8px 16px;
-    overflow-y: auto;
-    max-height: 400px;
-    margin-bottom: 1rem;
-}
-.support-chat-msg {
-    display: flex;
-    align-items: flex-end;
-    margin-bottom: 12px;
-}
-.support-chat-msg.user {
-    justify-content: flex-start;
-}
-.support-chat-msg.admin {
-    justify-content: flex-end;
-}
-.support-chat-bubble {
-    max-width: 75%;
-    padding: 10px 16px;
-    border-radius: 16px;
-    font-size: 15.5px;
-    line-height: 1.5;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-    word-break: break-word;
-}
-.support-chat-msg.user .support-chat-bubble {
-    background: #1976d2;
-    color: #fff;
-    border-bottom-left-radius: 4px;
-    text-align: left;
-}
-.support-chat-msg.admin .support-chat-bubble {
-    background: #ffe0b2;
-    color: #e65100;
-    border-bottom-right-radius: 4px;
-    text-align: right;
-}
-.support-chat-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    font-weight: bold;
-}
-.support-chat-msg.admin .support-chat-avatar {
-    background: #ffe0b2;
-    color: #e65100;
-    margin-right: 4px;
-    margin-left: 0;
-}
-.support-chat-msg.user .support-chat-avatar {
-    background: #e3f0ff;
-    color: #1976d2;
-    margin-left: 4px;
-    margin-right: 0;
-}
-@media (max-width: 700px) {
-    .support-chat-container { max-width: 100%; }
-}
-</style>
+@vite(['resources/css/support_show.css', 'resources/js/support_show.js'])
 <div class="container py-4">
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4">
@@ -154,14 +80,5 @@
         </div>
     </div>
 </div>
-<script>
-    // Tự động focus vào textarea khi vào trang
-    document.getElementById('chat-input')?.focus();
-    // Tự động cuộn xuống cuối khi vào trang hoặc có tin nhắn mới
-    function scrollToBottom() {
-        var chatBox = document.getElementById('chat-messages');
-        if(chatBox) chatBox.scrollTop = chatBox.scrollHeight;
-    }
-    scrollToBottom();
-</script>
+
 @endsection 

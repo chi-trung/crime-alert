@@ -1,0 +1,136 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+body {
+    font-family: 'Inter', sans-serif;
+    background: linear-gradient(135deg, #f5f7ff 0%, #e2e8f0 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 20px;
+}
+
+.login-card {
+    transition: all 0.3s ease;
+    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+}
+
+.login-card:hover {
+    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+    transform: translateY(-5px);
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 1.5rem;
+}
+
+.input-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    z-index: 10;
+}
+
+.form-input {
+    padding-left: 45px !important;
+    transition: all 0.2s ease;
+}
+
+.form-input:focus {
+    border-color: #4f46e5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.2);
+}
+
+.btn-login {
+    transition: all 0.3s ease;
+    letter-spacing: 0.5px;
+    font-weight: 600;
+}
+
+.btn-login:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 7px 14px rgba(79, 70, 229, 0.3);
+}
+
+.divider {
+    display: flex;
+    align-items: center;
+    text-align: center;
+    color: #94a3b8;
+    margin: 1.5rem 0;
+}
+
+.divider::before,
+.divider::after {
+    content: '';
+    flex: 1;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.divider::before {
+    margin-right: 1rem;
+}
+
+.divider::after {
+    margin-left: 1rem;
+}
+
+.social-btn {
+    transition: all 0.3s ease;
+}
+
+.social-btn:hover {
+    transform: translateY(-3px);
+}
+
+.remember-forgot a:hover {
+    color: #4f46e5;
+    text-decoration: underline;
+}
+
+.password-toggle {
+    position: absolute;
+    right: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    color: #94a3b8;
+}
+
+.password-toggle:hover {
+    color: #4f46e5;
+}
+
+.animate-bounce-slow {
+    animation: bounce-slow 2s infinite;
+}
+
+@keyframes bounce-slow {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.wave {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    overflow: hidden;
+    line-height: 0;
+}
+
+.wave svg {
+    position: relative;
+    display: block;
+    width: calc(100% + 1.3px);
+    height: 100px;
+} 

@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('content')
+@vite(['resources/css/experiences_index.css'])
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-3 text-success"><i class="fas fa-comments me-2"></i>Chia sẻ kinh nghiệm & Cảnh giác</h1>
     <p class="lead text-muted mb-4">Nơi mọi người chia sẻ trải nghiệm thực tế, cảnh báo, kinh nghiệm phòng chống tội phạm, lừa đảo, góp phần xây dựng cộng đồng an toàn hơn.</p>
@@ -58,50 +59,4 @@
         {{ $experiences->links() }}
     </div>
 </div>
-<style>
-.card {
-    border-radius: 1.25rem;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-    margin-bottom: 0;
-    overflow: hidden;
-}
-.card-header {
-    font-size: 1.15rem;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    padding: 1.25rem 1.5rem;
-}
-.table th {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-    color: #6c757d;
-    border-top: none;
-    white-space: nowrap;
-}
-.table > :not(:first-child) {
-    border-top: none;
-}
-.table-hover tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-.badge {
-    font-weight: 500;
-    padding: 0.35em 0.65em;
-    font-size: 0.85em;
-    letter-spacing: 0.5px;
-}
-.btn {
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-sm {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.825rem;
-}
-.text-muted {
-    color: #6c757d !important;
-}
-</style>
 @endsection 

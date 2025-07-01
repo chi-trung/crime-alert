@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@vite(['resources/css/notifications_index.css'])
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Tất cả thông báo</h2>
@@ -52,20 +53,5 @@
         {{ $notifications->links() }}
     </div>
 </div>
-<style>
-.notification-card {
-    border-radius: 14px;
-    border-left: 5px solid #e63946;
-    transition: box-shadow 0.18s, border-color 0.18s;
-}
-.notification-card:hover {
-    box-shadow: 0 6px 24px rgba(230,57,70,0.13);
-    border-left: 5px solid #457b9d;
-    background: #f3f6fa;
-}
-.notification-unread-card {
-    background: #fffbe6;
-    border-left: 5px solid #e63946;
-}
-</style>
+
 @endsection 

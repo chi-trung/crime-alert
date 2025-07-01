@@ -1,0 +1,87 @@
+.bg-danger-gradient {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+}
+
+.file-upload-wrapper {
+    position: relative;
+    background-color: #f8f9fa;
+    transition: all 0.3s ease;
+}
+
+.file-upload-wrapper:hover {
+    background-color: #f1f1f1;
+}
+
+.file-upload-label {
+    display: block;
+    cursor: pointer;
+}
+
+.form-control-lg {
+    font-size: 1.1rem;
+}
+
+.border-2 {
+    border-width: 2px !important;
+}
+
+.rounded-3 {
+    border-radius: 1rem !important;
+}
+
+.invalid-feedback.d-block {
+    display: block !important;
+}
+
+.form-text {
+    font-size: 0.85rem;
+    color: #6c757d;
+    margin-top: 0.25rem;
+}
+
+#map {
+    min-height: 350px;
+    background-color: #f8f9fa;
+    position: relative;
+    border: 2px solid #eee;
+    z-index: 1;
+}
+
+#map::after {
+    content: "Đang tải bản đồ...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    color: #666;
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+
+#map.leaflet-loaded::after { 
+    content: none; 
+}
+
+/* Additional styles for the alert box */
+.alert.alert-dismissible .btn-close {
+    padding: 1rem;
+}
+
+/* Custom checkbox styling */
+.form-check-input {
+    accent-color: #495057; 
+    border: 2px solid #e63946; 
+    width: 1.2em; 
+    height: 1.2em;
+}
+
+/* Button styles */
+.btn-danger {
+    background-color: #e63946;
+    border-color: #e63946;
+}
+
+.btn-danger:hover {
+    background-color: #c1121f;
+    border-color: #c1121f;
+}

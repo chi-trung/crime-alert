@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('content')
+@vite(['resources/css/experiences_show.css', 'resources/js/experiences_show.js'])
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-10 col-lg-8">
@@ -64,39 +65,7 @@
                                 <button id="like-btn-exp" class="btn-like-custom{{ $experience->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $experience->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $experience->id }}" data-type="experience">
                                     <span id="like-text-exp">{{ $experience->likes()->where('user_id', auth()->id())->exists() ? 'Đã Thích' : 'Thích' }}</span> (<span id="like-count-exp">{{ $experience->likes()->count() }}</span>)
                                 </button>
-                                <script>
-                                document.getElementById('like-btn-exp').addEventListener('click', async function(e) {
-                                    e.preventDefault();
-                                    const btn = this;
-                                    const liked = btn.getAttribute('data-liked') === '1';
-                                    const id = btn.getAttribute('data-id');
-                                    const type = btn.getAttribute('data-type');
-                                    btn.disabled = true;
-                                    try {
-                                        const res = await fetch(liked ? '{{ route('like.destroy') }}' : '{{ route('like.store') }}', {
-                                            method: liked ? 'DELETE' : 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                                'Accept': 'application/json',
-                                            },
-                                            body: JSON.stringify({ type, id })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            btn.setAttribute('data-liked', liked ? '0' : '1');
-                                            document.getElementById('like-count-exp').textContent = data.count;
-                                            document.getElementById('like-text-exp').textContent = liked ? 'Thích' : 'Đã Thích';
-                                            btn.classList.toggle('liked', !liked);
-                                        } else if(data.redirect) {
-                                            window.location.href = data.redirect;
-                                        }
-                                    } catch (err) {
-                                        alert('Có lỗi xảy ra!');
-                                    }
-                                    btn.disabled = false;
-                                });
-                                </script>
+                                
                                 @else
                                 <a href="{{ route('login') }}" class="btn-like-custom" title="Đăng nhập để thích">
                                     Thích (<span id="like-count-exp">{{ $experience->likes()->count() }}</span>)
@@ -171,50 +140,5 @@
         </div>
     </div>
 </div>
-<style>
-    .alert-image-container {
-        position: relative;
-        overflow: hidden;
-    }
-    .alert-image-container::before {
-        content: '';
-        position: absolute;
-        bottom: 0;
-        left: 0;
-        right: 0;
-        height: 50px;
-        background: linear-gradient(to top, rgba(0,0,0,0.15), transparent);
-        z-index: 1;
-    }
-    .btn-like-custom {
-        border: 2px solid #e63946;
-        background: #fff;
-        color: #e63946;
-        border-radius: 22px;
-        padding: 6px 22px;
-        font-weight: 600;
-        font-size: 1.08rem;
-        transition: all 0.18s;
-        cursor: pointer;
-        outline: none;
-        box-shadow: none;
-        min-width: 110px;
-        display: inline-block;
-    }
-    .btn-like-custom.liked {
-        background: #e63946;
-        color: #fff;
-        border: 2px solid #e63946;
-    }
-    .btn-like-custom:not(.liked):hover {
-        background: #ffe6ea;
-        color: #e63946;
-        border: 2px solid #e63946;
-    }
-    .btn-like-custom.liked:hover {
-        background: #d62839;
-        color: #fff;
-        border: 2px solid #e63946;
-    }
-</style>
+
 @endsection 

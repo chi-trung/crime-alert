@@ -1,6 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
+@vite(['resources/css/alerts_index.css'])
 <div class="container mt-4">
     <!-- Header với background cảnh sát -->
     <div class="alert-header bg-primary text-white rounded-4 p-4 mb-4 position-relative overflow-hidden">
@@ -180,34 +181,6 @@
     </div>
 </div>
 
-<style>
-    .alert-header {
-        background: linear-gradient(135deg, #0d6efd 0%, #0b5ed7 100%);
-        position: relative;
-        overflow: hidden;
-    }
-    
-    .hover-shadow-lg {
-        transition: all 0.3s ease;
-    }
-    
-    .hover-shadow-lg:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175) !important;
-    }
-    
-    .hover-text-primary:hover {
-        color: #0d6efd !important;
-    }
-    
-    .object-fit-cover {
-        object-fit: cover;
-    }
-    
-    .transition-all {
-        transition: all 0.3s ease;
-    }
-</style>
 @endsection
 
 @section('scripts')

@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('content')
+@vite(['resources/css/profile_my_history.css'])
 <div class="container py-5">
     <h1 class="fw-bold mb-4 display-5 text-primary"><i class="fas fa-history me-2"></i>Lịch sử bài đăng của bạn</h1>
     <div class="row g-4 mb-4">
@@ -121,53 +122,4 @@
         </div>
     </div>
 </div>
-<style>
-.card {
-    border-radius: 1.25rem;
-    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-    margin-bottom: 0;
-    overflow: hidden;
-}
-.card-header {
-    font-size: 1.15rem;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    padding: 1.25rem 1.5rem;
-}
-.table th {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-    color: #6c757d;
-    border-top: none;
-    white-space: nowrap;
-}
-.table > :not(:first-child) {
-    border-top: none;
-}
-.table-hover tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-}
-.badge {
-    font-weight: 500;
-    padding: 0.35em 0.65em;
-    font-size: 0.85em;
-    letter-spacing: 0.5px;
-}
-.btn {
-    font-weight: 500;
-    transition: all 0.2s;
-}
-.btn-sm {
-    padding: 0.35rem 0.75rem;
-    font-size: 0.825rem;
-}
-.text-muted {
-    color: #6c757d !important;
-}
-.table tbody tr {
-    border-bottom: 2px solid #f1f1f1;
-}
-</style>
 @endsection 

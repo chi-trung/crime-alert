@@ -1,0 +1,41 @@
+.table thead th {
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    background: #f8fafc;
+    border-top: none;
+}
+.table td, .table th {
+    vertical-align: middle;
+}
+.table-hover tbody tr:hover {
+    background-color: #f6fff7;
+}
+.card {
+    border-radius: 1.25rem;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.08);
+}
+.badge {
+    font-size: 0.95em;
+    font-weight: 500;
+    border-radius: 1.5em;
+    padding: 0.5em 1.1em;
+}
+.btn {
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.btn-sm {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.92rem;
+}
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.98em;
+    }
+    .card-header {
+        font-size: 1.1em;
+        padding: 1rem 1.2rem;
+    }
+} 
