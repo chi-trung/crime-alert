@@ -34,6 +34,41 @@
                             </span>
                         </div>
                     </div>
+                    <!-- Nút chia sẻ -->
+                    <div class="mb-3 position-relative d-inline-block">
+                        <button class="btn btn-outline-success btn-sm rounded-pill" id="share-btn-exp" onclick="toggleSharePopupExp(event)">
+                            <i class="fas fa-share-alt"></i> Chia sẻ
+                        </button>
+                        <div id="share-popup-exp" style="display:none;position:absolute;left:0;top:100%;min-width:180px;background:#fff;border:1px solid #eee;padding:10px 16px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.13);z-index:9999;">
+                            <div class="d-flex flex-column align-items-start gap-2">
+                                <a href="#" id="share-fb-exp" class="btn btn-light w-100 text-start" target="_blank" style="font-weight:500;"><i class="fab fa-facebook text-primary me-2"></i> Facebook</a>
+                                <a href="#" id="share-x-exp" class="btn btn-light w-100 text-start" target="_blank" style="font-weight:500;">
+                                    <span style="display:inline-block;width:1.2em;vertical-align:middle;margin-right:8px;">
+                                        <svg viewBox="0 0 1200 1227" width="18" height="18" fill="currentColor" style="vertical-align:middle;"><path d="M1199.99 0H949.19L600.01 494.09L250.81 0H0L489.09 701.81L0 1227H250.81L600.01 732.91L949.19 1227H1200L710.91 525.19L1199.99 0ZM300.01 111.09L600.01 545.45L900.01 111.09H1050.91L600.01 801.09L149.09 111.09H300.01ZM149.09 1115.91L600.01 425.91L1050.91 1115.91H900.01L600.01 681.55L300.01 1115.91H149.09Z"></path></svg>
+                                    </span>
+                                    X
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <script>
+                    function toggleSharePopupExp(e) {
+                        e.stopPropagation();
+                        var popup = document.getElementById('share-popup-exp');
+                        var url = window.location.href;
+                        document.getElementById('share-fb-exp').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
+                        document.getElementById('share-x-exp').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(url);
+                        popup.style.display = (popup.style.display === 'block' ? 'none' : 'block');
+                        document.addEventListener('click', closeSharePopupExp);
+                    }
+                    function closeSharePopupExp(e) {
+                        var popup = document.getElementById('share-popup-exp');
+                        if (popup && !popup.contains(e.target) && e.target.id !== 'share-btn-exp') {
+                            popup.style.display = 'none';
+                            document.removeEventListener('click', closeSharePopupExp);
+                        }
+                    }
+                    </script>
                     <div class="alert-details mb-4">
                         <div class="mb-3">
                             <h5 class="fw-semibold mb-2 text-success"><i class="fas fa-info-circle me-2"></i>Nội dung chia sẻ</h5>

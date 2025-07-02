@@ -1,191 +1,760 @@
-@php
-$user = auth()->user();
-@endphp
+<nav class="modern-nav">
+  <div class="nav-container">
+    <!-- Logo/Brand Section -->
+    <div class="nav-brand">
+      <a href="{{ route('dashboard') }}" class="brand-link">
+        <div class="brand-icon">
+          <img src="https://cdn-icons-png.flaticon.com/128/2592/2592317.png" alt="Logo" width="32" height="32" />
+        </div>
+        <span class="brand-text">SafetyAlert</span>
+      </a>
+    </div>
 
-<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-
-<nav class="navbar navbar-expand-lg navbar-dark nav-dark-bg py-0 shadow-sm nav-elevated sticky-navbar">
-  <div class="container-fluid px-4">
-    <!-- Logo -->
-    <a class="navbar-brand d-flex align-items-center py-2" href="{{ route('dashboard') }}">
-      <img src="https://cdn-icons-png.flaticon.com/128/17895/17895681.png" alt="Logo" width="36" height="36" class="me-2 logo-animate">
-      <span class="fw-bold">Trang chủ</span>
-    </a>
-    <!-- Main menu -->
-    <button class="navbar-toggler d-lg-none" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-controls="mobileMenu" aria-label="Toggle navigation">
-      <span class="navbar-toggler-icon"></span>
-    </button>
-    <div class="collapse navbar-collapse d-none d-lg-block" id="mainNavbar">
-      <ul class="navbar-nav me-auto mb-2 mb-lg-0 align-items-lg-center">
-        <li class="nav-item">
-          <a class="nav-link px-3 {{ request()->routeIs('alerts.map') ? 'active' : '' }}" href="{{ route('alerts.map') }}">
-            <i class="fas fa-map-marked-alt me-1"></i> Bản đồ cảnh báo
+    <!-- Main Navigation -->
+    <div class="nav-main">
+      <ul class="nav-menu">
+        <li class="nav-item {{ request()->routeIs('alerts.map') ? 'active' : '' }}">
+          <a href="{{ route('alerts.map') }}" class="nav-link">
+            <span class="link-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </span>
+            <span class="link-text">Bản đồ</span>
           </a>
         </li>
-        <li class="nav-item">
-          <a class="nav-link px-3 {{ request()->routeIs('alerts.index') ? 'active' : '' }}" href="{{ route('alerts.index') }}">
-            <i class="fas fa-list me-1"></i> Danh sách cảnh báo
+        
+        <li class="nav-item {{ request()->routeIs('alerts.index') ? 'active' : '' }}">
+          <a href="{{ route('alerts.index') }}" class="nav-link">
+            <span class="link-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="8" y1="6" x2="21" y2="6"></line>
+                <line x1="8" y1="12" x2="21" y2="12"></line>
+                <line x1="8" y1="18" x2="21" y2="18"></line>
+                <line x1="3" y1="6" x2="3.01" y2="6"></line>
+                <line x1="3" y1="12" x2="3.01" y2="12"></line>
+                <line x1="3" y1="18" x2="3.01" y2="18"></line>
+              </svg>
+            </span>
+            <span class="link-text">Danh sách</span>
           </a>
         </li>
+        
         @auth
-        <li class="nav-item">
-          <a class="nav-link px-3 {{ request()->routeIs('alerts.create') ? 'active' : '' }}" href="{{ route('alerts.create') }}">
-            <i class="fas fa-plus-circle me-1"></i> Gửi cảnh báo
+        <li class="nav-item {{ request()->routeIs('alerts.create') ? 'active' : '' }}">
+          <a href="{{ route('alerts.create') }}" class="nav-link">
+            <span class="link-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+              </svg>
+            </span>
+            <span class="link-text">Gửi cảnh báo</span>
           </a>
         </li>
-        @if(auth()->user()->isAdmin)
-        <li class="nav-item dropdown nav-animate">
-          <a class="nav-link dropdown-toggle px-3 {{ request()->routeIs('admin.alerts*') || request()->routeIs('admin.experiences*') ? 'active' : '' }}" href="#" id="adminDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-cog me-1"></i> Quản lý
-          </a>
-          <ul class="dropdown-menu dropdown-menu-custom" aria-labelledby="adminDropdown">
-            <li><a class="dropdown-item {{ request()->routeIs('admin.alerts*') ? 'active' : '' }}" href="{{ route('admin.alerts') }}"><i class="fas fa-exclamation-triangle me-2 text-danger"></i> Quản lý cảnh báo</a></li>
-            <li><a class="dropdown-item {{ request()->routeIs('admin.experiences*') ? 'active' : '' }}" href="{{ route('admin.experiences') }}"><i class="fas fa-comments me-2 text-success"></i> Quản lý chia sẻ kinh nghiệm</a></li>
-          </ul>
-        </li>
-        @endif
         @endauth
-        <li class="nav-item">
-          <a class="nav-link px-3 {{ request()->routeIs('my-history') ? 'active' : '' }}" href="{{ route('my-history') }}">
-            <i class="fas fa-history me-1"></i> Lịch sử của tôi
+        
+        <!-- More menu items -->
+        <li class="nav-item dropdown">
+          <a href="javascript:void(0)" class="nav-link dropdown-toggle">
+            <span class="link-icon">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </span>
+            <span class="link-text">Chuyên mục</span>
+            <span class="dropdown-arrow">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="6 9 12 15 18 9"></polyline>
+              </svg>
+            </span>
           </a>
+          <div class="dropdown-menu">
+            <a href="{{ route('news.index') }}" class="dropdown-item {{ request()->routeIs('news.index') ? 'active' : '' }}">
+              <span>Tin tức an ninh</span>
+            </a>
+            <a href="{{ route('experiences.index') }}" class="dropdown-item {{ request()->routeIs('experiences.index') ? 'active' : '' }}">
+              <span>Chia sẻ kinh nghiệm</span>
+            </a>
+            <!--<a href="{{ route('community_alerts.index') }}" class="dropdown-item {{ request()->routeIs('community_alerts.index') ? 'active' : '' }}">
+              <span>Cảnh báo cộng đồng</span>
+            </a>-->
+            <a href="{{ route('wanted_list.index') }}" class="dropdown-item {{ request()->routeIs('wanted_list.index') ? 'active' : '' }}">
+              <span>Truy nã</span>
+            </a>
+          </div>
         </li>
-        <li class="nav-item dropdown nav-animate">
-          <a class="nav-link dropdown-toggle px-3 {{ request()->routeIs('alerts.index') || request()->routeIs('experiences.index') || request()->routeIs('wanted_list.index') ? 'active' : '' }}" href="#" id="resourcesDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <i class="fas fa-th-large me-1"></i> Danh mục
-          </a>
-          <ul class="dropdown-menu dropdown-menu-custom" aria-labelledby="resourcesDropdown">
-            <li><a class="dropdown-item {{ request()->routeIs('experiences.index') ? 'active' : '' }}" href="{{ route('experiences.index') }}"><i class="fas fa-comments me-2 text-success"></i> Chia sẻ kinh nghiệm</a></li>
-            <li><a class="dropdown-item {{ request()->routeIs('wanted_list.index') ? 'active' : '' }}" href="{{ route('wanted_list.index') }}"><i class="fas fa-user-secret me-2 text-warning"></i> Danh sách truy nã</a></li>
-          </ul>
-        </li>
-      </ul>
-      <!-- Right section -->
-      <ul class="navbar-nav ms-auto align-items-lg-center flex-row gap-2">
-        @if($user)
-        <!-- Notification Bell -->
-        <li class="nav-item dropdown ms-2">
-          @php
-            $unreadNotifications = $user->unreadNotifications()->take(10)->get();
-            $unreadCount = $unreadNotifications->count();
-          @endphp
-          <a class="nav-link position-relative" href="#" id="notificationDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false" style="padding-right: 18px;">
-            <i class="fas fa-bell fa-lg"></i>
-            @if($unreadCount > 0)
-              <span class="notification-badge badge bg-danger">{{ $unreadCount }}</span>
-            @endif
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end shadow fade-in-menu notification-dropdown-menu" aria-labelledby="notificationDropdown" style="min-width: 420px; max-width: 520px;">
-            <li class="dropdown-header fw-bold text-primary">Thông báo mới</li>
-            @forelse($unreadNotifications as $notification)
-              <li>
-                @if(isset($notification->data['type']) && $notification->data['type'] === 'support')
-                  <a class="dropdown-item py-3 px-3 notification-item d-flex align-items-start gap-2 notification-unread" href="{{ route('notifications.read', $notification->id) }}" style="white-space: normal; word-break: break-word;">
-                    <div class="me-2 mt-1 flex-shrink-0">
-                      <i class="fas fa-comments text-primary fa-lg"></i>
-                    </div>
-                    <div class="flex-grow-1" style="min-width:0;">
-                      <div class="mb-1 notification-title" style="white-space: normal; word-break: break-word;">
-                        <b>{{ $notification->data['sender_name'] }}</b> đã gửi tin nhắn hỗ trợ:
-                        <span class="text-dark">{{ Str::limit($notification->data['message'], 60) }}</span>
-                      </div>
-                      <div class="small text-muted mb-1 notification-content" style="white-space: normal; word-break: break-word;">Yêu cầu: {{ $notification->data['support_subject'] }}</div>
-                      <div class="d-flex align-items-center gap-1">
-                        <i class="far fa-clock text-secondary small"></i>
-                        <span class="small text-secondary">{{ $notification->created_at->diffForHumans() }}</span>
-                        <span class="badge bg-primary text-white ms-2">Hỗ trợ</span>
-                      </div>
-                    </div>
-                  </a>
-                @elseif(isset($notification->data['reply_id']))
-                  <a class="dropdown-item py-3 px-3 notification-item d-flex align-items-start gap-2 notification-unread" href="{{ route('notifications.read', $notification->id) }}" style="white-space: normal; word-break: break-word;">
-                    <div class="me-2 mt-1 flex-shrink-0">
-                      <i class="fas fa-reply text-info fa-lg"></i>
-                    </div>
-                    <div class="flex-grow-1" style="min-width:0;">
-                      <div class="mb-1 notification-title" style="white-space: normal; word-break: break-word;">
-                        <b>{{ $notification->data['reply_user'] }}</b> đã trả lời bình luận của bạn trong <span class="text-primary">{{ $notification->data['post_type'] == 'alert' ? 'cảnh báo' : 'kinh nghiệm' }}</span>:
-                        <b>{{ $notification->data['post_title'] }}</b>
-                      </div>
-                      <div class="small text-muted mb-1 notification-content" style="white-space: normal; word-break: break-word;">"{{ $notification->data['reply_content'] }}"</div>
-                      <div class="d-flex align-items-center gap-1">
-                        <i class="far fa-clock text-secondary small"></i>
-                        <span class="small text-secondary">{{ $notification->created_at->diffForHumans() }}</span>
-                        <span class="badge bg-info text-dark ms-2">Reply</span>
-                      </div>
-                    </div>
-                  </a>
-                @else
-                  <a class="dropdown-item py-3 px-3 notification-item d-flex align-items-start gap-2 @if(is_null($notification->read_at)) notification-unread @endif" href="{{ route('notifications.read', $notification->id) }}" style="white-space: normal; word-break: break-word;">
-                    <div class="me-2 mt-1 flex-shrink-0">
-                      <i class="fas fa-comment-dots text-success fa-lg"></i>
-                    </div>
-                    <div class="flex-grow-1" style="min-width:0;">
-                      <div class="mb-1 notification-title" style="white-space: normal; word-break: break-word;">
-                        @if(isset($notification->data['comment_user'], $notification->data['post_type'], $notification->data['post_title']))
-                          <b>{{ $notification->data['comment_user'] }}</b> đã bình luận vào <span class="text-primary">{{ $notification->data['post_type'] == 'alert' ? 'cảnh báo' : 'kinh nghiệm' }}</span>:
-                          <b>{{ $notification->data['post_title'] }}</b>
-                        @else
-                          {{ $notification->data['message'] ?? 'Bạn có thông báo mới' }}
-                        @endif
-                      </div>
-                      @if(isset($notification->data['comment_content']))
-                        <div class="small text-muted mb-1 notification-content" style="white-space: normal; word-break: break-word;">"{{ $notification->data['comment_content'] }}"</div>
-                      @endif
-                      <div class="d-flex align-items-center gap-1">
-                        <i class="far fa-clock text-secondary small"></i>
-                        <span class="small text-secondary">{{ $notification->created_at->diffForHumans() }}</span>
-                        @if(is_null($notification->read_at))
-                          <span class="badge bg-warning text-dark ms-2">Chưa đọc</span>
-                        @endif
-                      </div>
-                    </div>
-                  </a>
-                @endif
-              </li>
-            @empty
-              <li><span class="dropdown-item text-muted">Không có thông báo mới.</span></li>
-            @endforelse
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <a class="dropdown-item text-center text-primary" href="{{ route('notifications.index') }}">Xem tất cả thông báo</a>
-            </li>
-          </ul>
-        </li>
-        <!-- End Notification Bell -->
-        <li class="nav-item dropdown ms-2 user-dropdown">
-          <a class="nav-link dropdown-toggle d-flex align-items-center user-avatar-hover" href="#" id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-            <div class="avatar bg-white text-primary rounded-circle d-flex align-items-center justify-content-center me-2 avatar-animate" style="width: 36px; height: 36px; font-weight: bold;">
-              {{ mb_strtoupper(mb_substr($user->name, 0, 1, 'UTF-8'), 'UTF-8') }}
-            </div>
-            <span class="fw-bold">{{ $user->name }}</span>
-          </a>
-          <ul class="dropdown-menu dropdown-menu-end shadow user-dropdown-animate">
-            <li><a class="dropdown-item" href="{{ route('profile.edit') }}"><i class="fas fa-user-cog me-2"></i> Hồ sơ cá nhân</a></li>
-            <li><hr class="dropdown-divider"></li>
-            <li>
-              <form action="{{ route('logout') }}" method="POST">
-                @csrf
-                <button type="submit" class="dropdown-item">
-                  <i class="fas fa-sign-out-alt me-2"></i> Đăng xuất
-                </button>
-              </form>
-            </li>
-          </ul>
-        </li>
-        @else
-        <li class="nav-item ms-2">
-          <a href="{{ route('login') }}" class="btn btn-outline-light rounded-pill px-3 me-2"><i class="fas fa-sign-in-alt me-1"></i> Đăng nhập</a>
-        </li>
-        <li class="nav-item">
-          <a href="{{ route('register') }}" class="btn btn-danger rounded-pill px-3">Đăng ký</a>
-        </li>
-        @endif
       </ul>
     </div>
-    <!-- Offcanvas menu cho mobile -->
+
+    <!-- User Section -->
+    <div class="nav-user">
+      @auth
+        <!-- Notifications -->
+        <div class="user-notification dropdown">
+          @php
+            $unreadNotifications = auth()->user()->unreadNotifications()->take(10)->get();
+            $unreadCount = $unreadNotifications->count();
+          @endphp
+          <a href="#" class="notification-icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+            </svg>
+            @if($unreadCount > 0)
+              <span class="notification-badge">{{ $unreadCount }}</span>
+            @endif
+          </a>
+          <div class="notification-dropdown">
+            <div class="dropdown-header">
+              <h4>Thông báo mới</h4>
+              <a href="{{ route('notifications.index') }}">Xem tất cả</a>
+            </div>
+            <div class="notification-list">
+              @forelse($unreadNotifications as $notification)
+                <a href="{{ route('notifications.read', $notification->id) }}" class="notification-item">
+                  <div class="notification-content">
+                    {{ $notification->data['message'] ?? 'Bạn có thông báo mới' }}
+                  </div>
+                  <div class="notification-time">{{ $notification->created_at->diffForHumans() }}</div>
+                </a>
+              @empty
+                <div class="notification-empty">Không có thông báo mới</div>
+              @endforelse
+            </div>
+          </div>
+        </div>
+        
+        <!-- User Profile -->
+        <div class="user-profile dropdown">
+          <a href="#" class="profile-link">
+            <div class="profile-avatar">
+              {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1, 'UTF-8'), 'UTF-8') }}
+            </div>
+            <span class="profile-name">{{ auth()->user()->name }}</span>
+          </a>
+          <div class="profile-dropdown">
+            <a href="{{ route('profile.edit') }}" class="dropdown-item">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span>Hồ sơ cá nhân</span>
+            </a>
+            <form action="{{ route('logout') }}" method="POST" class="dropdown-item">
+              @csrf
+              <button type="submit">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                  <polyline points="16 17 21 12 16 7"></polyline>
+                  <line x1="21" y1="12" x2="9" y2="12"></line>
+                </svg>
+                <span>Đăng xuất</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      @else
+        <div class="auth-buttons">
+          <a href="{{ route('login') }}" class="auth-button login-button">Đăng nhập</a>
+          <a href="{{ route('register') }}" class="auth-button register-button">Đăng ký</a>
+        </div>
+      @endauth
+    </div>
     
+    <!-- Mobile Toggle -->
+    <button class="mobile-toggle" aria-label="Toggle navigation">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
   </div>
 </nav>
 
-@vite(['resources/css/navigation.css', 'resources/js/navigation.js'])
+<style>
+/* Modern Navigation Styles */
+.modern-nav {
+  --primary-color: #4f46e5;
+  --primary-hover: #4338ca;
+  --text-color: #1f2937;
+  --text-light: #6b7280;
+  --bg-color: #ffffff;
+  --border-color: #e5e7eb;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --radius-sm: 0.375rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --transition: all 0.2s ease;
+  
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background-color: var(--bg-color);
+  box-shadow: var(--shadow-md);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.nav-container {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: flex;
+  align-items: center;
+  height: 4rem;
+  position: relative;
+}
+
+/* Brand Styles */
+.nav-brand {
+  margin-right: 2rem;
+}
+
+.brand-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--text-color);
+  font-weight: 600;
+  font-size: 1.25rem;
+}
+
+.brand-icon {
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--primary-color);
+}
+
+.brand-text {
+  letter-spacing: -0.025em;
+}
+
+/* Main Navigation */
+.nav-main {
+  flex: 1;
+  display: flex;
+}
+
+.nav-menu {
+  display: flex;
+  gap: 0.5rem;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.nav-item {
+  position: relative;
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: var(--text-color);
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.nav-link:hover {
+  background-color: rgba(79, 70, 229, 0.05);
+  color: var(--primary-color);
+}
+
+.nav-item.active .nav-link {
+  color: var(--primary-color);
+  background-color: rgba(79, 70, 229, 0.1);
+}
+
+.link-icon {
+  display: flex;
+  align-items: center;
+}
+
+/* Dropdown Styles */
+.dropdown-toggle {
+  position: relative;
+  padding-right: 1.75rem !important;
+}
+
+.dropdown-arrow {
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+}
+
+.dropdown-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 12rem;
+  background-color: var(--bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.5rem;
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(0.5rem);
+  transition: var(--transition);
+}
+
+.nav-item:hover .dropdown-menu {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--text-color);
+  font-size: 0.9rem;
+  transition: var(--transition);
+}
+
+.dropdown-item:hover, .dropdown-item.active {
+  background-color: rgba(79, 70, 229, 0.1);
+  color: var(--primary-color);
+}
+
+/* User Section */
+.nav-user {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-left: auto;
+}
+
+.user-notification {
+  position: relative;
+}
+
+.notification-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 50%;
+  color: var(--text-color);
+  transition: var(--transition);
+  position: relative;
+}
+
+.notification-icon:hover {
+  background-color: rgba(79, 70, 229, 0.1);
+  color: var(--primary-color);
+}
+
+.notification-badge {
+  position: absolute;
+  top: 0.25rem;
+  right: 0.25rem;
+  background-color: #ef4444;
+  color: white;
+  border-radius: 50%;
+  width: 1.25rem;
+  height: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.notification-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  width: 20rem;
+  background-color: var(--bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 1rem;
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(0.5rem);
+  transition: var(--transition);
+}
+
+.user-notification:hover .notification-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.dropdown-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.dropdown-header h4 {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.dropdown-header a {
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+.notification-list {
+  max-height: 20rem;
+  overflow-y: auto;
+}
+
+.notification-item {
+  display: block;
+  padding: 0.75rem;
+  border-radius: var(--radius-sm);
+  text-decoration: none;
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.notification-item:hover {
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.notification-content {
+  font-size: 0.9rem;
+  margin-bottom: 0.25rem;
+}
+
+.notification-time {
+  font-size: 0.75rem;
+  color: var(--text-light);
+}
+
+.notification-empty {
+  padding: 1rem;
+  text-align: center;
+  color: var(--text-light);
+  font-size: 0.9rem;
+}
+
+/* User Profile */
+.user-profile {
+  position: relative;
+}
+
+.profile-link {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  text-decoration: none;
+  color: var(--text-color);
+  transition: var(--transition);
+}
+
+.profile-avatar {
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  transition: var(--transition);
+}
+
+.profile-name {
+  font-size: 0.95rem;
+  font-weight: 500;
+}
+
+.profile-dropdown {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  min-width: 12rem;
+  background-color: var(--bg-color);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 0.5rem;
+  z-index: 10;
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(0.5rem);
+  transition: var(--transition);
+}
+
+.user-profile:hover .profile-dropdown {
+  opacity: 1;
+  visibility: visible;
+  transform: translateY(0);
+}
+
+.profile-dropdown .dropdown-item {
+  padding: 0.75rem 1rem;
+}
+
+.profile-dropdown .dropdown-item svg {
+  flex-shrink: 0;
+}
+
+.profile-dropdown button {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  width: 100%;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  cursor: pointer;
+  color: var(--text-color);
+}
+
+/* Auth Buttons */
+.auth-buttons {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.auth-button {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: var(--transition);
+}
+
+.login-button {
+  color: var(--primary-color);
+  border: 1px solid var(--primary-color);
+}
+
+.login-button:hover {
+  background-color: rgba(79, 70, 229, 0.05);
+}
+
+.register-button {
+  background-color: var(--primary-color);
+  color: white;
+}
+
+.register-button:hover {
+  background-color: var(--primary-hover);
+}
+
+/* Mobile Toggle */
+.mobile-toggle {
+  display: none;
+  background: none;
+  border: none;
+  width: 2rem;
+  height: 2rem;
+  flex-direction: column;
+  justify-content: space-around;
+  padding: 0;
+  cursor: pointer;
+}
+
+.mobile-toggle span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  background-color: var(--text-color);
+  transition: var(--transition);
+}
+
+/* Responsive Styles */
+@media (max-width: 1024px) {
+  .nav-container {
+    padding: 0 1rem;
+  }
+  
+  .nav-menu {
+    gap: 0.25rem;
+  }
+  
+  .nav-link {
+    padding: 0.5rem 0.75rem;
+  }
+}
+
+@media (max-width: 768px) {
+  .modern-nav {
+    height: auto;
+    padding: 0.75rem 0;
+  }
+  
+  .nav-container {
+    flex-wrap: wrap;
+    height: auto;
+    padding: 0 1rem;
+  }
+  
+  .nav-brand {
+    margin-right: auto;
+  }
+  
+  .mobile-toggle {
+    display: flex;
+    order: 1;
+  }
+  
+  .nav-main {
+    order: 3;
+    width: 100%;
+    display: none;
+    margin-top: 1rem;
+  }
+  
+  .nav-menu {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+  
+  .nav-item {
+    width: 100%;
+  }
+  
+  .nav-link {
+    padding: 0.75rem 1rem;
+  }
+  
+  .dropdown-menu {
+    position: static;
+    box-shadow: none;
+    opacity: 1;
+    visibility: visible;
+    transform: none;
+    display: none;
+    padding-left: 1.5rem;
+    border-left: 2px solid var(--border-color);
+    margin: 0.5rem 0;
+  }
+  
+  .nav-item:hover .dropdown-menu {
+    display: block;
+  }
+  
+  .nav-user {
+    order: 2;
+    margin-left: 1rem;
+  }
+  
+  .profile-name {
+    display: none;
+  }
+  
+  .notification-dropdown {
+    right: -1rem;
+    width: calc(100vw - 2rem);
+  }
+  
+  .profile-dropdown {
+    right: -1rem;
+  }
+  
+  /* Active state */
+  .nav-container.active .nav-main {
+    display: block;
+  }
+  
+  .nav-container.active .mobile-toggle span:nth-child(1) {
+    transform: translateY(6px) rotate(45deg);
+  }
+  
+  .nav-container.active .mobile-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+  
+  .nav-container.active .mobile-toggle span:nth-child(3) {
+    transform: translateY(-6px) rotate(-45deg);
+  }
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Mobile toggle functionality
+  const mobileToggle = document.querySelector('.mobile-toggle');
+  const navContainer = document.querySelector('.nav-container');
+  
+  if (mobileToggle && navContainer) {
+    mobileToggle.addEventListener('click', function() {
+      navContainer.classList.toggle('active');
+    });
+  }
+  
+  // Close dropdowns when clicking outside
+  document.addEventListener('click', function(e) {
+    if (!e.target.closest('.dropdown-toggle') && !e.target.closest('.dropdown-menu')) {
+      document.querySelectorAll('.dropdown-menu').forEach(menu => {
+        menu.style.display = 'none';
+      });
+    }
+  });
+  
+  // Toggle dropdowns on click (for mobile & desktop)
+  document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
+    toggle.addEventListener('click', function(e) {
+      e.preventDefault();
+      const menu = this.nextElementSibling;
+      if (menu.style.display === 'block') {
+        menu.style.display = 'none';
+      } else {
+        document.querySelectorAll('.dropdown-menu').forEach(m => {
+          m.style.display = 'none';
+        });
+        menu.style.display = 'block';
+      }
+    });
+  });
+  
+  // Notification badge animation
+  const notificationBadge = document.querySelector('.notification-badge');
+  if (notificationBadge) {
+    notificationBadge.classList.add('animate-pulse');
+    setTimeout(() => {
+      notificationBadge.classList.remove('animate-pulse');
+    }, 2000);
+  }
+});
+
+// Add animation for notification badge
+const style = document.createElement('style');
+style.textContent = `
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+.animate-pulse {
+  animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+`;
+document.head.appendChild(style);
+</script>

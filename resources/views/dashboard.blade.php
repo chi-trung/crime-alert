@@ -21,11 +21,7 @@
     <!-- Welcome Card -->
     <div class="card border-0 bg-gradient-primary mb-4 overflow-hidden">
         <div class="card-body p-4 position-relative">
-            <div class="position-absolute top-0 end-0 opacity-25">
-                <svg width="200" height="200" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M100 200C155.228 200 200 155.228 200 100C200 44.7715 155.228 0 100 0C44.7715 0 0 44.7715 0 100C0 155.228 44.7715 200 100 200Z" fill="white"/>
-                </svg>
-            </div>
+            
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <div class="mb-3 mb-md-0">
                     <h5 class="fw-bold text-white mb-2">Chào mừng trở lại, {{ auth()->user()->name }}!</h5>
@@ -46,7 +42,7 @@
                     </a>
                 </div>
                 <div class="d-none d-md-block">
-                    <img src="https://cdn-icons-png.flaticon.com/512/4400/4400621.png" alt="Welcome" style="height: 120px;" class="img-fluid">
+                    <img src="https://cdn-icons-png.flaticon.com/128/2642/2642651.png" alt="Welcome" style="height: 120px;" class="img-fluid">
                 </div>
             </div>
         </div>
