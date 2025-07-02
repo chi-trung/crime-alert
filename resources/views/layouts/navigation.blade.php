@@ -89,6 +89,30 @@
           </div>
         </li>
       </ul>
+      @auth
+        @if(auth()->user()->isAdmin)
+          <ul class="nav-menu">
+            
+            </li>
+            <li class="nav-item">
+              <a href="{{ route('admin.experiences') }}" class="nav-link">
+                <span class="link-icon">
+                  <i class="fas fa-book"></i>
+                </span>
+                  <span class="link-text">Bài viết</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a href="{{ route('admin.alerts') }}" class="nav-link">
+                <span class="link-icon">
+                  <i class="fas fa-chart-bar"></i>
+                </span>
+                <span class="link-text">Báo cáo</span>
+              </a>
+            </li>
+          </ul>
+        @endif
+      @endauth
     </div>
 
     <!-- User Section -->
