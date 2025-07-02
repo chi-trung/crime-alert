@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-@vite(['resources/css/experiences_admin_index.css'])
+<link rel="stylesheet" href="{{ asset('css/experiences_admin_index.css') }}">
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-4 text-success"><i class="fas fa-comments me-2"></i>Quản lý bài chia sẻ kinh nghiệm</h1>
     @if(session('success'))

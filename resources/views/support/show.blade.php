@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-@vite(['resources/css/support_show.css', 'resources/js/support_show.js'])
+<link rel="stylesheet" href="{{ asset('css/support_show.css') }}">
+<script src="{{ asset('js/support_show.js') }}"></script>
 <div class="container py-4">
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4">

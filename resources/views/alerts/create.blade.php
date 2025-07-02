@@ -1,4 +1,3 @@
-@vite(['resources/css/alerts_create.css', 'resources/js/alerts_create.js'])
 @extends('layouts.app')
 
 @section('content')
@@ -184,4 +183,6 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<link rel="stylesheet" href="{{ asset('css/alerts_create.css') }}">
+<script src="{{ asset('js/alerts_create.js') }}"></script>
 @endsection

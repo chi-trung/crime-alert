@@ -41,7 +41,7 @@
                 </tbody>
             </table>
             <div class="d-flex justify-content-center mt-4">
-                {{ $wantedPeople->links() }}
+                {{ $wantedPeople->links('pagination::bootstrap-4') }}
             </div>
         </div>
         @endif
@@ -76,7 +76,7 @@
                 </tbody>
             </table>
             <div class="d-flex justify-content-center mt-4">
-                {{ $wantedPeople->links() }}
+                {{ $wantedPeople->links('pagination::bootstrap-4') }}
             </div>
         </div>
     @endif

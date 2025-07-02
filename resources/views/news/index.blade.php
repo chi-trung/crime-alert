@@ -1,5 +1,6 @@
 @extends('layouts.app')
 @section('content')
+<link rel="stylesheet" href="{{ asset('css/news.css') }}">
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-3 text-primary"><i class="fas fa-newspaper me-2"></i>Tin tức & Thông báo an ninh</h1>
     <p class="lead text-muted">Cập nhật tin tức mới nhất về tình hình an ninh, cảnh báo lừa đảo, truy nã đặc biệt...</p>
@@ -16,7 +17,10 @@
                             <i class="fas fa-play-circle fa-4x text-white" style="text-shadow:0 0 8px #000;"></i>
                         </div>
                     @else
-                        <img src="{{ $item->image_url ?? asset('images/default-news.jpg') }}" class="card-img-top" alt="{{ $item->title }}" style="object-fit:cover;height:180px;width:100%;">
+                        <img src="{{ $item->image_url ?? 'https://cdn-icons-png.flaticon.com/128/14906/14906242.png' }}"
+                             class="card-img-top{{ $item->image_url ? '' : ' img-default-news' }}"
+                             alt="{{ $item->title }}"
+                             style="object-fit:{{ $item->image_url ? 'cover' : 'contain' }};height:180px;width:100%;background:#f8f9fa;">
                         @if($item->is_video)
                             <span class="position-absolute top-50 start-50 translate-middle" style="pointer-events:none;">
                                 <i class="fas fa-play-circle fa-3x text-white" style="text-shadow:0 0 8px #000;"></i>
@@ -34,7 +38,7 @@
         @endforeach
     </div>
     <div class="d-flex justify-content-center mt-4">
-        {{ $news->links() }}
+        {{ $news->links('pagination::bootstrap-4') }}
     </div>
     <div class="text-end mt-3" style="font-size: 0.95rem;">
       <em>Nguồn: <a href="https://vnexpress.net/phap-luat" target="_blank" rel="noopener">VnExpress Pháp luật</a></em>

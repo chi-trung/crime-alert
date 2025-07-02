@@ -20,7 +20,8 @@
             }
         }
     </script>
-    @vite(['resources/css/login.css', 'resources/js/login.js'])
+    <link rel="stylesheet" href="{{ asset('css/login.css') }}">
+    <script src="{{ asset('js/login.js') }}"></script>
 </head>
 <body>
     <div class="flex flex-col md:flex-row w-full max-w-6xl bg-white rounded-2xl overflow-hidden shadow-xl">

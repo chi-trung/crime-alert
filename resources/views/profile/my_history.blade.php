@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-@vite(['resources/css/profile_my_history.css'])
+<link rel="stylesheet" href="{{ asset('css/profile_my_history.css') }}">
 <div class="container py-5">
     <h1 class="fw-bold mb-4 display-5 text-primary"><i class="fas fa-history me-2"></i>Lịch sử bài đăng của bạn</h1>
     <div class="row g-4 mb-4">

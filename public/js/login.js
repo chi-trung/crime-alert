@@ -12,7 +12,7 @@ if (passwordToggle && passwordInput) {
             eyeIcon.classList.remove('fa-eye-slash');
             eyeIcon.classList.add('fa-eye');
         } else {
-            eyeIcon.classList.remove('fa-eye');
+            eyeIcon.classList.remove('fa-eye'); 
             eyeIcon.classList.add('fa-eye-slash');
         }
     });

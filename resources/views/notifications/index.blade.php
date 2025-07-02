@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-@vite(['resources/css/notifications_index.css'])
+<link rel="stylesheet" href="{{ asset('css/notifications_index.css') }}">
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Tất cả thông báo</h2>

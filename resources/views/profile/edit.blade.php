@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-@vite(['resources/css/profile_edit.css'])
+<link rel="stylesheet" href="{{ asset('css/profile_edit.css') }}">
 <div class="container py-5">
     <div class="row justify-content-center">
         <div class="col-md-8">

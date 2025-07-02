@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('content')
-@vite(['resources/css/alerts_index.css'])
+<link rel="stylesheet" href="{{ asset('css/alerts_index.css') }}">
 <div class="container mt-4">
     <!-- Header với background cảnh sát -->
     <div class="alert-header bg-primary text-white rounded-4 p-4 mb-4 position-relative overflow-hidden">

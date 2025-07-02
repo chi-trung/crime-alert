@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cảnh Báo Tội Phạm - An Toàn Cộng Đồng</title>
-    @vite(['resources/css/welcome.css', 'resources/js/welcome.js'])
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
+    <script src="{{ asset('js/welcome.js') }}"></script>
 </head>
 <body>
-    <!-- Animated Background -->
     <div class="background"></div>
     <div class="grid-overlay"></div>
     <div class="particles" id="particles"></div>

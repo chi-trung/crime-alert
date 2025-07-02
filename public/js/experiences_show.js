@@ -15,7 +15,17 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
             },
             body: JSON.stringify({ type, id })
         });
-        const data = await res.json();
+        const text = await res.text();
+        console.log('Raw response:', text); // Log raw response
+        let data;
+        try {
+            data = JSON.parse(text);
+        } catch (err) {
+            console.error('Không parse được JSON:', text);
+            alert('Có lỗi xảy ra! (JSON parse error)');
+            btn.disabled = false;
+            return;
+        }
         if (data.success) {
             btn.setAttribute('data-liked', liked ? '0' : '1');
             document.getElementById('like-count-exp').textContent = data.count;
@@ -23,9 +33,13 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
             btn.classList.toggle('liked', !liked);
         } else if(data.redirect) {
             window.location.href = data.redirect;
+        } else {
+            alert('Có lỗi xảy ra! (API error)');
+            console.error('API error:', data);
         }
     } catch (err) {
-        alert('Có lỗi xảy ra!');
+        alert('Có lỗi xảy ra! (JS error)');
+        console.error('JS error:', err);
     }
     btn.disabled = false;
 }); 

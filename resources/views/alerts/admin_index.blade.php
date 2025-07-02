@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-@vite(['resources/css/alerts_admin_index.css', 'resources/js/alerts_admin_index.js'])
+<link rel="stylesheet" href="{{ asset('css/alerts_admin_index.css') }}">
+<script src="{{ asset('js/alerts_admin_index.js') }}"></script>
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-4 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Quản lý cảnh báo tội phạm</h1>
     @if(session('success'))

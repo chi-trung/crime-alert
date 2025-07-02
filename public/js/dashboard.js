@@ -1,6 +1,9 @@
 // Chart.js Script cho dashboard
 // Đảm bảo các biến createdData, approvedData, typePercentsAdmin đã được truyền từ blade sang window object
 
+let alertsChartInstance = null;
+let alertsPieChartInstance = null;
+
 document.addEventListener('DOMContentLoaded', function() {
     // Refresh button animation
     const refreshBtn = document.getElementById('refresh-btn');
@@ -17,7 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Chart !== 'undefined' && window.createdData && window.approvedData) {
         // Bar Chart (Cảnh báo theo tháng)
         const ctx = document.getElementById('alertsChart').getContext('2d');
-        const alertsChart = new Chart(ctx, {
+        if (alertsChartInstance) {
+            alertsChartInstance.destroy();
+        }
+        alertsChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
                 labels: ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'],
@@ -60,7 +66,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Chart !== 'undefined' && window.typePercentsAdmin) {
         // Donut Chart (Phân loại cảnh báo)
         const pieCtx = document.getElementById('alertsPieChart').getContext('2d');
-        const alertsPieChart = new Chart(pieCtx, {
+        if (alertsPieChartInstance) {
+            alertsPieChartInstance.destroy();
+        }
+        alertsPieChartInstance = new Chart(pieCtx, {
             type: 'doughnut',
             data: {
                 labels: ['Cướp giật', 'Trộm cắp', 'Lừa đảo', 'Bạo lực', 'Khác'],

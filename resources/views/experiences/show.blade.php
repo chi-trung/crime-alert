@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-@vite(['resources/css/experiences_show.css', 'resources/js/experiences_show.js'])
+<link rel="stylesheet" href="{{ asset('css/experiences_show.css') }}">
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-10 col-lg-8">
@@ -176,4 +176,10 @@
     </div>
 </div>
 
+<script>
+const LIKE_STORE_ROUTE = "{{ route('like.store') }}";
+const LIKE_DESTROY_ROUTE = "{{ route('like.destroy') }}";
+const CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
+</script>
+<script src="{{ asset('js/experiences_show.js') }}"></script>
 @endsection 

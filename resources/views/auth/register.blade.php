@@ -21,7 +21,8 @@
             }
         }
     </script>
-    @vite(['resources/css/register.css', 'resources/js/register.js'])
+    <link rel="stylesheet" href="{{ asset('css/register.css') }}">
+    <script src="{{ asset('js/register.js') }}"></script>
 </head>
 <body>
     <div class="flex flex-col md:flex-row w-full max-w-6xl bg-white rounded-2xl overflow-hidden shadow-xl">

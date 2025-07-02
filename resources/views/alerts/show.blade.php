@@ -1,7 +1,8 @@
 @extends('layouts.app')
 
 @section('content')
-@vite(['resources/css/alerts_show.css', 'resources/js/alerts_show.js'])
+<link rel="stylesheet" href="{{ asset('css/alerts_show.css') }}">
+<script src="{{ asset('js/alerts_show.js') }}"></script>
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-10 col-lg-8">

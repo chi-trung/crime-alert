@@ -1,6 +1,6 @@
 @extends('layouts.app')
 @section('content')
-@vite(['resources/css/experiences_index.css'])
+<link rel="stylesheet" href="{{ asset('css/experiences_index.css') }}">
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-3 text-success"><i class="fas fa-comments me-2"></i>Chia sẻ kinh nghiệm & Cảnh giác</h1>
     <p class="lead text-muted mb-4">Nơi mọi người chia sẻ trải nghiệm thực tế, cảnh báo, kinh nghiệm phòng chống tội phạm, lừa đảo, góp phần xây dựng cộng đồng an toàn hơn.</p>
