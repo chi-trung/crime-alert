@@ -26,7 +26,11 @@
             <div class="d-flex flex-column flex-md-row justify-content-between align-items-center">
                 <div class="mb-3 mb-md-0">
                     <h5 class="fw-bold text-white mb-2">Chào mừng trở lại, {{ auth()->user()->name }}!</h5>
-                    <p class="text-white-50 mb-0">Hệ thống đã sẵn sàng để bạn quản lý các cảnh báo tội phạm</p>
+                    @if(auth()->user()->isAdmin)
+                        <p class="text-white-50 mb-0">Hệ thống đã sẵn sàng để bạn <b>quản lý các cảnh báo tội phạm</b></p>
+                    @else
+                        <p class="text-white-50 mb-0">Bạn có thể <b>tạo và theo dõi các cảnh báo tội phạm</b> tại đây</p>
+                    @endif
                     <a href="{{ auth()->user()->isAdmin ? route('admin.alerts') : route('alerts.create') }}" 
                        class="btn btn-light btn-sm mt-3">
                        {{ auth()->user()->isAdmin ? 'Xem báo cáo' : 'Tạo cảnh báo mới' }}
@@ -123,7 +127,7 @@
 
     @if(!auth()->user()->isAdmin)
         <div class="mb-2 text-center">
-            <span class="fw-semibold text-primary">Thống kê theo tháng {{ $monthLabel }}</span>
+            <span class="fw-semibold text-primary">Thống kê báo cáo</span>
         </div>
         <!-- Thống kê tỷ lệ loại tội phạm của user -->
         <div class="row g-4 mb-4 justify-content-center">
@@ -425,7 +429,7 @@
                     <div class="row align-items-center">
                         <div class="col-md-8 d-flex align-items-start gap-3">
                             <div class="flex-shrink-0">
-                                <img src="{{ auth()->user()->avatar ?? 'https://ui-avatars.com/api/?name='.urlencode(auth()->user()->name).'&background=0D8ABC&color=fff' }}" alt="Avatar" class="rounded-circle border" width="64" height="64">
+                                <img src="/storage/app/public/{{ $myLatest->image }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
                             </div>
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center mb-1 flex-wrap gap-2">
@@ -450,7 +454,7 @@
                                     <form action="{{ route('alerts.destroy', $myLatest) }}" method="POST" class="d-inline form-delete">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3" onclick="return confirm('Bạn có chắc chắn muốn xóa cảnh báo này?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">
                                             <i class="fas fa-trash me-1"></i> Xóa
                                         </button>
                                     </form>
@@ -459,7 +463,7 @@
                         </div>
                         <div class="col-md-4 text-center">
                             @if($myLatest->image)
-                                <img src="{{ asset('storage/' . $myLatest->image) }}" alt="Ảnh minh họa" class="img-fluid shadow border" style="max-width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px;">
+                                <img src="/storage/app/public/{{ $myLatest->image }}" alt="Ảnh minh họa" class="img-fluid shadow border" style="max-width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px;">
                             @endif
                         </div>
                     </div>
@@ -626,23 +630,21 @@
         <!-- Charts Row -->
         <div class="row g-4 mb-4">
             <div class="col-lg-8">
-                <div class="card border-0 shadow-sm h-100">
-                    <div class="card-header bg-white border-bottom-0 pb-0">
-                        <div class="d-flex justify-content-between align-items-center">
-                            <h5 class="card-title mb-0">Thống kê cảnh báo theo tháng</h5>
-                            <div class="dropdown">
-                                <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                    <i class="fas fa-ellipsis-v"></i>
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end">
-                                    <li><a class="dropdown-item" href="#">Xuất báo cáo</a></li>
-                                    <li><a class="dropdown-item" href="#">Xem chi tiết</a></li>
-                                </ul>
-                            </div>
+                <div class="card border-0 shadow-lg h-100 rounded-4 bg-white">
+                    <div class="card-header bg-white border-bottom-0 pb-0 d-flex justify-content-between align-items-center rounded-top-4">
+                        <h5 class="card-title mb-0 fw-bold text-primary" style="font-size: 1.25rem;">Thống kê cảnh báo theo tháng</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-ellipsis-v"></i>
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" href="#">Xuất báo cáo</a></li>
+                                <li><a class="dropdown-item" href="#">Xem chi tiết</a></li>
+                            </ul>
                         </div>
                     </div>
-                    <div class="card-body pt-0">
-                        <canvas id="alertsChart" height="180"></canvas>
+                    <div class="card-body pt-0" style="min-height: 340px; background: linear-gradient(135deg, #f8fafc 60%, #e9ecef 100%); border-radius: 0 0 1rem 1rem;">
+                        <canvas id="alertsChart" height="220"></canvas>
                     </div>
                 </div>
             </div>
@@ -699,7 +701,7 @@
                     </div>
                     <div class="card-body d-flex align-items-center gap-3" style="padding: 1.5rem;">
                         @if($latestAlert)
-                            <img src="{{ $latestAlert->image ? asset('storage/' . $latestAlert->image) : 'https://ui-avatars.com/api/?name='.urlencode($latestAlert->title).'&background=random' }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                            <img src="/storage/app/public/{{ $latestAlert->image }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                     <span class="fw-bold fs-6">{{ $latestAlert->title }}</span>

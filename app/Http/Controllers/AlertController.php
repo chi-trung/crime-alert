@@ -15,6 +15,9 @@ class AlertController extends Controller
 
     public function store(Request $request)
     {
+        if (!Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để đăng cảnh báo.');
+        }
         $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'required|string',
@@ -30,8 +33,10 @@ class AlertController extends Controller
         $data['longitude'] = $request->input('longitude');
 
         if ($request->hasFile('image')) {
-            $imagePath = $request->file('image')->store('alerts', 'public');
-            $data['image'] = $imagePath;
+            $file = $request->file('image');
+            $filename = $file->hashName();
+            $file->move(storage_path('app/public/alerts'), $filename);
+            $data['image'] = 'alerts/' . $filename;
         }
 
         $alert = Alert::create($data);
@@ -140,14 +145,19 @@ class AlertController extends Controller
         if ($request->has('remove_image') && $alert->image) {
             \Storage::disk('public')->delete($alert->image);
             $data['image'] = null;
+        } elseif (!$request->hasFile('image')) {
+            // Nếu không upload ảnh mới và không xóa ảnh, giữ nguyên ảnh cũ hoặc old_image nếu có
+            $data['image'] = $request->input('old_image', $alert->image);
         }
         if ($request->hasFile('image')) {
             // Nếu upload ảnh mới, xóa ảnh cũ trước (nếu có)
             if ($alert->image) {
                 \Storage::disk('public')->delete($alert->image);
             }
-            $imagePath = $request->file('image')->store('alerts', 'public');
-            $data['image'] = $imagePath;
+            $file = $request->file('image');
+            $filename = $file->hashName();
+            $file->move(storage_path('app/public/alerts'), $filename);
+            $data['image'] = 'alerts/' . $filename;
         }
         $alert->update($data);
         // Sau khi cập nhật, redirect về dashboard

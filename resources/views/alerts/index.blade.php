@@ -96,7 +96,7 @@
                         @if($alert->image)
                             <a href="{{ route('alerts.show', $alert) }}">
                                 <div class="card-img-top overflow-hidden" style="height: 200px;">
-                                    <img src="{{ asset('storage/' . $alert->image) }}" 
+                                    <img src="/storage/app/public/{{ $alert->image }}" 
                                          class="img-fluid w-100 h-100 object-fit-cover transition-all"
                                          alt="Ảnh cảnh báo">
                                 </div>

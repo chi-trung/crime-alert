@@ -45,25 +45,29 @@ class LikeController extends Controller
 
     public function destroy(Request $request)
     {
-        $request->validate([
-            'type' => 'required|in:alert,experience,comment',
-            'id' => 'required|integer',
-        ]);
-        $user = auth()->user();
-        $type = $request->type;
-        $id = $request->id;
-        if ($type === 'alert') {
-            $model = Alert::findOrFail($id);
-        } elseif ($type === 'experience') {
-            $model = Experience::findOrFail($id);
-        } else {
-            $model = Comment::findOrFail($id);
+        if (!auth()->check()) {
+            return response()->json(['success' => false, 'redirect' => route('login')], 401);
         }
-        $model->likes()->where('user_id', $user->id)->delete();
-        $count = $model->likes()->count();
-        if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+        try {
+            $request->validate([
+                'type' => 'required|in:alert,experience,comment',
+                'id' => 'required|integer',
+            ]);
+            $user = auth()->user();
+            $type = $request->type;
+            $id = $request->id;
+            if ($type === 'alert') {
+                $model = \App\Models\Alert::findOrFail($id);
+            } elseif ($type === 'experience') {
+                $model = \App\Models\Experience::findOrFail($id);
+            } else {
+                $model = \App\Models\Comment::findOrFail($id);
+            }
+            $model->likes()->where('user_id', $user->id)->delete();
+            $count = $model->likes()->count();
             return response()->json(['success' => true, 'count' => $count]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
-        return back();
     }
 } 

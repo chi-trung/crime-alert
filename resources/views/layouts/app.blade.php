@@ -25,7 +25,9 @@
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
+            @if(empty($hideMenu))
+                @include('layouts.navigation')
+            @endif
 
             <!-- Page Heading -->
             @isset($header)
@@ -594,11 +596,12 @@
                     this.isLoading = true;
 
                     try {
+                        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
                         const response = await fetch('{{ route('chatbot.openrouter') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                                'X-CSRF-TOKEN': csrfToken
                             },
                             body: JSON.stringify({ question: message })
                         });
@@ -731,7 +734,7 @@
           opacity: 1 !important;
           visibility: visible !important;
           height: auto !important;
-        }
+        }   
         .chatbot-header, .chatbot-close {
             z-index: 2001 !important;
         }

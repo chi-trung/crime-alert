@@ -30,6 +30,9 @@ class ExperienceController extends Controller
      */
     public function store(Request $request)
     {
+        if (!Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để đăng bài chia sẻ.');
+        }
         $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string',
@@ -100,7 +103,7 @@ class ExperienceController extends Controller
         // Khi user sửa, luôn chuyển về trạng thái chờ duyệt lại
         $data['status'] = 'pending';
         $experience->update($data);
-        return redirect()->route('dashboard')->with('success', 'Cập nhật bài chia sẻ thành công!');
+        return redirect()->route('experiences.show', $experience)->with('success', 'Cập nhật bài chia sẻ thành công!');
     }
 
     /**
@@ -112,7 +115,7 @@ class ExperienceController extends Controller
             abort(403);
         }
         $experience->delete();
-        return back()->with('success', 'Đã xóa bài chia sẻ!');
+        return redirect()->route('experiences.index')->with('success', 'Đã xóa bài chia sẻ!');
     }
 
     // Trang quản lý cho admin

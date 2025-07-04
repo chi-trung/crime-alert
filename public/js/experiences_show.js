@@ -6,15 +6,18 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
     const type = btn.getAttribute('data-type');
     btn.disabled = true;
     try {
-        const res = await fetch(liked ? LIKE_DESTROY_ROUTE : LIKE_STORE_ROUTE, {
-            method: liked ? 'DELETE' : 'POST',
+        const isUnlike = liked;
+        const url = isUnlike ? window.LIKE_DESTROY_URL : window.LIKE_STORE_URL;
+        const options = {
+            method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': CSRF_TOKEN,
+                'X-CSRF-TOKEN': window.CSRF_TOKEN,
                 'Accept': 'application/json',
             },
             body: JSON.stringify({ type, id })
-        });
+        };
+        const res = await fetch(url, options);
         const text = await res.text();
         console.log('Raw response:', text); // Log raw response
         let data;

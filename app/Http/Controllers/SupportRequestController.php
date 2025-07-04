@@ -92,4 +92,19 @@ class SupportRequestController extends Controller
         $supportRequest->delete();
         return back()->with('success', 'Đã xóa yêu cầu hỗ trợ!');
     }
+
+    // API trả về danh sách tin nhắn dạng JSON
+    public function messagesAjax(SupportRequest $supportRequest) {
+        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
+        $result = $messages->map(function($msg) {
+            return [
+                'id' => $msg->id,
+                'user' => $msg->user ? $msg->user->name : 'Ẩn danh',
+                'is_me' => $msg->user_id == auth()->id(),
+                'content' => $msg->message,
+                'created_at' => $msg->created_at->format('H:i d/m/Y'),
+            ];
+        });
+        return response()->json(['messages' => $result]);
+    }
 }

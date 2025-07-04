@@ -25,4 +25,22 @@ class NotificationController extends Controller
         auth()->user()->unreadNotifications->markAsRead();
         return back()->with('success', 'Đã đánh dấu tất cả thông báo là đã đọc!');
     }
+
+    public function unreadAjax()
+    {
+        $unreadNotifications = auth()->user()->unreadNotifications()->take(10)->get();
+        $data = $unreadNotifications->map(function ($notification) {
+            return [
+                'id' => $notification->id,
+                'message' => $notification->data['message'] ?? 'Bạn có thông báo mới',
+                'created_at' => $notification->created_at->diffForHumans(),
+                'read_at' => $notification->read_at,
+                'url' => $notification->data['url'] ?? null,
+            ];
+        });
+        return response()->json([
+            'count' => $unreadNotifications->count(),
+            'notifications' => $data,
+        ]);
+    }
 }

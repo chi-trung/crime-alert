@@ -18,6 +18,33 @@ Route::get('/', function () {
 
 Route::get('/dashboard', function () {
     $user = auth()->user();
+    // Thống kê phân loại cảnh báo cho tất cả user (chỉ lấy cảnh báo đã duyệt)
+    $alertsForStats = \App\Models\Alert::where('status', 'approved')->get();
+    $alertTypes = ["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực"];
+    $typeCountsAdmin = array_fill_keys($alertTypes, 0);
+    $typeCountsAdmin['Khác'] = 0;
+    foreach ($alertsForStats as $alert) {
+        $type = trim($alert->type ?? '');
+        if (in_array($type, $alertTypes)) {
+            $typeCountsAdmin[$type]++;
+        } else {
+            $typeCountsAdmin['Khác']++;
+        }
+    }
+    $totalAlertsAll = array_sum($typeCountsAdmin);
+    $typePercentsAdmin = [];
+    $sum = 0;
+    $keys = array_keys($typeCountsAdmin);
+    $lastKey = end($keys);
+    foreach ($typeCountsAdmin as $type => $count) {
+        if ($type === $lastKey) {
+            $typePercentsAdmin[$type] = 100 - $sum;
+        } else {
+            $percent = $totalAlertsAll > 0 ? round($count / $totalAlertsAll * 100) : 0;
+            $typePercentsAdmin[$type] = $percent;
+            $sum += $percent;
+        }
+    }
     if ($user->isAdmin) {
         $totalAlerts = \App\Models\Alert::count();
         $pendingAlerts = \App\Models\Alert::where('status', 'pending')->count();
@@ -99,25 +126,6 @@ Route::get('/dashboard', function () {
             ->take(3)
             ->get();
 
-        // Thống kê phân loại cảnh báo cho admin (chỉ lấy cảnh báo đã duyệt)
-        $alertsForStats = \App\Models\Alert::where('status', 'approved')->get();
-        $alertTypes = ["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực"];
-        $typeCountsAdmin = array_fill_keys($alertTypes, 0);
-        $typeCountsAdmin['Khác'] = 0;
-        foreach ($alertsForStats as $alert) {
-            $type = trim($alert->type ?? '');
-            if (in_array($type, $alertTypes)) {
-                $typeCountsAdmin[$type]++;
-            } else {
-                $typeCountsAdmin['Khác']++;
-            }
-        }
-        $totalAlertsAll = array_sum($typeCountsAdmin);
-        $typePercentsAdmin = [];
-        foreach ($typeCountsAdmin as $type => $count) {
-            $typePercentsAdmin[$type] = $totalAlertsAll > 0 ? round($count / $totalAlertsAll * 100) : 0;
-        }
-
         return view('dashboard', [
             'totalAlerts' => $totalAlerts,
             'pendingAlerts' => $pendingAlerts,
@@ -142,6 +150,7 @@ Route::get('/dashboard', function () {
             'pendingExperiences' => $pendingExperiences,
             'latestPendingExperience' => $latestPendingExperience,
             'latestExperience' => $latestExperience,
+            'typePercents' => $typePercentsAdmin,
             'typePercentsAdmin' => $typePercentsAdmin,
             'latestSupportRequest' => $latestSupportRequest,
         ]);
@@ -149,8 +158,9 @@ Route::get('/dashboard', function () {
         $user = auth()->user();
         $currentYear = now()->year;
         $currentMonth = now()->month;
-        // Lấy cảnh báo của user/tháng này
+        // Lấy cảnh báo của user/tháng này (CHỈ ĐÃ DUYỆT)
         $myAlertsThisMonth = \App\Models\Alert::where('user_id', $user->id)
+            ->where('status', 'approved')
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
             ->orderByDesc('created_at')
@@ -179,8 +189,17 @@ Route::get('/dashboard', function () {
         }
         $myTotal = array_sum($typeCounts);
         $typePercents = [];
+        $sum = 0;
+        $keys = array_keys($typeCounts);
+        $lastKey = end($keys);
         foreach ($typeCounts as $type => $count) {
-            $typePercents[$type] = $myTotal > 0 ? round($count / $myTotal * 100) : 0;
+            if ($type === $lastKey) {
+                $typePercents[$type] = 100 - $sum;
+            } else {
+                $percent = $myTotal > 0 ? round($count / $myTotal * 100) : 0;
+                $typePercents[$type] = $percent;
+                $sum += $percent;
+            }
         }
         $monthLabel = now()->format('m/Y');
         $myExperience = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
@@ -210,7 +229,7 @@ Route::get('/dashboard', function () {
             'hotWanted' => $hotWanted,
             'topExperiences' => $topExperiences,
             'topAlerts' => $topAlerts,
-            'typePercents' => $typePercents,
+            'typePercents' => $typePercentsAdmin,
             'monthLabel' => $monthLabel,
             'myExperience' => $myExperience,
             'myExperiencesThisMonth' => $myExperiencesThisMonth,
@@ -251,13 +270,14 @@ Route::middleware('auth')->group(function () {
     Route::put('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'update'])->name('experiences.update');
     Route::delete('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'destroy'])->name('experiences.destroy');
     Route::post('/like', [LikeController::class, 'store'])->name('like.store');
-    Route::delete('/like', [LikeController::class, 'destroy'])->name('like.destroy');
+    Route::post('/like/unlike', [LikeController::class, 'destroy'])->name('like.destroy');
     // Hỗ trợ trực tuyến - user
     Route::get('/support', [SupportRequestController::class, 'index'])->name('support.index');
     Route::get('/support/create', [SupportRequestController::class, 'create'])->name('support.create');
     Route::post('/support', [SupportRequestController::class, 'store'])->name('support.store');
     Route::get('/support/{supportRequest}', [SupportRequestController::class, 'show'])->name('support.show');
     Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->name('support.sendMessage');
+    Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->middleware('auth');
 });
 
 // Hỗ trợ trực tuyến - admin
@@ -292,6 +312,9 @@ Route::post('/notifications/read-all', [NotificationController::class, 'readAll'
 Route::post('/chatbot/gemini', [ChatbotController::class, 'askGemini'])->name('chatbot.gemini');
 Route::post('/chatbot/openai', [App\Http\Controllers\ChatbotController::class, 'askOpenAI'])->name('chatbot.openai');
 Route::post('/chatbot/deepseek', [App\Http\Controllers\ChatbotController::class, 'askDeepSeek'])->name('chatbot.deepseek');
-Route::post('/chatbot/openrouter', [App\Http\Controllers\ChatbotController::class, 'askOpenRouter'])->name('chatbot.openrouter');
+Route::post('/chatbot/openrouter', [App\Http\Controllers\ChatbotController::class, 'askOpenRouter'])
+    ->middleware('allow.cors')
+    ->name('chatbot.openrouter');
+Route::get('/notifications/unread', [NotificationController::class, 'unreadAjax'])->name('notifications.unread')->middleware('auth');
 
 require __DIR__.'/auth.php';

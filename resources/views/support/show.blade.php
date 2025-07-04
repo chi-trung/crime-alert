@@ -82,4 +82,65 @@
     </div>
 </div>
 
+@push('scripts')
+<script>
+let lastMessageCount = {{ count($messages) }};
+function fetchMessages() {
+    fetch(window.location.pathname + '/messages', {
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json'
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        const chatBox = document.getElementById('chat-messages');
+        if (!chatBox) return;
+        // Nếu số lượng tin nhắn không đổi thì không cần render lại
+        if (data.messages.length === lastMessageCount) return;
+        lastMessageCount = data.messages.length;
+        chatBox.innerHTML = '';
+        data.messages.forEach(msg => {
+            const div = document.createElement('div');
+            div.className = 'support-chat-msg ' + (msg.is_me ? 'user' : 'admin');
+            div.innerHTML = `<div class=\"support-chat-bubble\"><div class=\"small fw-bold mb-1\">${msg.user}${msg.is_me ? '' : ' <span class=\\"badge bg-warning text-dark ms-2\\" style=\\"font-size:0.85em;vertical-align:middle;\\">Quản trị viên</span>'}</div><div>${msg.content}</div><div class=\"small text-muted mt-1\">${msg.created_at}</div></div>`;
+            chatBox.appendChild(div);
+        });
+        chatBox.scrollTop = chatBox.scrollHeight;
+    });
+}
+setInterval(fetchMessages, 3000);
+document.addEventListener('DOMContentLoaded', fetchMessages);
+
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('form[action*="support/sendMessage"]');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            const textarea = form.querySelector('textarea[name="message"]');
+            const message = textarea.value.trim();
+            if (!message) return;
+            fetch(form.action, {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': document.querySelector('input[name="_token"]').value,
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ message })
+            })
+            .then(res => {
+                if (res.ok) {
+                    textarea.value = '';
+                    fetchMessages();
+                }
+            });
+        });
+    }
+});
+</script>
+@endpush
+
 @endsection 

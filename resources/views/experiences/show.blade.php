@@ -134,19 +134,25 @@
                     @endif
                     @if($experience->status == 'approved')
                         @auth
-                            <form action="{{ route('comments.store') }}" method="POST" class="mb-4">
-                                @csrf
-                                <input type="hidden" name="experience_id" value="{{ $experience->id }}">
-                                <div class="mb-3">
-                                    <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
-                                    @error('content')
-                                        <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
+                            @if(!auth()->user()->hasVerifiedEmail())
+                                <div class="alert alert-warning rounded-3">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> Bạn cần xác thực email để bình luận. <a href="{{ route('verification.notice') }}" class="alert-link">Xác thực ngay</a>
                                 </div>
-                                <button type="submit" class="btn btn-success rounded-pill px-4">
-                                    <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
-                                </button>
-                            </form>
+                            @else
+                                <form action="{{ route('comments.store') }}" method="POST" class="mb-4">
+                                    @csrf
+                                    <input type="hidden" name="experience_id" value="{{ $experience->id }}">
+                                    <div class="mb-3">
+                                        <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
+                                        @error('content')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <button type="submit" class="btn btn-success rounded-pill px-4">
+                                        <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
+                                    </button>
+                                </form>
+                            @endif
                         @else
                             <div class="alert alert-info rounded-3">
                                 <i class="fas fa-info-circle me-2"></i> Vui lòng <a href="{{ route('login') }}" class="alert-link">đăng nhập</a> để bình luận.
@@ -177,9 +183,9 @@
 </div>
 
 <script>
-const LIKE_STORE_ROUTE = "{{ route('like.store') }}";
-const LIKE_DESTROY_ROUTE = "{{ route('like.destroy') }}";
-const CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
+window.LIKE_STORE_URL = "{{ route('like.store') }}";
+window.LIKE_DESTROY_URL = "{{ route('like.destroy') }}";
+window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
 </script>
 <script src="{{ asset('js/experiences_show.js') }}"></script>
 @endsection 

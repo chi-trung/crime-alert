@@ -109,8 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const id = btn.getAttribute('data-id');
             btn.disabled = true;
             try {
-                const res = await fetch(liked ? '/like' : '/like', {
-                    method: liked ? 'DELETE' : 'POST',
+                const res = await fetch(liked ? '/like/unlike' : '/like', {
+                    method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),

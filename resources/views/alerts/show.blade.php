@@ -2,6 +2,11 @@
 
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/alerts_show.css') }}">
+<script>
+window.LIKE_STORE_URL = "{{ route('like.store') }}";
+window.LIKE_DESTROY_URL = "{{ route('like.destroy') }}";
+window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
+</script>
 <script src="{{ asset('js/alerts_show.js') }}"></script>
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -10,7 +15,7 @@
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
                 @if($alert->image)
                     <div class="alert-image-container" style="max-height: 400px; overflow: hidden;">
-                        <img src="{{ asset('storage/' . $alert->image) }}" class="img-fluid w-100" alt="Ảnh cảnh báo" style="object-fit: cover;">
+                        <img src="/storage/app/public/{{ $alert->image }}" class="img-fluid w-100" alt="Ảnh cảnh báo" style="object-fit: cover;">
                     </div>
                 @endif
                 
@@ -120,16 +125,29 @@
                                     <i class="fas fa-arrow-left me-1"></i> Quay lại
                                 </a>
                                 @if(auth()->check() && (auth()->user()->isAdmin || auth()->id() === $alert->user_id))
-                                    <a href="{{ route('admin.alerts.edit', $alert) }}" class="btn btn-primary rounded-pill">
-                                        <i class="fas fa-edit me-1"></i> Sửa
-                                    </a>
-                                    <form action="{{ route('admin.alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button class="btn btn-danger rounded-pill">
-                                            <i class="fas fa-trash-alt me-1"></i> Xóa
-                                        </button>
-                                    </form>
+                                    @if(auth()->user()->isAdmin)
+                                        <a href="{{ route('admin.alerts.edit', $alert) }}" class="btn btn-primary rounded-pill">
+                                            <i class="fas fa-edit me-1"></i> Sửa
+                                        </a>
+                                        <form action="{{ route('admin.alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-danger rounded-pill">
+                                                <i class="fas fa-trash-alt me-1"></i> Xóa
+                                            </button>
+                                        </form>
+                                    @else
+                                        <a href="{{ route('alerts.edit', $alert) }}" class="btn btn-primary rounded-pill">
+                                            <i class="fas fa-edit me-1"></i> Sửa
+                                        </a>
+                                        <form action="{{ route('alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button class="btn btn-danger rounded-pill">
+                                                <i class="fas fa-trash-alt me-1"></i> Xóa
+                                            </button>
+                                        </form>
+                                    @endif
                                 @endif
                             </div>
                             <div>
@@ -137,39 +155,6 @@
                                 <button id="like-btn-alert" class="btn-like-custom{{ $alert->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $alert->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $alert->id }}" data-type="alert">
                                     <span id="like-text-alert">{{ $alert->likes()->where('user_id', auth()->id())->exists() ? 'Đã Thích' : 'Thích' }}</span> (<span id="like-count-alert">{{ $alert->likes()->count() }}</span>)
                                 </button>
-                                <script>
-                                document.getElementById('like-btn-alert').addEventListener('click', async function(e) {
-                                    e.preventDefault();
-                                    const btn = this;
-                                    const liked = btn.getAttribute('data-liked') === '1';
-                                    const id = btn.getAttribute('data-id');
-                                    const type = btn.getAttribute('data-type');
-                                    btn.disabled = true;
-                                    try {
-                                        const res = await fetch(liked ? '{{ route('like.destroy') }}' : '{{ route('like.store') }}', {
-                                            method: liked ? 'DELETE' : 'POST',
-                                            headers: {
-                                                'Content-Type': 'application/json',
-                                                'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                                                'Accept': 'application/json',
-                                            },
-                                            body: JSON.stringify({ type, id })
-                                        });
-                                        const data = await res.json();
-                                        if (data.success) {
-                                            btn.setAttribute('data-liked', liked ? '0' : '1');
-                                            document.getElementById('like-count-alert').textContent = data.count;
-                                            document.getElementById('like-text-alert').textContent = liked ? 'Thích' : 'Đã Thích';
-                                            btn.classList.toggle('liked', !liked);
-                                        } else if(data.redirect) {
-                                            window.location.href = data.redirect;
-                                        }
-                                    } catch (err) {
-                                        alert('Có lỗi xảy ra!');
-                                    }
-                                    btn.disabled = false;
-                                });
-                                </script>
                                 @else
                                 <a href="{{ route('login') }}" class="btn-like-custom" title="Đăng nhập để thích">
                                     Thích (<span id="like-count-alert">{{ $alert->likes()->count() }}</span>)
@@ -204,19 +189,25 @@
                     @endif
                     @if($alert->status == 'approved')
                         @auth
-                            <form action="{{ route('comments.store') }}" method="POST" class="mb-4">
-                                @csrf
-                                <input type="hidden" name="alert_id" value="{{ $alert->id }}">
-                                <div class="mb-3">
-                                    <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
-                                    @error('content')
-                                        <div class="text-danger small mt-1">{{ $message }}</div>
-                                    @enderror
+                            @if(!auth()->user()->hasVerifiedEmail())
+                                <div class="alert alert-warning rounded-3">
+                                    <i class="fas fa-exclamation-triangle me-2"></i> Bạn cần xác thực email để bình luận. <a href="{{ route('verification.notice') }}" class="alert-link">Xác thực ngay</a>
                                 </div>
-                                <button type="submit" class="btn btn-primary rounded-pill px-4">
-                                    <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
-                                </button>
-                            </form>
+                            @else
+                                <form action="{{ route('comments.store') }}" method="POST" class="mb-4">
+                                    @csrf
+                                    <input type="hidden" name="alert_id" value="{{ $alert->id }}">
+                                    <div class="mb-3">
+                                        <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
+                                        @error('content')
+                                            <div class="text-danger small mt-1">{{ $message }}</div>
+                                        @enderror
+                                    </div>
+                                    <button type="submit" class="btn btn-primary rounded-pill px-4">
+                                        <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
+                                    </button>
+                                </form>
+                            @endif
                         @else
                             <div class="alert alert-info rounded-3">
                                 <i class="fas fa-info-circle me-2"></i> Vui lòng <a href="{{ route('login') }}" class="alert-link">đăng nhập</a> để bình luận.

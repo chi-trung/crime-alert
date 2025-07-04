@@ -10,6 +10,9 @@ class CommentController extends Controller
 {
     public function store(Request $request)
     {
+        if (!auth()->user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để bình luận hoặc trả lời bình luận.');
+        }
         \Log::info('Comment request:', $request->all());
         $request->validate([
             'content' => 'required|string|max:1000',

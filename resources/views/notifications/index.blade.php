@@ -50,7 +50,7 @@
         @endforelse
     </div>
     <div class="mt-4 d-flex justify-content-center">
-        {{ $notifications->links() }}
+        {{ $notifications->links('pagination::bootstrap-4') }}
     </div>
 </div>
 
