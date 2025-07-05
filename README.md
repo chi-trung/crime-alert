@@ -10,10 +10,10 @@
 <p align="center">Website cảnh báo tội phạm, truy nã, tin tức pháp luật - xây dựng với <b>Laravel</b></p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/chi-trung/crime-alert-web?style=social" alt="Stars">
-  <img src="https://img.shields.io/github/forks/chi-trung/crime-alert-web?style=social" alt="Forks">
-  <img src="https://img.shields.io/github/issues/chi-trung/crime-alert-web" alt="Issues">
-  <img src="https://img.shields.io/github/license/chi-trung/crime-alert-web" alt="License">
+  <img src="https://img.shields.io/github/stars/chi-trung/crime-alert?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/forks/chi-trung/crime-alert?style=social" alt="Forks">
+  <img src="https://img.shields.io/github/issues/chi-trung/crime-alert" alt="Issues">
+  <img src="https://img.shields.io/github/license/chi-trung/crime-alert" alt="License">
 </p>
 
 ---
@@ -66,8 +66,8 @@
 
 ### 1️⃣ Clone và cài đặt
 ```bash
-git clone https://github.com/chi-trung/crime-alert-web.git
-cd crime-alert-web
+git clone https://github.com/chi-trung/crime-alert.git
+cd crime-alert
 composer install
 npm install
 ```
@@ -122,7 +122,7 @@ php artisan crawl:wanted-list   # Crawl danh sách truy nã
 ## 📁 <b>Cấu trúc project</b>
 
 ```
-crime-alert-web/
+crime-alert/
 ├── 📁 app/                          # Logic chính của ứng dụng
 │   ├── 📁 Console/Commands/         # Artisan commands
 │   ├── 📁 Http/Controllers/         # Controllers
