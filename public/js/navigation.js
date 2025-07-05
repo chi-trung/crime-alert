@@ -25,4 +25,12 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     });
   });
+
+  const mobileToggle = document.querySelector('.mobile-toggle');
+  const navContainer = document.querySelector('.nav-container');
+  if (mobileToggle && navContainer) {
+    mobileToggle.addEventListener('click', function() {
+      navContainer.classList.toggle('active');
+    });
+  }
 });

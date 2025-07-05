@@ -429,7 +429,11 @@
                     <div class="row align-items-center">
                         <div class="col-md-8 d-flex align-items-start gap-3">
                             <div class="flex-shrink-0">
-                                <img src="/storage/app/public/{{ $myLatest->image }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                                @if($myLatest->image)
+                                    <img src="/storage/app/public/{{ $myLatest->image }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                                @else
+                                    <img src="https://cdn-icons-png.flaticon.com/512/2642/2642651.png" alt="Ảnh cảnh báo mặc định" class="rounded-circle border shadow-sm" width="56" height="56">
+                                @endif
                             </div>
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center mb-1 flex-wrap gap-2">
@@ -701,7 +705,11 @@
                     </div>
                     <div class="card-body d-flex align-items-center gap-3" style="padding: 1.5rem;">
                         @if($latestAlert)
-                            <img src="/storage/app/public/{{ $latestAlert->image }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                            @if($latestAlert->image)
+                                <img src="/storage/app/public/{{ $latestAlert->image }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                            @else
+                                <img src="https://cdn-icons-png.flaticon.com/512/2642/2642651.png" alt="Ảnh cảnh báo mặc định" class="rounded-circle border shadow-sm" width="56" height="56">
+                            @endif
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
                                     <span class="fw-bold fs-6">{{ $latestAlert->title }}</span>

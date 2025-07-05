@@ -22,6 +22,9 @@
         <!-- Bootstrap 5 -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+
+        <!-- Favicon -->
+        <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/2592/2592317.png">
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">

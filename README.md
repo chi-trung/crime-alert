@@ -10,10 +10,10 @@
 <p align="center">Website cảnh báo tội phạm, truy nã, tin tức pháp luật - xây dựng với <b>Laravel</b></p>
 
 <p align="center">
-  <img src="https://img.shields.io/github/stars/chi-trung/crime-alert-web?style=social" alt="Stars">
-  <img src="https://img.shields.io/github/forks/chi-trung/crime-alert-web?style=social" alt="Forks">
-  <img src="https://img.shields.io/github/issues/chi-trung/crime-alert-web" alt="Issues">
-  <img src="https://img.shields.io/github/license/chi-trung/crime-alert-web" alt="License">
+  <img src="https://img.shields.io/github/stars/chi-trung/crime-alert?style=social" alt="Stars">
+  <img src="https://img.shields.io/github/forks/chi-trung/crime-alert?style=social" alt="Forks">
+  <img src="https://img.shields.io/github/issues/chi-trung/crime-alert" alt="Issues">
+  <img src="https://img.shields.io/github/license/chi-trung/crime-alert" alt="License">
 </p>
 
 ---
@@ -23,15 +23,21 @@
 
 ---
 
-## ✨ <b>Bảng tính năng</b>
+## ✨ <b>Tính năng chính</b>
+
 | Tính năng                | Mô tả                                                                 |
 |--------------------------|-----------------------------------------------------------------------|
 | 🚨 Cảnh báo tội phạm     | Gửi, duyệt, tìm kiếm, lọc, xem bản đồ, chỉnh sửa, xóa cảnh báo        |
 | 📝 Báo cáo tội phạm      | Gửi, duyệt, xem, xóa báo cáo tội phạm                                 |
 | 👮‍♂️ Truy nã             | Hiển thị, tìm kiếm danh sách người bị truy nã                         |
-| 💬 Bình luận             | Bình luận, chỉnh sửa, xóa bình luận vào cảnh báo                     |
+| 💬 Bình luận & Like      | Bình luận, like/unlike bài viết và bình luận                          |
 | 📢 Chia sẻ trải nghiệm   | Gửi, duyệt, xem, xóa bài chia sẻ                                      |
 | 📰 Tin tức                | Crawl, hiển thị tin tức pháp luật                                     |
+| 🤖 Chatbot AI            | Hỗ trợ AI với 4 model (Gemini, OpenAI, DeepSeek, OpenRouter)         |
+| 💬 Hỗ trợ trực tuyến     | Chat real-time giữa user và admin                                     |
+| 🔔 Thông báo             | Hệ thống notification cho like, comment, hỗ trợ                      |
+| 📊 Dashboard             | Thống kê chi tiết cho admin và user                                   |
+| 🗺️ Bản đồ tương tác      | Hiển thị cảnh báo trên bản đồ Leaflet                                 |
 | 👤 Tài khoản              | Đăng ký, đăng nhập, xác thực email, đổi mật khẩu, xóa tài khoản      |
 
 ---
@@ -39,12 +45,13 @@
 ## 🛠️ <b>Công nghệ sử dụng</b>
 - <img src="https://img.shields.io/badge/Laravel-FF2D20?logo=laravel&logoColor=white"/> **Laravel** (PHP framework)
 - <img src="https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white"/> **MySQL** (hoặc MariaDB)
-- <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white"/> **Bootstrap/Tailwind** (frontend)
+- <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white"/> **Tailwind CSS** (frontend styling)
 - <img src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white"/> **Leaflet.js** (bản đồ)
 - <img src="https://img.shields.io/badge/Guzzle-6DB33F?logo=php&logoColor=white"/> **Guzzle** (HTTP client crawl dữ liệu)
-- <img src="https://img.shields.io/badge/Symfony%20Process-000000?logo=symfony&logoColor=white"/> **Symfony Process** (chạy đa tiến trình crawl + serve)
-<<<<<<< HEAD
-- <img src="https://img.shields.io/badge/Symfony%20DomCrawler-000000?logo=symfony&logoColor=white"/> **Symfony DomCrawler** (phân tích HTML khi crawl)
+- <img src="https://img.shields.io/badge/Symfony%20Process-000000?logo=symfony&logoColor=white"/> **Symfony Process** (chạy đa tiến trình)
+- <img src="https://img.shields.io/badge/Symfony%20DomCrawler-000000?logo=symfony&logoColor=white"/> **Symfony DomCrawler** (phân tích HTML)
+- <img src="https://img.shields.io/badge/Spatie%20Permission-000000?logo=laravel&logoColor=white"/> **Spatie Laravel Permission** (phân quyền)
+- <img src="https://img.shields.io/badge/AI%20APIs-000000?logo=openai&logoColor=white"/> **AI APIs** (Gemini, OpenAI, DeepSeek, OpenRouter)
 
 ---
 
@@ -52,171 +59,117 @@
 - PHP >= 8.x
 - Composer >= 2.x
 - Node.js >= 16.x và npm
-=======
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 
 ---
 
-## 🚀 <b>Hướng dẫn chạy server</b>
+## 🚀 <b>Hướng dẫn cài đặt nhanh</b>
 
-Chạy lệnh sau để khởi động server và tự động crawl dữ liệu:
-
+### 1️⃣ Clone và cài đặt
 ```bash
-php artisan serve:all
-```
-
-> Lệnh này sẽ vừa chạy server Laravel vừa tự động crawl tin tức pháp luật và danh sách truy nã mới nhất. Không cần chạy thêm lệnh nào khác.
-
----
-
-<<<<<<< HEAD
-## 📦 <b>Cài đặt các package cần thiết</b>
-
-Chạy các lệnh sau để cài đặt đầy đủ package cho backend và frontend:
-
-```bash
-composer install
-npm install
-composer require guzzlehttp/guzzle symfony/dom-crawler symfony/process
-```
-
----
-
-## 📖 <b>Hướng dẫn chi tiết cho người mới bắt đầu</b>
-
-=======
-## 📖 <b>Hướng dẫn chi tiết cho người mới bắt đầu</b>
-
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
-### 1️⃣ Tải mã nguồn về máy
-- **Cách 1: Dùng Git (khuyên dùng)**
-  ```bash
-  git clone https://github.com/chi-trung/crime-alert-web.git
-  cd crime-alert-web
-  ```
-- **Cách 2: Tải file ZIP trên GitHub**
-  - Nhấn nút "Code" > "Download ZIP"
-  - Giải nén và mở thư mục dự án
-
-> **Lưu ý:** Không cần cài Laravel thủ công. Chỉ cần chạy `composer install`, Laravel và các package sẽ tự động được cài đặt theo composer.json.
-
-### 2️⃣ Cài đặt các package cần thiết
-```bash
+git clone https://github.com/chi-trung/crime-alert.git
+cd crime-alert
 composer install
 npm install
 ```
 
-### 3️⃣ Tạo file môi trường và cấu hình
+### 2️⃣ Cấu hình môi trường
 ```bash
 cp .env.example .env
 php artisan key:generate
 ```
-- Sửa file `.env` cho đúng thông tin database.
 
----
+### 3️⃣ Database (chọn 1 trong 2 cách)
 
-### 🐳 **Sử dụng Docker cho MySQL và kết nối với Laravel**
-
-**Khuyến nghị:** Nếu bạn chưa có MySQL trên máy, hãy dùng Docker để khởi động nhanh dịch vụ database.
-
-#### 1️⃣ Khởi động MySQL bằng Docker
-Trong thư mục dự án, chạy:
+**Cách A: Dùng Docker (khuyên dùng)**
 ```bash
 docker-compose up -d
 ```
-- Lệnh này sẽ tạo và chạy container MySQL với các thông số:
-  - **Database:** laravel
-  - **User:** laravel
-  - **Password:** secret
-  - **Root Password:** root
-- MySQL sẽ lắng nghe ở cổng `3306` trên máy bạn.
 
-#### 2️⃣ Cấu hình kết nối trong file `.env` của Laravel
+**Cách B: MySQL có sẵn**
+- Cập nhật thông tin database trong `.env`
 
-Thêm hoặc sửa các dòng sau trong file `.env`:
-```env
-DB_CONNECTION=mysql
-DB_HOST=127.0.0.1
-DB_PORT=3306
-DB_DATABASE=laravel
-DB_USERNAME=laravel
-DB_PASSWORD=secret
-```
-> **Lưu ý:** Nếu chạy Laravel trong container khác, hãy dùng `DB_HOST=mysql` (tên service trong docker-compose).
-
-#### 3️⃣ Tắt dịch vụ Docker khi không dùng nữa
+### 4️⃣ Migrate và chạy
 ```bash
-docker-compose down
+php artisan migrate
+php artisan serve:all
 ```
+
+> **Lưu ý:** Lệnh `php artisan serve:all` sẽ vừa chạy server vừa tự động crawl dữ liệu.
 
 ---
 
-### 4️⃣ Tạo database và migrate
-- Đảm bảo MySQL đã chạy (bằng Docker hoặc cài sẵn)
-```bash
-php artisan migrate
+## 🔧 <b>Cấu hình AI APIs (tùy chọn)</b>
+
+Project đã có sẵn API keys cho Chatbot AI. Nếu muốn dùng key riêng, thêm vào `.env`:
+
+```env
+GEMINI_API_KEY=your_gemini_api_key
+OPENAI_API_KEY=your_openai_api_key
+DEEPSEEK_API_KEY=your_deepseek_api_key
+OPENROUTER_API_KEY=your_openrouter_api_key
 ```
-
-### 5️⃣ Build frontend (nếu dùng Vite/Tailwind)
-```bash
-npm run dev
-```
-
-<<<<<<< HEAD
-### 5️⃣ Crawl dữ liệu thủ công (nếu muốn)
-- Crawl tin tức pháp luật:
-  ```bash
-  php artisan crawl:news
-  ```
-- Crawl danh sách truy nã:
-  ```bash
-  php artisan crawl:wanted-list
-  ```
-> Có thể bỏ qua bước này nếu dùng lệnh `php artisan serve:all` ở bước tiếp theo.
-
-=======
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
-### 6️⃣ Chạy server và crawl dữ liệu tự động
-```bash
-php artisan serve:all
-```
-- Truy cập: http://127.0.0.1:8000
-
-> Lệnh này sẽ vừa chạy server Laravel vừa tự động crawl tin tức pháp luật và danh sách truy nã mới nhất. Không cần chạy thêm lệnh nào khác.
 
 ---
 
 ## 🕵️‍♂️ <b>Các lệnh crawl dữ liệu</b>
-- **Crawl tin tức pháp luật:**
-  ```bash
-  php artisan crawl:news
-  ```
-- **Crawl danh sách truy nã:**
-  ```bash
-  php artisan crawl:wanted-list
-  ```
-
-<<<<<<< HEAD
-> Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh **php artisan serve:all**.
+```bash
+php artisan crawl:news          # Crawl tin tức pháp luật
+php artisan crawl:wanted-list   # Crawl danh sách truy nã
+```
 
 ---
 
-## ⚠️ **Lưu ý quan trọng**
+## 📁 <b>Cấu trúc project</b>
+
+```
+crime-alert/
+├── 📁 app/                          # Logic chính của ứng dụng
+│   ├── 📁 Console/Commands/         # Artisan commands
+│   ├── 📁 Http/Controllers/         # Controllers
+│   ├── 📁 Models/                   # Eloquent models
+│   ├── 📁 Notifications/            # Notification classes
+│   └── 📁 Providers/                # Service providers
+├── 📁 resources/views/              # Blade templates
+├── 📁 routes/                       # Route definitions
+├── 📁 database/migrations/          # Database migrations
+├── 📁 config/                       # Configuration files
+├── 📁 public/                       # Public assets
+├── 📁 storage/                      # Storage files
+├── 📁 tests/                        # Test files
+├── composer.json                    # Composer dependencies
+├── package.json                     # NPM dependencies
+├── docker-compose.yml              # Docker configuration
+└── README.md                        # Project documentation
+```
+
+### 🔍 **Mô tả các thư mục chính:**
+- **`app/`**: Logic chính của ứng dụng Laravel
+- **`resources/views/`**: Giao diện người dùng (Blade templates)
+- **`routes/`**: Định nghĩa các route của ứng dụng
+- **`database/migrations/`**: Cấu trúc cơ sở dữ liệu
+
+---
+
+## ⚠️ <b>Lưu ý quan trọng</b>
 
 <div align="center">
 
 <table>
   <tr>
     <td width="40" align="center">🚫</td>
-    <td><b>Không override lệnh <code>php artisan serve</code></b> trong <code>routes/console.php</code> hoặc các command khác để tránh lỗi không vào được server.</td>
+    <td><b>Không override lệnh <code>php artisan serve</code></b> trong <code>routes/console.php</code> để tránh lỗi server.</td>
   </tr>
   <tr>
     <td width="40" align="center">🔄</td>
-    <td>Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh <b><code>php artisan serve:all</code></b>.</td>
+    <td>Dùng lệnh <b><code>php artisan serve:all</code></b> để chạy server + crawl tự động.</td>
+  </tr>
+  <tr>
+    <td width="40" align="center">🤖</td>
+    <td>Chatbot AI đã có sẵn API keys, sẵn sàng sử dụng.</td>
   </tr>
   <tr>
     <td width="40" align="center">🛠️</td>
-    <td>Nếu gặp lỗi, <b>kiểm tra lại cấu hình <code>.env</code> và database</b>.</td>
+    <td>Nếu gặp lỗi, kiểm tra lại cấu hình <code>.env</code> và database.</td>
   </tr>
 </table>
 
@@ -224,33 +177,6 @@ php artisan serve:all
 
 ---
 
-=======
----
-
-## ⚠️ **Lưu ý quan trọng**
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="40" align="center">🚫</td>
-    <td><b>Không override lệnh <code>php artisan serve</code></b> trong <code>routes/console.php</code> hoặc các command khác để tránh lỗi không vào được server.</td>
-  </tr>
-  <tr>
-    <td width="40" align="center">🔄</td>
-    <td>Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh <b><code>php artisan serve:all</code></b>.</td>
-  </tr>
-  <tr>
-    <td width="40" align="center">🛠️</td>
-    <td>Nếu gặp lỗi, <b>kiểm tra lại cấu hình <code>.env</code> và database</b>.</td>
-  </tr>
-</table>
-
-</div>
-
----
-
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ## 🤝 <b>Đóng góp & phát triển</b>
 - Fork, tạo branch mới và gửi pull request nếu muốn đóng góp code.
 - Nếu có vấn đề, vui lòng tạo issue trên GitHub.

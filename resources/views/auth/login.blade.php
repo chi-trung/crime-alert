@@ -22,6 +22,7 @@
     </script>
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
     <script src="{{ asset('js/login.js') }}"></script>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/2592/2592317.png">
 </head>
 <body>
     <div class="flex flex-col md:flex-row w-full max-w-6xl bg-white rounded-2xl overflow-hidden shadow-xl">
@@ -88,6 +89,7 @@
                         class="w-full form-input py-3 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         placeholder="Địa chỉ email"
                         required
+                        autocomplete="username"
                     >
                 </div>
                 
@@ -103,6 +105,7 @@
                         class="w-full form-input py-3 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         placeholder="Mật khẩu"
                         required
+                        autocomplete="current-password"
                     >
                     <div class="password-toggle" id="passwordToggle">
                         <i class="far fa-eye"></i>
@@ -157,24 +160,25 @@
     </div>
     
     <script>
-        // Password toggle functionality
+    (function() {
         const passwordToggle = document.getElementById('passwordToggle');
         const passwordInput = document.getElementById('password');
-        
-        passwordToggle.addEventListener('click', function() {
-            const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            passwordInput.setAttribute('type', type);
-            
-            // Toggle eye icon
-            const eyeIcon = this.querySelector('i');
-            if (type === 'password') {
-                eyeIcon.classList.remove('fa-eye-slash');
-                eyeIcon.classList.add('fa-eye');
-            } else {
-                eyeIcon.classList.remove('fa-eye');
-                eyeIcon.classList.add('fa-eye-slash');
-            }
-        });
+        if(passwordToggle && passwordInput) {
+            passwordToggle.addEventListener('click', function() {
+                const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                passwordInput.setAttribute('type', type);
+                // Toggle eye icon
+                const eyeIcon = this.querySelector('i');
+                if (type === 'password') {
+                    eyeIcon.classList.remove('fa-eye-slash');
+                    eyeIcon.classList.add('fa-eye');
+                } else {
+                    eyeIcon.classList.remove('fa-eye');
+                    eyeIcon.classList.add('fa-eye-slash');
+                }
+            });
+        }
+    })();
     </script>
 </body>
 </html>

@@ -249,4 +249,44 @@
   white-space: normal;
   word-break: break-word;
   overflow-wrap: break-word;
+}
+/* Cải thiện nút mobile-toggle khi thành dấu X */
+@media (max-width: 768px) {
+  .mobile-toggle {
+    background: #f3f6fa;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgba(79,70,229,0.08);
+    border: 1.5px solid #e63946;
+    width: 2.5rem;
+    height: 2.5rem;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+  .mobile-toggle:hover {
+    background: #fffbe6;
+    box-shadow: 0 4px 16px rgba(230,57,70,0.18);
+    border-color: #b71c1c;
+  }
+  .mobile-toggle span {
+    height: 3.5px;
+    border-radius: 2px;
+    background: #e63946;
+    width: 24px;
+    margin: 0 auto;
+    transition: all 0.25s cubic-bezier(.4,0,.2,1);
+  }
+  .nav-container.active .mobile-toggle span:nth-child(1) {
+    transform: translateY(7px) rotate(45deg);
+    width: 20px;
+    background: #e63946;
+  }
+  .nav-container.active .mobile-toggle span:nth-child(2) {
+    opacity: 0;
+  }
+  .nav-container.active .mobile-toggle span:nth-child(3) {
+    transform: translateY(-7px) rotate(-45deg);
+    width: 20px;
+    background: #e63946;
+  }
 } 

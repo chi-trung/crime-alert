@@ -103,8 +103,8 @@
                             </a>
                         @else
                             <a href="{{ route('alerts.show', $alert) }}">
-                                <div class="card-img-top bg-light d-flex align-items-center justify-content-center" style="height: 200px;">
-                                    <i class="fas fa-exclamation-triangle fa-4x text-muted opacity-50"></i>
+                                <div class="card-img-top overflow-hidden d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
+                                    <img src="https://cdn-icons-png.flaticon.com/512/2642/2642651.png" class="img-fluid w-100 h-100 object-fit-cover opacity-50" alt="Ảnh cảnh báo mặc định">
                                 </div>
                             </a>
                         @endif

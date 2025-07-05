@@ -717,6 +717,26 @@
       transform: translateY(-6px) rotate(-45deg);
     }
   }
+
+  /* Notification dropdown mobile fix */
+  @media (max-width: 600px) {
+    .notification-dropdown {
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) translateY(0.5rem) !important;
+      width: 95vw !important;
+      min-width: 0 !important;
+      max-width: 98vw !important;
+      border-radius: 16px !important;
+      padding: 1rem 0.5rem !important;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18) !important;
+    }
+    .notification-dropdown .dropdown-header,
+    .notification-dropdown .notification-list {
+      padding-left: 0.5rem !important;
+      padding-right: 0.5rem !important;
+    }
+  }
   </style>
 
   <script>
@@ -763,6 +783,36 @@
       setTimeout(() => {
         notificationBadge.classList.remove('animate-pulse');
       }, 2000);
+    }
+
+    // Đóng dropdown khi chạm ra ngoài (mobile & desktop)
+    document.addEventListener('click', function(e) {
+      const notiDropdown = document.querySelector('.notification-dropdown');
+      const notiIcon = document.querySelector('.notification-icon');
+      if (notiDropdown && notiDropdown.style.opacity === '1') {
+        if (!notiDropdown.contains(e.target) && !notiIcon.contains(e.target)) {
+          notiDropdown.style.opacity = '0';
+          notiDropdown.style.visibility = 'hidden';
+          notiDropdown.style.transform = 'translateY(0.5rem)';
+        }
+      }
+    });
+    // Toggle dropdown khi bấm chuông
+    const notiIcon = document.querySelector('.notification-icon');
+    const notiDropdown = document.querySelector('.notification-dropdown');
+    if (notiIcon && notiDropdown) {
+      notiIcon.addEventListener('click', function(e) {
+        e.preventDefault();
+        if (notiDropdown.style.opacity === '1') {
+          notiDropdown.style.opacity = '0';
+          notiDropdown.style.visibility = 'hidden';
+          notiDropdown.style.transform = 'translateY(0.5rem)';
+        } else {
+          notiDropdown.style.opacity = '1';
+          notiDropdown.style.visibility = 'visible';
+          notiDropdown.style.transform = 'translateY(0)';
+        }
+      });
     }
   });
 

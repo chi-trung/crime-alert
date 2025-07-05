@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="{{ asset('css/welcome.css') }}">
     <script src="{{ asset('js/welcome.js') }}"></script>
+    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/2592/2592317.png">
 </head>
 <body>
     <div class="background"></div>
@@ -20,8 +21,8 @@
             <div class="nav-links">
                 <a href="{{ route('news.index') }}" class="nav-link">Tin tức</a>
                 <a href="{{ route('wanted_list.index') }}" class="nav-link">Truy nã</a>
-                <a href="http://127.0.0.1:8000/login" class="nav-link">Đăng nhập</a>
-                <a href="http://127.0.0.1:8000/register" class="nav-link">Đăng ký</a>
+                <a href="{{ route('login') }}" class="nav-link">Đăng nhập</a>
+                <a href="{{ route('register') }}" class="nav-link">Đăng ký</a>
             </div>
         </nav>
     </header>
