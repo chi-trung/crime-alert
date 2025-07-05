@@ -23,6 +23,39 @@
 
 ---
 
+## 🎯 <b>Chi tiết các tính năng chính</b>
+
+### 🤖 **Chatbot AI**
+- Hỗ trợ 4 model AI: **Gemini**, **OpenAI**, **DeepSeek**, **OpenRouter**
+- Trả lời tự động về an ninh, cảnh báo, hướng dẫn cộng đồng
+- Tích hợp sẵn API keys, sẵn sàng sử dụng
+
+### 💬 **Hỗ trợ trực tuyến**
+- Chat real-time giữa user và admin
+- Tạo ticket hỗ trợ, theo dõi trạng thái
+- Thông báo tự động khi có tin nhắn mới
+
+### 👍 **Like System**
+- Like/unlike cảnh báo, chia sẻ trải nghiệm, bình luận
+- Thông báo khi có người like bài viết của bạn
+- Đếm số like real-time
+
+### 🔔 **Hệ thống thông báo**
+- Thông báo khi có like, comment mới
+- Thông báo tin nhắn hỗ trợ
+- Đánh dấu đã đọc, xem tất cả thông báo
+
+### 📊 **Dashboard thống kê**
+- **Admin:** Thống kê tổng quan, biểu đồ, phân tích xu hướng
+- **User:** Thống kê cá nhân, bài viết đã đăng, tương tác
+
+### 🗺️ **Bản đồ tương tác**
+- Hiển thị cảnh báo trên bản đồ Leaflet
+- Tìm kiếm theo vị trí, lọc theo khu vực
+- Tương tác trực quan với dữ liệu địa lý
+
+---
+
 ## ✨ <b>Bảng tính năng</b>
 | Tính năng                | Mô tả                                                                 |
 |--------------------------|-----------------------------------------------------------------------|
@@ -30,21 +63,28 @@
 | 📝 Báo cáo tội phạm      | Gửi, duyệt, xem, xóa báo cáo tội phạm                                 |
 | 👮‍♂️ Truy nã             | Hiển thị, tìm kiếm danh sách người bị truy nã                         |
 | 💬 Bình luận             | Bình luận, chỉnh sửa, xóa bình luận vào cảnh báo                     |
+| 👍 Like system           | Like/unlike cảnh báo, chia sẻ trải nghiệm và bình luận               |
 | 📢 Chia sẻ trải nghiệm   | Gửi, duyệt, xem, xóa bài chia sẻ                                      |
 | 📰 Tin tức                | Crawl, hiển thị tin tức pháp luật                                     |
+| 🤖 Chatbot AI            | Hỗ trợ AI với nhiều model (Gemini, OpenAI, DeepSeek, OpenRouter)     |
+| 💬 Hỗ trợ trực tuyến     | Chat trực tuyến giữa user và admin                                    |
+| 🔔 Thông báo             | Hệ thống notification cho like, comment, hỗ trợ                      |
 | 👤 Tài khoản              | Đăng ký, đăng nhập, xác thực email, đổi mật khẩu, xóa tài khoản      |
+| 📊 Dashboard             | Thống kê chi tiết cho admin và user                                   |
+| 🗺️ Bản đồ tương tác      | Hiển thị cảnh báo trên bản đồ Leaflet                                 |
 
 ---
 
 ## 🛠️ <b>Công nghệ sử dụng</b>
 - <img src="https://img.shields.io/badge/Laravel-FF2D20?logo=laravel&logoColor=white"/> **Laravel** (PHP framework)
 - <img src="https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white"/> **MySQL** (hoặc MariaDB)
-- <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white"/> **Bootstrap/Tailwind** (frontend)
+- <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white"/> **Tailwind CSS** (frontend styling)
 - <img src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white"/> **Leaflet.js** (bản đồ)
 - <img src="https://img.shields.io/badge/Guzzle-6DB33F?logo=php&logoColor=white"/> **Guzzle** (HTTP client crawl dữ liệu)
 - <img src="https://img.shields.io/badge/Symfony%20Process-000000?logo=symfony&logoColor=white"/> **Symfony Process** (chạy đa tiến trình crawl + serve)
-<<<<<<< HEAD
 - <img src="https://img.shields.io/badge/Symfony%20DomCrawler-000000?logo=symfony&logoColor=white"/> **Symfony DomCrawler** (phân tích HTML khi crawl)
+- <img src="https://img.shields.io/badge/Spatie%20Permission-000000?logo=laravel&logoColor=white"/> **Spatie Laravel Permission** (phân quyền)
+- <img src="https://img.shields.io/badge/AI%20APIs-000000?logo=openai&logoColor=white"/> **AI APIs** (Gemini, OpenAI, DeepSeek, OpenRouter)
 
 ---
 
@@ -52,8 +92,6 @@
 - PHP >= 8.x
 - Composer >= 2.x
 - Node.js >= 16.x và npm
-=======
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 
 ---
 
@@ -69,7 +107,6 @@ php artisan serve:all
 
 ---
 
-<<<<<<< HEAD
 ## 📦 <b>Cài đặt các package cần thiết</b>
 
 Chạy các lệnh sau để cài đặt đầy đủ package cho backend và frontend:
@@ -77,17 +114,34 @@ Chạy các lệnh sau để cài đặt đầy đủ package cho backend và fr
 ```bash
 composer install
 npm install
-composer require guzzlehttp/guzzle symfony/dom-crawler symfony/process
 ```
+
+> **Lưu ý:** Các package cần thiết đã được định nghĩa trong `composer.json` và sẽ tự động được cài đặt khi chạy `composer install`.
+
+### 🔧 **Cấu hình AI APIs (tùy chọn)**
+
+Để sử dụng tính năng Chatbot AI, thêm các API key vào file `.env`:
+
+```env
+# Gemini API (đã có sẵn key mặc định)
+GEMINI_API_KEY=your_gemini_api_key
+
+# OpenAI API (đã có sẵn key mặc định)
+OPENAI_API_KEY=your_openai_api_key
+
+# DeepSeek API (đã có sẵn key mặc định)
+DEEPSEEK_API_KEY=your_deepseek_api_key
+
+# OpenRouter API
+OPENROUTER_API_KEY=your_openrouter_api_key
+```
+
+> **Lưu ý:** Project đã có sẵn các API key mặc định cho Gemini, OpenAI và DeepSeek. Bạn có thể thay thế bằng key của mình nếu muốn.
 
 ---
 
 ## 📖 <b>Hướng dẫn chi tiết cho người mới bắt đầu</b>
 
-=======
-## 📖 <b>Hướng dẫn chi tiết cho người mới bắt đầu</b>
-
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ### 1️⃣ Tải mã nguồn về máy
 - **Cách 1: Dùng Git (khuyên dùng)**
   ```bash
@@ -162,20 +216,6 @@ php artisan migrate
 npm run dev
 ```
 
-<<<<<<< HEAD
-### 5️⃣ Crawl dữ liệu thủ công (nếu muốn)
-- Crawl tin tức pháp luật:
-  ```bash
-  php artisan crawl:news
-  ```
-- Crawl danh sách truy nã:
-  ```bash
-  php artisan crawl:wanted-list
-  ```
-> Có thể bỏ qua bước này nếu dùng lệnh `php artisan serve:all` ở bước tiếp theo.
-
-=======
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ### 6️⃣ Chạy server và crawl dữ liệu tự động
 ```bash
 php artisan serve:all
@@ -196,11 +236,37 @@ php artisan serve:all
   php artisan crawl:wanted-list
   ```
 
-<<<<<<< HEAD
 > Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh **php artisan serve:all**.
 
 ---
 
+## 🚀 <b>Hướng dẫn sử dụng các tính năng</b>
+
+### 🤖 **Sử dụng Chatbot AI**
+1. Truy cập trang chủ hoặc bất kỳ trang nào có chatbot
+2. Nhập câu hỏi về an ninh, cảnh báo, pháp luật
+3. Chọn model AI (Gemini, OpenAI, DeepSeek, OpenRouter)
+4. Nhận câu trả lời tự động
+
+### 💬 **Sử dụng hỗ trợ trực tuyến**
+1. Đăng nhập vào tài khoản
+2. Vào menu "Hỗ trợ" → "Tạo yêu cầu mới"
+3. Nhập tiêu đề và nội dung vấn đề
+4. Admin sẽ phản hồi qua chat
+
+### 👍 **Tương tác với Like System**
+- Click nút "👍" để like bài viết
+- Click lại để unlike
+- Số like sẽ cập nhật real-time
+- Nhận thông báo khi có người like bài viết của bạn
+
+### 🔔 **Quản lý thông báo**
+- Click icon chuông để xem thông báo
+- Click "Đánh dấu tất cả đã đọc"
+- Click vào thông báo để chuyển đến trang liên quan
+
+---
+
 ## ⚠️ **Lưu ý quan trọng**
 
 <div align="center">
@@ -215,30 +281,8 @@ php artisan serve:all
     <td>Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh <b><code>php artisan serve:all</code></b>.</td>
   </tr>
   <tr>
-    <td width="40" align="center">🛠️</td>
-    <td>Nếu gặp lỗi, <b>kiểm tra lại cấu hình <code>.env</code> và database</b>.</td>
-  </tr>
-</table>
-
-</div>
-
----
-
-=======
----
-
-## ⚠️ **Lưu ý quan trọng**
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="40" align="center">🚫</td>
-    <td><b>Không override lệnh <code>php artisan serve</code></b> trong <code>routes/console.php</code> hoặc các command khác để tránh lỗi không vào được server.</td>
-  </tr>
-  <tr>
-    <td width="40" align="center">🔄</td>
-    <td>Nếu muốn tự động hóa crawl khi chạy server, hãy dùng lệnh <b><code>php artisan serve:all</code></b>.</td>
+    <td width="40" align="center">🤖</td>
+    <td>Chatbot AI đã có sẵn API keys, có thể sử dụng ngay. Nếu muốn dùng key riêng, cập nhật trong file <code>.env</code>.</td>
   </tr>
   <tr>
     <td width="40" align="center">🛠️</td>
@@ -250,7 +294,6 @@ php artisan serve:all
 
 ---
 
->>>>>>> e4f279884bacba7950df8b61418c909abe1c7a44
 ## 🤝 <b>Đóng góp & phát triển</b>
 - Fork, tạo branch mới và gửi pull request nếu muốn đóng góp code.
 - Nếu có vấn đề, vui lòng tạo issue trên GitHub.
