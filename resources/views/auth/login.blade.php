@@ -138,17 +138,7 @@
                 <div class="divider text-sm">HOẶC ĐĂNG NHẬP VỚI</div>
                 
                 <!-- Social Login -->
-                <div class="grid grid-cols-3 gap-4 mb-6">
-                    <a href="#" class="social-btn bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg flex items-center justify-center">
-                        <i class="fab fa-facebook-f mr-2"></i> Facebook
-                    </a>
-                    <a href="#" class="social-btn bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg flex items-center justify-center">
-                        <i class="fab fa-google mr-2"></i> Google
-                    </a>
-                    <a href="#" class="social-btn bg-gray-800 hover:bg-black text-white py-2 px-4 rounded-lg flex items-center justify-center">
-                        <i class="fab fa-github mr-2"></i> GitHub
-                    </a>
-                </div>
+               
                 
                 <!-- Register Link -->
                 <div class="text-center text-gray-600">
