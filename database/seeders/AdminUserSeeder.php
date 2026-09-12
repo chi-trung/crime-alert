@@ -22,13 +22,11 @@ class AdminUserSeeder extends Seeder
             [
                 'name' => env('ADMIN_NAME', 'Administrator'),
                 'password' => env('ADMIN_PASSWORD', 'ChangeMe!123'),
-                'isAdmin' => true,
                 'email_verified_at' => now(),
             ]
         );
 
-        if (! $admin->wasRecentlyCreated) {
-            $admin->forceFill(['isAdmin' => true])->save();
-        }
+        // isAdmin khong fillable (chong mass assignment) -> gan quyen explicit
+        $admin->forceFill(['isAdmin' => true])->save();
     }
 }

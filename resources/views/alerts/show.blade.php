@@ -15,7 +15,7 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
                 @if($alert->image)
                     <div class="alert-image-container" style="max-height: 400px; overflow: hidden;">
-                        <img src="/storage/app/public/{{ $alert->image }}" class="img-fluid w-100" alt="Ảnh cảnh báo" style="object-fit: cover;">
+                        <img src=\"{{ asset('storage/'.$alert->image) }}\" class="img-fluid w-100" alt="Ảnh cảnh báo" style="object-fit: cover;">
                     </div>
                 @endif
                 

@@ -16,13 +16,16 @@ class User extends Authenticatable implements MustVerifyEmail
     /**
      * The attributes that are mass assignable.
      *
+     * NOTE: isAdmin is deliberately NOT fillable — role changes must go
+     * through forceFill()/explicit code paths (seeders, admin tooling),
+     * never through request payloads.
+     *
      * @var list<string>
      */
     protected $fillable = [
         'name',
         'email',
         'password',
-        'isAdmin',
     ];
 
     /**

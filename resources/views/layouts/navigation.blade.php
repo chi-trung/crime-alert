@@ -76,9 +76,6 @@
               <a href="{{ route('experiences.index') }}" class="dropdown-item {{ request()->routeIs('experiences.index') ? 'active' : '' }}">
                 <span>Chia sẻ kinh nghiệm</span>
               </a>
-              <!--<a href="{{ route('community_alerts.index') }}" class="dropdown-item {{ request()->routeIs('community_alerts.index') ? 'active' : '' }}">
-                <span>Cảnh báo cộng đồng</span>
-              </a>-->
               <a href="{{ route('wanted_list.index') }}" class="dropdown-item {{ request()->routeIs('wanted_list.index') ? 'active' : '' }}">
                 <span>Truy nã</span>
               </a>
