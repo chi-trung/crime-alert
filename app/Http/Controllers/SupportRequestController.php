@@ -105,7 +105,7 @@ class SupportRequestController extends Controller
     // Danh sách yêu cầu cho admin
     public function adminIndex()
     {
-        $requests = SupportRequest::latest()->get();
+        $requests = SupportRequest::with('user')->latest()->get();
 
         return view('support.admin_index', compact('requests'));
     }

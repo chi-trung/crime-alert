@@ -221,7 +221,11 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                     
                     <div class="comments-section">
                         @php
-                            $comments = $alert->comments()->whereNull('parent_id')->latest()->get();
+                            // Eager-load everything the thread renders: authors and
+                            // likes for top-level comments and their replies (issue #25).
+                            $comments = $alert->comments()->whereNull('parent_id')->latest()
+                                ->with(['user', 'likes', 'replies.user', 'replies.likes'])
+                                ->get();
                         @endphp
                         @forelse($comments as $comment)
                             @include('comments._item', ['comment' => $comment, 'parentType' => 'alert', 'parentId' => $alert->id])

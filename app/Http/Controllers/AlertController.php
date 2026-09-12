@@ -64,7 +64,7 @@ class AlertController extends Controller
     public function index(Request $request)
     {
         $query = Alert::query();
-        $query->withCount('comments');
+        $query->with('user')->withCount('comments');
 
         // Chỉ hiện cảnh báo đã duyệt
         $query->where('status', 'approved');
@@ -103,7 +103,7 @@ class AlertController extends Controller
 
     public function adminIndex()
     {
-        $alerts = Alert::orderByDesc('created_at')->paginate(15);
+        $alerts = Alert::with('user')->orderByDesc('created_at')->paginate(15);
 
         return view('alerts.admin_index', compact('alerts'));
     }

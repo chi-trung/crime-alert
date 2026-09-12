@@ -16,7 +16,7 @@ class ExperienceController extends Controller
      */
     public function index()
     {
-        $experiences = Experience::where('status', 'approved')->orderByDesc('created_at')->paginate(9);
+        $experiences = Experience::with('user')->where('status', 'approved')->orderByDesc('created_at')->paginate(9);
 
         return view('experiences.index', compact('experiences'));
     }
