@@ -170,6 +170,40 @@ class AlertTest extends TestCase
         $this->assertSame('pending', $alert->fresh()->status);
     }
 
+    public function test_owner_update_keeps_status_untouched_for_admin(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $alert = Alert::create(['user_id' => $admin->id, 'title' => 'Cu', 'description' => 'd', 'status' => 'approved']);
+
+        // Admin edit via the admin route: no moderation re-review required.
+        $this->actingAs($admin)->put("/admin/alerts/{$alert->id}", [
+            'title' => 'Moi',
+            'description' => 'd2',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertSame('approved', $alert->fresh()->status);
+    }
+
+    public function test_owner_edit_resets_approved_alert_to_pending(): void
+    {
+        // Issue #23: rewriting an approved alert must demote it to pending so
+        // the new text passes moderation before it's public again.
+        $owner = User::factory()->create();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'Da duyet', 'description' => 'd', 'status' => 'approved']);
+
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Noi dung moi',
+            'description' => 'd2',
+        ])->assertRedirect(route('dashboard'));
+
+        $alert->refresh();
+        $this->assertSame('pending', $alert->status);
+        $this->assertSame('Noi dung moi', $alert->title);
+
+        // Pending content is no longer listed publicly.
+        $this->actingAs(User::factory()->create())->get('/alerts')->assertDontSee('Noi dung moi');
+    }
+
     public function test_unapproved_alert_is_visible_only_to_owner_and_admin(): void
     {
         $owner = User::factory()->create();

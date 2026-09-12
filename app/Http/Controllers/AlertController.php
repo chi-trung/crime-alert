@@ -146,6 +146,13 @@ class AlertController extends Controller
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
         $data = $request->only(['title', 'description', 'location', 'type']);
+        // Mirrors ExperienceController::update (issue #23): content that passes
+        // moderation must not be silently rewritable by its owner afterwards.
+        // Any edit by a non-admin demotes the alert to pending so a reviewer
+        // sees the new text. Admin edits keep whatever status they had.
+        if (! auth()->user()->isAdmin) {
+            $data['status'] = 'pending';
+        }
         $data['latitude'] = $request->input('latitude');
         $data['longitude'] = $request->input('longitude');
         // Xử lý xóa ảnh nếu có chọn
