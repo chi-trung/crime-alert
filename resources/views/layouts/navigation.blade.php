@@ -859,7 +859,16 @@
                           const a = document.createElement('a');
                           a.href = noti.url ? noti.url : '#';
                           a.className = 'notification-item';
-                          a.innerHTML = `<div class="notification-content">${noti.message}</div><div class="notification-time">${noti.created_at}</div>`;
+                          // textContent, not innerHTML: noti.message interpolates the
+                          // notifier's name and post title, which are user input (issue #18).
+                          const content = document.createElement('div');
+                          content.className = 'notification-content';
+                          content.textContent = noti.message;
+                          const time = document.createElement('div');
+                          time.className = 'notification-time';
+                          time.textContent = noti.created_at;
+                          a.appendChild(content);
+                          a.appendChild(time);
                           list.appendChild(a);
                       });
                   } else {
