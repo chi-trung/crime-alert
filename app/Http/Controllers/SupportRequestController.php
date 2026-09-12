@@ -12,6 +12,17 @@ use Illuminate\Support\Facades\Auth;
 
 class SupportRequestController extends Controller
 {
+    /**
+     * Only the thread owner and administrators may view/participate.
+     */
+    private function authorizeViewer(SupportRequest $supportRequest): void
+    {
+        abort_unless(
+            Auth::check() && (Auth::user()->isAdmin || $supportRequest->user_id === Auth::id()),
+            403
+        );
+    }
+
     // Danh sách yêu cầu của user
     public function index()
     {
@@ -54,6 +65,7 @@ class SupportRequestController extends Controller
     // Xem chi tiết và nhắn tin
     public function show(SupportRequest $supportRequest)
     {
+        $this->authorizeViewer($supportRequest);
         $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
 
         return view('support.show', compact('supportRequest', 'messages'));
@@ -62,6 +74,10 @@ class SupportRequestController extends Controller
     // Gửi tin nhắn mới
     public function sendMessage(Request $request, SupportRequest $supportRequest)
     {
+        $this->authorizeViewer($supportRequest);
+        if ($supportRequest->status !== 'open') {
+            return back()->with('error', 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.');
+        }
         $data = $request->validate([
             'message' => 'required|string',
         ]);
@@ -113,12 +129,14 @@ class SupportRequestController extends Controller
     // API trả về danh sách tin nhắn dạng JSON
     public function messagesAjax(SupportRequest $supportRequest)
     {
+        $this->authorizeViewer($supportRequest);
         $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
         $result = $messages->map(function ($msg) {
             return [
                 'id' => $msg->id,
                 'user' => $msg->user ? $msg->user->name : 'Ẩn danh',
                 'is_me' => $msg->user_id == auth()->id(),
+                'is_admin' => (bool) ($msg->user?->isAdmin ?? false),
                 'content' => $msg->message,
                 'created_at' => $msg->created_at->format('H:i d/m/Y'),
             ];

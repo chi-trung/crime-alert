@@ -287,7 +287,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/support', [SupportRequestController::class, 'store'])->name('support.store');
     Route::get('/support/{supportRequest}', [SupportRequestController::class, 'show'])->name('support.show');
     Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->name('support.sendMessage');
-    Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->middleware('auth');
+    Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->name('support.messages');
 });
 
 // Hỗ trợ trực tuyến - admin
