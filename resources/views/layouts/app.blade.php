@@ -622,7 +622,7 @@
 
                     try {
                         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
-                        const response = await fetch('{{ route('chatbot.openrouter') }}', {
+                        const response = await fetch('{{ route('chatbot.ask') }}', {
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
