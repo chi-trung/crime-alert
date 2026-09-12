@@ -169,4 +169,30 @@ class AlertTest extends TestCase
         $this->actingAs($user)->post("/admin/alerts/{$alert->id}/approve")->assertForbidden();
         $this->assertSame('pending', $alert->fresh()->status);
     }
+
+    public function test_unapproved_alert_is_visible_only_to_owner_and_admin(): void
+    {
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'a', 'description' => 'd', 'status' => 'pending']);
+
+        // /alerts/{alert} sits in the auth group, so a stranger reaching an
+        // unapproved post must get 403 (issue #20), not a public view.
+        $this->actingAs($stranger)->get("/alerts/{$alert->id}")->assertForbidden();
+        $this->actingAs($owner)->get("/alerts/{$alert->id}")->assertOk();
+        $this->actingAs($admin)->get("/alerts/{$alert->id}")->assertOk();
+
+        // Once approved it's readable by any signed-in user.
+        $alert->update(['status' => 'approved']);
+        $this->actingAs($stranger)->get("/alerts/{$alert->id}")->assertOk();
+    }
+
+    public function test_guest_is_redirected_from_alert_detail(): void
+    {
+        $owner = User::factory()->create();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'a', 'description' => 'd', 'status' => 'approved']);
+
+        $this->get("/alerts/{$alert->id}")->assertRedirect('/login');
+    }
 }
