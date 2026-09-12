@@ -1,11 +1,3 @@
-<p align="center">
-  <img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="220" alt="Laravel Logo">
-</p>
-
-<p align="center">
-  <img width="120" src="https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExcWx4Y2d0eWQ4dWQ1dG5tZ3ZzZ2J5eGJ4Y2V6d2VtYzB6bW1xYyZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26tn33aiTi1jkl6H6/giphy.gif">
-</p>
-
 <h1 align="center">🚨 <b>Crime Alert Web</b> 🚨</h1>
 <p align="center">Website cảnh báo tội phạm, truy nã, tin tức pháp luật - xây dựng với <b>Laravel</b></p>
 
@@ -14,6 +6,7 @@
   <img src="https://img.shields.io/github/forks/chi-trung/crime-alert?style=social" alt="Forks">
   <img src="https://img.shields.io/github/issues/chi-trung/crime-alert" alt="Issues">
   <img src="https://img.shields.io/github/license/chi-trung/crime-alert" alt="License">
+  <img src="https://github.com/chi-trung/crime-alert/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI">
 </p>
 
 ---
@@ -28,12 +21,11 @@
 | Tính năng                | Mô tả                                                                 |
 |--------------------------|-----------------------------------------------------------------------|
 | 🚨 Cảnh báo tội phạm     | Gửi, duyệt, tìm kiếm, lọc, xem bản đồ, chỉnh sửa, xóa cảnh báo        |
-| 📝 Báo cáo tội phạm      | Gửi, duyệt, xem, xóa báo cáo tội phạm                                 |
 | 👮‍♂️ Truy nã             | Hiển thị, tìm kiếm danh sách người bị truy nã                         |
 | 💬 Bình luận & Like      | Bình luận, like/unlike bài viết và bình luận                          |
 | 📢 Chia sẻ trải nghiệm   | Gửi, duyệt, xem, xóa bài chia sẻ                                      |
 | 📰 Tin tức                | Crawl, hiển thị tin tức pháp luật                                     |
-| 🤖 Chatbot AI            | Hỗ trợ AI với 4 model (Gemini, OpenAI, DeepSeek, OpenRouter)         |
+| 🤖 Chatbot AI            | Hỗ trợ AI với 4 provider (Gemini, OpenAI, DeepSeek, OpenRouter)      |
 | 💬 Hỗ trợ trực tuyến     | Chat real-time giữa user và admin                                     |
 | 🔔 Thông báo             | Hệ thống notification cho like, comment, hỗ trợ                      |
 | 📊 Dashboard             | Thống kê chi tiết cho admin và user                                   |
@@ -43,78 +35,106 @@
 ---
 
 ## 🛠️ <b>Công nghệ sử dụng</b>
-- <img src="https://img.shields.io/badge/Laravel-FF2D20?logo=laravel&logoColor=white"/> **Laravel** (PHP framework)
-- <img src="https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white"/> **MySQL** (hoặc MariaDB)
-- <img src="https://img.shields.io/badge/Tailwind_CSS-38B2AC?logo=tailwind-css&logoColor=white"/> **Tailwind CSS** (frontend styling)
-- <img src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white"/> **Leaflet.js** (bản đồ)
+- <img src="https://img.shields.io/badge/Laravel-12-FF2D20?logo=laravel&logoColor=white"/> **Laravel 12** (PHP >= 8.2)
+- <img src="https://img.shields.io/badge/MySQL-4479A1?logo=mysql&logoColor=white"/> **MySQL / MariaDB** (hoặc SQLite cho môi trường dev)
+- <img src="https://img.shields.io/badge/Blade-FF2D20?logo=laravel&logoColor=white"/> **Blade** + CSS/JS tĩnh trong `public/css`, `public/js` — **không cần Node.js**
+- <img src="https://img.shields.io/badge/Leaflet-199900?logo=leaflet&logoColor=white"/> **Leaflet.js** (bản đồ, qua CDN)
 - <img src="https://img.shields.io/badge/Guzzle-6DB33F?logo=php&logoColor=white"/> **Guzzle** (HTTP client crawl dữ liệu)
-- <img src="https://img.shields.io/badge/Symfony%20Process-000000?logo=symfony&logoColor=white"/> **Symfony Process** (chạy đa tiến trình)
 - <img src="https://img.shields.io/badge/Symfony%20DomCrawler-000000?logo=symfony&logoColor=white"/> **Symfony DomCrawler** (phân tích HTML)
-- <img src="https://img.shields.io/badge/Spatie%20Permission-000000?logo=laravel&logoColor=white"/> **Spatie Laravel Permission** (phân quyền)
-- <img src="https://img.shields.io/badge/AI%20APIs-000000?logo=openai&logoColor=white"/> **AI APIs** (Gemini, OpenAI, DeepSeek, OpenRouter)
+- <img src="https://img.shields.io/badge/AI%20APIs-000000?logo=openai&logoColor=white"/> **AI APIs** (Gemini, OpenAI, DeepSeek, OpenRouter — cấu hình qua `.env`)
 
 ---
 
 ## ⚙️ <b>Yêu cầu hệ thống</b>
-- PHP >= 8.x
+- PHP >= 8.2 (kèm các extension `pdo_mysql`/`pdo_sqlite`, `mbstring`, `fileinfo`, `curl`, `openssl`)
 - Composer >= 2.x
-- Node.js >= 16.x và npm
+
+Không cần Node.js/npm — toàn bộ CSS/JS là file tĩnh, thư viện (Bootstrap, Leaflet, icons) nạp qua CDN.
 
 ---
 
-## 🚀 <b>Hướng dẫn cài đặt nhanh</b>
+## 🚀 <b>Cài đặt</b>
 
-### 1️⃣ Clone và cài đặt
+### 1️⃣ Clone và cài dependencies
 ```bash
 git clone https://github.com/chi-trung/crime-alert.git
 cd crime-alert
 composer install
-npm install
 ```
 
-### 2️⃣ Cấu hình môi trường
+### 2️⃣ Khởi tạo môi trường
 ```bash
-cp .env.example .env
-php artisan key:generate
+composer setup
 ```
+Lệnh này tự động: copy `.env.example` → `.env` (nếu chưa có), generate `APP_KEY`, tạo symlink `public/storage` (để hiển thị ảnh cảnh báo đã upload), và chạy `migrate`.
 
-### 3️⃣ Database (chọn 1 trong 2 cách)
+### 3️⃣ Database
+Mặc định `.env` dùng **SQLite** (`database/database.sqlite`) — không cần làm gì thêm.
 
-**Cách A: Dùng Docker (khuyên dùng)**
-```bash
-docker-compose up -d
+Dùng **MySQL**: sửa trong `.env`:
+```env
+DB_CONNECTION=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_DATABASE=crime_alert
+DB_USERNAME=root
+DB_PASSWORD=
 ```
+sau đó `php artisan migrate:fresh --seed`.
 
-**Cách B: MySQL có sẵn**
-- Cập nhật thông tin database trong `.env`
-
-### 4️⃣ Migrate và chạy
+### 4️⃣ Seed dữ liệu + tài khoản admin
 ```bash
-php artisan migrate
+php artisan migrate:fresh --seed
+```
+`AdminUserSeeder` tạo tài khoản admin (email/mật khẩu đọc từ `ADMIN_EMAIL` / `ADMIN_PASSWORD` trong `.env`, mặc định `admin@crime-alert.local` / `ChangeMe!123`). **Đổi mật khẩu ngay sau lần đăng nhập đầu.**
+
+### 5️⃣ Chạy
+```bash
+php artisan serve
+```
+Mở http://127.0.0.1:8000. Muốn server + crawl tin tức/truy nã tự động cùng lúc:
+```bash
 php artisan serve:all
 ```
 
-> **Lưu ý:** Lệnh `php artisan serve:all` sẽ vừa chạy server vừa tự động crawl dữ liệu.
+---
+
+## 🔧 <b>Cấu hình Chatbot AI</b>
+
+Key **không** hardcode trong source — cấu hình hoàn toàn qua `.env`:
+
+```env
+CHATBOT_PROVIDER=openrouter   # gemini | openai | deepseek | openrouter
+
+GEMINI_API_KEY=
+***
+DEEPSEEK_API_KEY=
+***
+
+# Tùy chọn: model + header giới thiệu với OpenRouter
+#OPENROUTER_MODEL=
+#OPENROUTER_REFERER=
+```
+
+Provider nào trống key thì chatbot trả lời lịch sự "không khả dụng" thay vì gọi API.
+
+> ⚠️ **Bảo mật:** các key AI cũ từng bị commit vào lịch sử git của repo (đã xóa khỏi code hiện tại). Nếu bạn vận hành repo này, hãy **rotate toàn bộ key cũ** và chỉ dùng key mới đặt trong `.env` (đã được `.gitignore`).
 
 ---
 
-## 🔧 <b>Cấu hình AI APIs (tùy chọn)</b>
-
-Project đã có sẵn API keys cho Chatbot AI. Nếu muốn dùng key riêng, thêm vào `.env`:
-
-```env
-GEMINI_API_KEY=your_gemini_api_key
-OPENAI_API_KEY=your_openai_api_key
-DEEPSEEK_API_KEY=your_deepseek_api_key
-OPENROUTER_API_KEY=your_openrouter_api_key
+## 🕵️‍♂️ <b>Crawl dữ liệu</b>
+```bash
+php artisan crawl:news          # Crawl tin tức pháp luật
+php artisan crawl:wanted-list   # Crawl danh sách truy nã
 ```
 
 ---
 
-## 🕵️‍♂️ <b>Các lệnh crawl dữ liệu</b>
+## 🧪 <b>Kiểm thử</b>
 ```bash
-php artisan crawl:news          # Crawl tin tức pháp luật
-php artisan crawl:wanted-list   # Crawl danh sách truy nã
+composer test        # = php artisan test (PHPUnit, chạy trên SQLite in-memory)
+vendor/bin/pint      # format code style (Laravel Pint)
+vendor/bin/pint --test   # kiểm tra style không sửa file
 ```
 
 ---
@@ -123,60 +143,36 @@ php artisan crawl:wanted-list   # Crawl danh sách truy nã
 
 ```
 crime-alert/
-├── 📁 app/                          # Logic chính của ứng dụng
-│   ├── 📁 Console/Commands/         # Artisan commands
-│   ├── 📁 Http/Controllers/         # Controllers
-│   ├── 📁 Models/                   # Eloquent models
-│   ├── 📁 Notifications/            # Notification classes
-│   └── 📁 Providers/                # Service providers
-├── 📁 resources/views/              # Blade templates
-├── 📁 routes/                       # Route definitions
-├── 📁 database/migrations/          # Database migrations
-├── 📁 config/                       # Configuration files
-├── 📁 public/                       # Public assets
-├── 📁 storage/                      # Storage files
-├── 📁 tests/                        # Test files
-├── composer.json                    # Composer dependencies
-├── package.json                     # NPM dependencies
-├── docker-compose.yml              # Docker configuration
-└── README.md                        # Project documentation
+├── app/
+│   ├── Console/Commands/         # Artisan commands (crawl:news, crawl:wanted-list, serve:all)
+│   ├── Http/Controllers/         # Controllers
+│   ├── Http/Middleware/          # Middleware (admin, ...)
+│   ├── Models/                   # Eloquent models
+│   ├── Notifications/            # Notification classes
+│   └── Services/                 # Logic dùng chung (DashboardStatsService, ...)
+├── resources/views/              # Blade templates
+├── routes/                       # web.php, auth.php, console.php
+├── database/migrations/          # Cấu trúc CSDL
+├── database/seeders/             # Dữ liệu mẫu + admin
+├── public/css|js                 # Asset tĩnh (không có build step)
+├── config/services.php           # Cấu hình provider AI
+├── tests/                        # Feature + Unit tests
+└── composer.json
 ```
-
-### 🔍 **Mô tả các thư mục chính:**
-- **`app/`**: Logic chính của ứng dụng Laravel
-- **`resources/views/`**: Giao diện người dùng (Blade templates)
-- **`routes/`**: Định nghĩa các route của ứng dụng
-- **`database/migrations/`**: Cấu trúc cơ sở dữ liệu
 
 ---
 
 ## ⚠️ <b>Lưu ý quan trọng</b>
-
-<div align="center">
-
-<table>
-  <tr>
-    <td width="40" align="center">🚫</td>
-    <td><b>Không override lệnh <code>php artisan serve</code></b> trong <code>routes/console.php</code> để tránh lỗi server.</td>
-  </tr>
-  <tr>
-    <td width="40" align="center">🔄</td>
-    <td>Dùng lệnh <b><code>php artisan serve:all</code></b> để chạy server + crawl tự động.</td>
-  </tr>
-  <tr>
-    <td width="40" align="center">🤖</td>
-    <td>Chatbot AI đã có sẵn API keys, sẵn sàng sử dụng.</td>
-  </tr>
-  <tr>
-    <td width="40" align="center">🛠️</td>
-    <td>Nếu gặp lỗi, kiểm tra lại cấu hình <code>.env</code> và database.</td>
-  </tr>
-</table>
-
-</div>
+- **Không override lệnh `php artisan serve`** trong `routes/console.php` — dùng `serve:all` để chạy server kèm crawl.
+- Ảnh cảnh báo hiển thị được nhờ symlink `public/storage` — `composer setup` đã tạo sẵn; nếu tự migrate thủ công thì chạy thêm `php artisan storage:link`.
+- Phân quyền dùng cột `isAdmin` trên bảng `users` (không phải Spatie Permission).
 
 ---
 
 ## 🤝 <b>Đóng góp & phát triển</b>
 - Fork, tạo branch mới và gửi pull request nếu muốn đóng góp code.
+- Code chạy qua `composer test` và `vendor/bin/pint --test` trước khi merge (CI kiểm tra trên cả SQLite lẫn MySQL).
 - Nếu có vấn đề, vui lòng tạo issue trên GitHub.
+
+## 📄 License
+[MIT](LICENSE)
