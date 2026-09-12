@@ -2,14 +2,15 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use GuzzleHttp\Client;
-use Symfony\Component\DomCrawler\Crawler;
 use App\Models\WantedPerson;
+use GuzzleHttp\Client;
+use Illuminate\Console\Command;
+use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlWantedList extends Command
 {
     protected $signature = 'crawl:wanted-list';
+
     protected $description = 'Crawl đúng STT 1-50 từ trang chủ truyna.bocongan.gov.vn';
 
     public function handle()
@@ -25,10 +26,14 @@ class CrawlWantedList extends Command
         for ($i = $rows->count() - 1; $i >= 0; $i--) {
             $row = $rows->eq($i);
             $cols = $row->filter('td');
-            if ($cols->count() < 8) continue;
+            if ($cols->count() < 8) {
+                continue;
+            }
             $name = trim($cols->eq(1)->text());
             $birthYear = trim($cols->eq(2)->text());
-            if (is_numeric($name) || $name === '' || $name === 'Họ tên' || !preg_match('/^(19|20)\\d{2}$/', $birthYear)) continue;
+            if (is_numeric($name) || $name === '' || $name === 'Họ tên' || ! preg_match('/^(19|20)\\d{2}$/', $birthYear)) {
+                continue;
+            }
             WantedPerson::updateOrCreate([
                 'name' => $name,
                 'birth_year' => $birthYear,
@@ -43,4 +48,4 @@ class CrawlWantedList extends Command
         }
         $this->info("Đã crawl xong , tổng cộng: $count đối tượng.");
     }
-} 
+}

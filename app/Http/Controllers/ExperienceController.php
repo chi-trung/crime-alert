@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Experience;
+use App\Models\User;
+use App\Notifications\NewPostNotification;
+use App\Notifications\NewPostPendingApprovalNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,6 +17,7 @@ class ExperienceController extends Controller
     public function index()
     {
         $experiences = Experience::where('status', 'approved')->orderByDesc('created_at')->paginate(9);
+
         return view('experiences.index', compact('experiences'));
     }
 
@@ -30,7 +34,7 @@ class ExperienceController extends Controller
      */
     public function store(Request $request)
     {
-        if (!Auth::user()->hasVerifiedEmail()) {
+        if (! Auth::user()->hasVerifiedEmail()) {
             return redirect()->back()->with('error', 'Bạn cần xác thực email để đăng bài chia sẻ.');
         }
         $request->validate([
@@ -49,18 +53,19 @@ class ExperienceController extends Controller
         // Gửi notification
         if (Auth::user() && Auth::user()->isAdmin) {
             // Admin đăng bài: gửi cho tất cả user thường
-            $users = \App\Models\User::where('isAdmin', false)->get();
+            $users = User::where('isAdmin', false)->get();
             foreach ($users as $user) {
-                $user->notify(new \App\Notifications\NewPostNotification($exp, Auth::user(), 'experience'));
+                $user->notify(new NewPostNotification($exp, Auth::user(), 'experience'));
             }
         } else {
             // User thường đăng bài: gửi cho tất cả admin
-            $admins = \App\Models\User::where('isAdmin', true)->get();
+            $admins = User::where('isAdmin', true)->get();
             foreach ($admins as $admin) {
-                $admin->notify(new \App\Notifications\NewPostPendingApprovalNotification($exp, Auth::user(), 'experience'));
+                $admin->notify(new NewPostPendingApprovalNotification($exp, Auth::user(), 'experience'));
             }
         }
         $msg = Auth::user() && Auth::user()->isAdmin ? 'Bài chia sẻ của bạn đã được duyệt!' : 'Bài chia sẻ của bạn đã gửi và chờ duyệt!';
+
         return redirect()->route('experiences.index')->with('success', $msg);
     }
 
@@ -69,9 +74,10 @@ class ExperienceController extends Controller
      */
     public function show(Experience $experience)
     {
-        if ($experience->status !== 'approved' && !(Auth::check() && (Auth::user()->isAdmin || Auth::id() === $experience->user_id))) {
+        if ($experience->status !== 'approved' && ! (Auth::check() && (Auth::user()->isAdmin || Auth::id() === $experience->user_id))) {
             abort(403);
         }
+
         return view('experiences.show', compact('experience'));
     }
 
@@ -80,9 +86,10 @@ class ExperienceController extends Controller
      */
     public function edit(Experience $experience)
     {
-        if (Auth::id() !== $experience->user_id && !Auth::user()->isAdmin) {
+        if (Auth::id() !== $experience->user_id && ! Auth::user()->isAdmin) {
             abort(403);
         }
+
         return view('experiences.edit', compact('experience'));
     }
 
@@ -91,7 +98,7 @@ class ExperienceController extends Controller
      */
     public function update(Request $request, Experience $experience)
     {
-        if (Auth::id() !== $experience->user_id && !Auth::user()->isAdmin) {
+        if (Auth::id() !== $experience->user_id && ! Auth::user()->isAdmin) {
             abort(403);
         }
         $request->validate([
@@ -103,6 +110,7 @@ class ExperienceController extends Controller
         // Khi user sửa, luôn chuyển về trạng thái chờ duyệt lại
         $data['status'] = 'pending';
         $experience->update($data);
+
         return redirect()->route('experiences.show', $experience)->with('success', 'Cập nhật bài chia sẻ thành công!');
     }
 
@@ -111,10 +119,11 @@ class ExperienceController extends Controller
      */
     public function destroy(Experience $experience)
     {
-        if (Auth::id() !== $experience->user_id && !Auth::user()->isAdmin) {
+        if (Auth::id() !== $experience->user_id && ! Auth::user()->isAdmin) {
             abort(403);
         }
         $experience->delete();
+
         return redirect()->route('experiences.index')->with('success', 'Đã xóa bài chia sẻ!');
     }
 
@@ -122,6 +131,7 @@ class ExperienceController extends Controller
     public function adminIndex()
     {
         $experiences = Experience::orderByDesc('created_at')->paginate(15);
+
         return view('experiences.admin_index', compact('experiences'));
     }
 
@@ -130,6 +140,7 @@ class ExperienceController extends Controller
     {
         $experience->status = 'approved';
         $experience->save();
+
         return back()->with('success', 'Đã duyệt bài chia sẻ!');
     }
 
@@ -137,6 +148,7 @@ class ExperienceController extends Controller
     {
         $experience->status = 'rejected';
         $experience->save();
+
         return back()->with('success', 'Đã từ chối bài chia sẻ!');
     }
 }

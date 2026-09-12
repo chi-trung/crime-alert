@@ -10,7 +10,9 @@ class LikePostNotification extends Notification
     use Queueable;
 
     protected $liker;
+
     protected $post;
+
     protected $postType;
 
     public function __construct($liker, $post, $postType)
@@ -28,6 +30,7 @@ class LikePostNotification extends Notification
     public function toArray($notifiable)
     {
         $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'kinh nghiệm';
+
         return [
             'liker_id' => $this->liker->id,
             'liker_name' => $this->liker->name,
@@ -35,7 +38,7 @@ class LikePostNotification extends Notification
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id) : route('experiences.show', $this->post->id),
-            'message' => $this->liker->name . ' đã thả tim bài viết ' . $typeText . ': ' . ($this->post->title ?? $this->post->name),
+            'message' => $this->liker->name.' đã thả tim bài viết '.$typeText.': '.($this->post->title ?? $this->post->name),
         ];
     }
-} 
+}

@@ -2,11 +2,10 @@
 
 namespace App\Console\Commands;
 
-use Illuminate\Console\Command;
-use GuzzleHttp\Client;
-use Symfony\Component\DomCrawler\Crawler;
 use App\Models\News;
-use Carbon\Carbon;
+use GuzzleHttp\Client;
+use Illuminate\Console\Command;
+use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlNews extends Command
 {
@@ -36,11 +35,13 @@ class CrawlNews extends Command
         $count = 0;
         $crawler->filter('.item-news')->each(function ($node) use (&$count) {
             $titleNode = $node->filter('.title-news a');
-            if (!$titleNode->count()) return;
+            if (! $titleNode->count()) {
+                return;
+            }
             $title = trim($titleNode->text());
             $link = $titleNode->attr('href');
             if (strpos($link, 'http') !== 0) {
-                $link = 'https://vnexpress.net' . $link;
+                $link = 'https://vnexpress.net'.$link;
             }
             $desc = $node->filter('.description')->count() ? trim($node->filter('.description')->text()) : null;
             $img = null;

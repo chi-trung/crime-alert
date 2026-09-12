@@ -11,13 +11,14 @@ class AdminMiddleware
     /**
      * Handle an incoming request.
      *
-     * @param  \Closure(\Illuminate\Http\Request): (\Symfony\Component\HttpFoundation\Response)  $next
+     * @param  Closure(Request): (Response)  $next
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (!auth()->check() || !auth()->user()->isAdmin) {
+        if (! auth()->check() || ! auth()->user()->isAdmin) {
             abort(403, 'Bạn không có quyền truy cập trang này.');
         }
+
         return $next($request);
     }
 }

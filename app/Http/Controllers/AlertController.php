@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Alert;
+use App\Models\User;
+use App\Notifications\NewPostNotification;
+use App\Notifications\NewPostPendingApprovalNotification;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class AlertController extends Controller
@@ -15,7 +18,7 @@ class AlertController extends Controller
 
     public function store(Request $request)
     {
-        if (!Auth::user()->hasVerifiedEmail()) {
+        if (! Auth::user()->hasVerifiedEmail()) {
             return redirect()->back()->with('error', 'Bạn cần xác thực email để đăng cảnh báo.');
         }
         $request->validate([
@@ -36,22 +39,22 @@ class AlertController extends Controller
             $file = $request->file('image');
             $filename = $file->hashName();
             $file->move(storage_path('app/public/alerts'), $filename);
-            $data['image'] = 'alerts/' . $filename;
+            $data['image'] = 'alerts/'.$filename;
         }
 
         $alert = Alert::create($data);
         // Gửi notification
         if (Auth::user()->isAdmin) {
             // Admin đăng bài: gửi cho tất cả user thường
-            $users = \App\Models\User::where('isAdmin', false)->get();
+            $users = User::where('isAdmin', false)->get();
             foreach ($users as $user) {
-                $user->notify(new \App\Notifications\NewPostNotification($alert, Auth::user(), 'alert'));
+                $user->notify(new NewPostNotification($alert, Auth::user(), 'alert'));
             }
         } else {
             // User thường đăng bài: gửi cho tất cả admin
-            $admins = \App\Models\User::where('isAdmin', true)->get();
+            $admins = User::where('isAdmin', true)->get();
             foreach ($admins as $admin) {
-                $admin->notify(new \App\Notifications\NewPostPendingApprovalNotification($alert, Auth::user(), 'alert'));
+                $admin->notify(new NewPostPendingApprovalNotification($alert, Auth::user(), 'alert'));
             }
         }
 
@@ -76,11 +79,11 @@ class AlertController extends Controller
         }
         // Lọc theo vị trí
         if ($request->filled('location')) {
-            $query->where('location', 'like', '%' . $request->location . '%');
+            $query->where('location', 'like', '%'.$request->location.'%');
         }
         // Tìm kiếm theo tiêu đề
         if ($request->filled('q')) {
-            $query->where('title', 'like', '%' . $request->q . '%');
+            $query->where('title', 'like', '%'.$request->q.'%');
         }
         // Lọc theo bán kính (radius)
         if ($request->filled('radius') && $request->filled('lat') && $request->filled('lng')) {
@@ -101,6 +104,7 @@ class AlertController extends Controller
     public function adminIndex()
     {
         $alerts = Alert::orderByDesc('created_at')->paginate(15);
+
         return view('alerts.admin_index', compact('alerts'));
     }
 
@@ -108,6 +112,7 @@ class AlertController extends Controller
     {
         $alert->status = 'approved';
         $alert->save();
+
         return back()->with('success', 'Đã duyệt cảnh báo thành công!');
     }
 
@@ -115,21 +120,23 @@ class AlertController extends Controller
     {
         $alert->status = 'rejected';
         $alert->save();
+
         return back()->with('success', 'Đã từ chối cảnh báo!');
     }
 
     public function edit(Alert $alert)
     {
         // Cho phép admin hoặc chủ bài được sửa
-        if (!auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
+        if (! auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }
+
         return view('alerts.edit', compact('alert'));
     }
 
     public function update(Request $request, Alert $alert)
     {
-        if (!auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
+        if (! auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }
         $request->validate([
@@ -145,7 +152,7 @@ class AlertController extends Controller
         if ($request->has('remove_image') && $alert->image) {
             \Storage::disk('public')->delete($alert->image);
             $data['image'] = null;
-        } elseif (!$request->hasFile('image')) {
+        } elseif (! $request->hasFile('image')) {
             // Nếu không upload ảnh mới và không xóa ảnh, giữ nguyên ảnh cũ hoặc old_image nếu có
             $data['image'] = $request->input('old_image', $alert->image);
         }
@@ -157,19 +164,21 @@ class AlertController extends Controller
             $file = $request->file('image');
             $filename = $file->hashName();
             $file->move(storage_path('app/public/alerts'), $filename);
-            $data['image'] = 'alerts/' . $filename;
+            $data['image'] = 'alerts/'.$filename;
         }
         $alert->update($data);
+
         // Sau khi cập nhật, redirect về dashboard
         return redirect()->route('dashboard')->with('success', 'Cập nhật cảnh báo thành công!');
     }
 
     public function destroy(Alert $alert)
     {
-        if (!auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
+        if (! auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }
         $alert->delete();
+
         // Sau khi xoá, redirect về dashboard
         return redirect()->route('dashboard')->with('success', 'Đã xoá cảnh báo!');
     }
@@ -181,18 +190,11 @@ class AlertController extends Controller
 
     public function mapView()
     {
-        // Debug: Ghi log để kiểm tra ai gọi vào đây
-        \Log::info('Truy cập mapView', [
-            'user_id' => auth()->id(),
-            'is_guest' => auth()->guest(),
-            'url' => request()->fullUrl(),
-            'session' => session()->all(),
-        ]);
-        
         $alerts = Alert::where('status', 'approved')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->get();
+
         return view('alerts.map', compact('alerts'));
     }
 }

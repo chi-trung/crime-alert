@@ -20,4 +20,3 @@ Artisan::command('inspire', function () {
 //         '--port' => $_SERVER['argv'][3] ?? null,
 //     ]);
 // });
-

@@ -4,16 +4,17 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
 
 class LikeCommentNotification extends Notification
 {
     use Queueable;
 
     protected $liker;
+
     protected $comment;
+
     protected $post;
+
     protected $postType;
 
     public function __construct($liker, $comment, $post, $postType)
@@ -32,6 +33,7 @@ class LikeCommentNotification extends Notification
     public function toArray($notifiable)
     {
         $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'kinh nghiệm';
+
         return [
             'liker_id' => $this->liker->id,
             'liker_name' => $this->liker->name,
@@ -41,7 +43,7 @@ class LikeCommentNotification extends Notification
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id).'#comment-'.$this->comment->id : route('experiences.show', $this->post->id).'#comment-'.$this->comment->id,
-            'message' => $this->liker->name . ' đã thả tim bình luận của bạn trong ' . $typeText . ': ' . ($this->post->title ?? $this->post->name),
+            'message' => $this->liker->name.' đã thả tim bình luận của bạn trong '.$typeText.': '.($this->post->title ?? $this->post->name),
         ];
     }
-} 
+}

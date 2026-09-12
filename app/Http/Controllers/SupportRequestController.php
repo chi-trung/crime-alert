@@ -2,26 +2,33 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\SupportRequest;
 use App\Models\SupportMessage;
+use App\Models\SupportRequest;
+use App\Models\User;
+use App\Notifications\NewSupportMessage;
+use App\Notifications\NewSupportRequest;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class SupportRequestController extends Controller
 {
     // Danh sách yêu cầu của user
-    public function index() {
+    public function index()
+    {
         $requests = SupportRequest::where('user_id', Auth::id())->latest()->get();
+
         return view('support.index', compact('requests'));
     }
 
     // Form gửi yêu cầu mới
-    public function create() {
+    public function create()
+    {
         return view('support.create');
     }
 
     // Lưu yêu cầu mới
-    public function store(Request $request) {
+    public function store(Request $request)
+    {
         $data = $request->validate([
             'subject' => 'required|string|max:255',
             'message' => 'required|string',
@@ -36,21 +43,25 @@ class SupportRequestController extends Controller
             'message' => $data['message'],
         ]);
         // Gửi notification cho admin
-        $admins = \App\Models\User::where('isAdmin', true)->get();
+        $admins = User::where('isAdmin', true)->get();
         foreach ($admins as $admin) {
-            $admin->notify(new \App\Notifications\NewSupportRequest($supportRequest, Auth::user()));
+            $admin->notify(new NewSupportRequest($supportRequest, Auth::user()));
         }
+
         return redirect()->route('support.show', $supportRequest)->with('success', 'Đã gửi yêu cầu trợ giúp!');
     }
 
     // Xem chi tiết và nhắn tin
-    public function show(SupportRequest $supportRequest) {
+    public function show(SupportRequest $supportRequest)
+    {
         $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
+
         return view('support.show', compact('supportRequest', 'messages'));
     }
 
     // Gửi tin nhắn mới
-    public function sendMessage(Request $request, SupportRequest $supportRequest) {
+    public function sendMessage(Request $request, SupportRequest $supportRequest)
+    {
         $data = $request->validate([
             'message' => 'required|string',
         ]);
@@ -63,26 +74,31 @@ class SupportRequestController extends Controller
         $sender = Auth::user();
         if ($sender->isAdmin) {
             // Admin gửi, notify cho user
-            $supportRequest->user?->notify(new \App\Notifications\NewSupportMessage($supportRequest, $msg, $sender));
+            $supportRequest->user?->notify(new NewSupportMessage($supportRequest, $msg, $sender));
         } else {
             // User gửi, notify cho admin (nếu có admin nào, hoặc notify cho tất cả admin)
-            $admins = \App\Models\User::where('isAdmin', true)->get();
+            $admins = User::where('isAdmin', true)->get();
             foreach ($admins as $admin) {
-                $admin->notify(new \App\Notifications\NewSupportMessage($supportRequest, $msg, $sender));
+                $admin->notify(new NewSupportMessage($supportRequest, $msg, $sender));
             }
         }
+
         return back();
     }
 
     // Danh sách yêu cầu cho admin
-    public function adminIndex() {
+    public function adminIndex()
+    {
         $requests = SupportRequest::latest()->get();
+
         return view('support.admin_index', compact('requests'));
     }
 
     // Đóng yêu cầu (admin)
-    public function close(SupportRequest $supportRequest) {
+    public function close(SupportRequest $supportRequest)
+    {
         $supportRequest->update(['status' => 'closed']);
+
         return back()->with('success', 'Đã đóng yêu cầu!');
     }
 
@@ -90,13 +106,15 @@ class SupportRequestController extends Controller
     public function destroy(SupportRequest $supportRequest)
     {
         $supportRequest->delete();
+
         return back()->with('success', 'Đã xóa yêu cầu hỗ trợ!');
     }
 
     // API trả về danh sách tin nhắn dạng JSON
-    public function messagesAjax(SupportRequest $supportRequest) {
+    public function messagesAjax(SupportRequest $supportRequest)
+    {
         $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
-        $result = $messages->map(function($msg) {
+        $result = $messages->map(function ($msg) {
             return [
                 'id' => $msg->id,
                 'user' => $msg->user ? $msg->user->name : 'Ẩn danh',
@@ -105,6 +123,7 @@ class SupportRequestController extends Controller
                 'created_at' => $msg->created_at->format('H:i d/m/Y'),
             ];
         });
+
         return response()->json(['messages' => $result]);
     }
 }

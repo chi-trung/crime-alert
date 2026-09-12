@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,8 +11,11 @@ class NewReplyOnComment extends Notification
     use Queueable;
 
     protected $reply;
+
     protected $parentComment;
+
     protected $post;
+
     protected $postType;
 
     /**
@@ -56,6 +58,7 @@ class NewReplyOnComment extends Notification
     public function toArray(object $notifiable): array
     {
         $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'kinh nghiệm';
+
         return [
             'reply_id' => $this->reply->id,
             'reply_content' => $this->reply->content,
@@ -65,7 +68,7 @@ class NewReplyOnComment extends Notification
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id).'#comment-'.$this->reply->id : route('experiences.show', $this->post->id).'#comment-'.$this->reply->id,
-            'message' => $this->reply->user->name . ' đã trả lời bình luận của bạn trong ' . $typeText . ': ' . ($this->post->title ?? $this->post->name),
+            'message' => $this->reply->user->name.' đã trả lời bình luận của bạn trong '.$typeText.': '.($this->post->title ?? $this->post->name),
         ];
     }
 }

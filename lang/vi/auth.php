@@ -11,4 +11,4 @@ return [
         'resend' => 'Gửi lại email xác thực',
         'sent' => 'Một liên kết xác thực mới đã được gửi đến địa chỉ email của bạn.',
     ],
-]; 
+];

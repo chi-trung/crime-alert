@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -6,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class WantedPerson extends Model
 {
     protected $table = 'wanted_people';
+
     protected $fillable = [
         'name',
         'birth_year',
@@ -15,4 +17,4 @@ class WantedPerson extends Model
         'decision',
         'agency',
     ];
-} 
+}

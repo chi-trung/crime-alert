@@ -139,4 +139,4 @@ return [
     'uuid' => 'Trường :attribute phải là một UUID hợp lệ.',
 
     'attributes' => [],
-]; 
+];

@@ -10,7 +10,9 @@ class NewSupportMessage extends Notification
     use Queueable;
 
     protected $supportRequest;
+
     protected $message;
+
     protected $sender;
 
     public function __construct($supportRequest, $message, $sender)
@@ -36,4 +38,4 @@ class NewSupportMessage extends Notification
             'type' => 'support',
         ];
     }
-} 
+}

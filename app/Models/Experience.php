@@ -7,21 +7,21 @@ use Illuminate\Database\Eloquent\Model;
 class Experience extends Model
 {
     protected $fillable = [
-        'user_id', 'name', 'title', 'content', 'avatar', 'status'
+        'user_id', 'name', 'title', 'content', 'avatar', 'status',
     ];
 
     public function user()
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function comments()
     {
-        return $this->hasMany(\App\Models\Comment::class);
+        return $this->hasMany(Comment::class);
     }
 
     public function likes()
     {
-        return $this->morphMany(\App\Models\Like::class, 'likeable');
+        return $this->morphMany(Like::class, 'likeable');
     }
 }
