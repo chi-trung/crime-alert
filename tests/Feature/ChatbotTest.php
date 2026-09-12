@@ -126,4 +126,26 @@ class ChatbotTest extends TestCase
         Http::assertSent(fn ($request) => str_contains($request->url(), 'generativelanguage.googleapis.com')
             && str_contains($request->url(), 'key=gm-test-key'));
     }
+
+    public function test_chatbot_is_throttled_at_twenty_requests_per_minute(): void
+    {
+        $this->configuredOpenRouter();
+
+        Http::fake([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => 'Ok']]],
+            ], 200),
+        ]);
+
+        $user = User::factory()->create();
+        $this->actingAs($user);
+
+        // Route middleware is throttle:20,1 — the 21st call within the window
+        // must be rate-limited rather than forwarded upstream.
+        for ($i = 1; $i <= 20; $i++) {
+            $this->postJson('/chatbot/ask', ['question' => 'Hello'])->assertOk();
+        }
+
+        $this->postJson('/chatbot/ask', ['question' => 'Hello'])->assertStatus(429);
+    }
 }
