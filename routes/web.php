@@ -297,10 +297,6 @@ Route::middleware(['auth', 'admin'])->group(function () {
     Route::delete('/admin/support/{supportRequest}', [SupportRequestController::class, 'destroy'])->name('admin.support.destroy');
 });
 
-Route::get('/test-map', function () {
-    return 'Test map route OK';
-});
-
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
 Route::view('/fraud-alerts', 'fraud_alerts.index')->name('fraud_alerts.index');
 Route::get('/experiences', [ExperienceController::class, 'index'])->name('experiences.index');
@@ -313,7 +309,6 @@ Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::post('/admin/experiences/{experience}/reject', [ExperienceController::class, 'reject'])->name('admin.experiences.reject');
     Route::delete('/admin/experiences/{experience}', [ExperienceController::class, 'destroy'])->name('admin.experiences.destroy');
 });
-Route::view('/community-alerts', 'community_alerts.index')->name('community_alerts.index');
 Route::get('/wanted-list', [WantedListController::class, 'index'])->name('wanted_list.index');
 Route::get('/my-history', [ProfileController::class, 'myHistory'])->middleware(['auth'])->name('my-history');
 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index')->middleware('auth');
