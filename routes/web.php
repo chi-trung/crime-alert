@@ -319,12 +319,9 @@ Route::get('/my-history', [ProfileController::class, 'myHistory'])->middleware([
 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index')->middleware('auth');
 Route::get('/notifications/read/{id}', [NotificationController::class, 'read'])->name('notifications.read')->middleware('auth');
 Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.readAll')->middleware('auth');
-Route::post('/chatbot/gemini', [ChatbotController::class, 'askGemini'])->name('chatbot.gemini');
-Route::post('/chatbot/openai', [ChatbotController::class, 'askOpenAI'])->name('chatbot.openai');
-Route::post('/chatbot/deepseek', [ChatbotController::class, 'askDeepSeek'])->name('chatbot.deepseek');
-Route::post('/chatbot/openrouter', [ChatbotController::class, 'askOpenRouter'])
-    ->middleware('allow.cors')
-    ->name('chatbot.openrouter');
+Route::post('/chatbot/ask', [ChatbotController::class, 'ask'])
+    ->middleware(['auth', 'throttle:20,1'])
+    ->name('chatbot.ask');
 Route::get('/notifications/unread', [NotificationController::class, 'unreadAjax'])->name('notifications.unread')->middleware('auth');
 
 require __DIR__.'/auth.php';

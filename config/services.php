@@ -35,8 +35,32 @@ return [
         ],
     ],
 
-    'openrouter' => [
-        'key' => env('OPENROUTER_API_KEY'),
+    'ai' => [
+        // The single provider the chatbot actually calls: gemini | openai | deepseek | openrouter
+        'provider' => env('CHATBOT_PROVIDER', 'openrouter'),
+
+        'providers' => [
+            'gemini' => [
+                'key' => env('GEMINI_API_KEY'),
+                'endpoint' => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+            ],
+            'openai' => [
+                'key' => env('OPENAI_API_KEY'),
+                'endpoint' => 'https://api.openai.com/v1/chat/completions',
+                'model' => env('OPENAI_MODEL', 'gpt-3.5-turbo'),
+            ],
+            'deepseek' => [
+                'key' => env('DEEPSEEK_API_KEY'),
+                'endpoint' => 'https://api.deepseek.com/v1/chat/completions',
+                'model' => env('DEEPSEEK_MODEL', 'deepseek-chat'),
+            ],
+            'openrouter' => [
+                'key' => env('OPENROUTER_API_KEY'),
+                'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
+                'model' => env('OPENROUTER_MODEL', 'agentica-org/deepcoder-14b-preview:free'),
+                'referer' => env('OPENROUTER_REFERER'),
+            ],
+        ],
     ],
 
 ];
