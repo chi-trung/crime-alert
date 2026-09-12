@@ -185,6 +185,13 @@ class AlertController extends Controller
 
     public function show(Alert $alert)
     {
+        // Same visibility rule as experiences (issue #20): unapproved alerts
+        // are readable only by their owner or an admin, not the public.
+        if ($alert->status !== 'approved'
+            && ! (Auth::check() && (Auth::user()->isAdmin || Auth::id() === $alert->user_id))) {
+            abort(403);
+        }
+
         return view('alerts.show', compact('alert'));
     }
 
