@@ -8,11 +8,13 @@ class SupportMessage extends Model
 {
     protected $fillable = ['support_request_id', 'user_id', 'message', 'is_read'];
 
-    public function supportRequest() {
+    public function supportRequest()
+    {
         return $this->belongsTo(SupportRequest::class);
     }
 
-    public function user() {
+    public function user()
+    {
         return $this->belongsTo(User::class);
     }
 }

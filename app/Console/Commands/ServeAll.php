@@ -8,6 +8,7 @@ use Symfony\Component\Process\Process;
 class ServeAll extends Command
 {
     protected $signature = 'serve:all';
+
     protected $description = 'Serve Laravel and crawl news & wanted list at the same time';
 
     public function handle()
@@ -24,4 +25,4 @@ class ServeAll extends Command
         // Chạy server ở foreground, output sẽ hiển thị trực tiếp
         passthru('php artisan serve');
     }
-} 
+}

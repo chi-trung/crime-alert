@@ -27,11 +27,11 @@ class Alert extends Model
 
     public function comments()
     {
-        return $this->hasMany(\App\Models\Comment::class);
+        return $this->hasMany(Comment::class);
     }
 
     public function likes()
     {
-        return $this->morphMany(\App\Models\Like::class, 'likeable');
+        return $this->morphMany(Like::class, 'likeable');
     }
 }

@@ -1,16 +1,22 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AlertController;
-use App\Http\Controllers\CommentController;
-use App\Http\Controllers\WantedListController;
-use App\Http\Controllers\NewsController;
-use App\Http\Controllers\ExperienceController;
-use App\Http\Controllers\NotificationController;
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\ChatbotController;
+use App\Http\Controllers\CommentController;
+use App\Http\Controllers\ExperienceController;
 use App\Http\Controllers\LikeController;
+use App\Http\Controllers\NewsController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\SupportRequestController;
+use App\Http\Controllers\WantedListController;
+use App\Models\Alert;
+use App\Models\Experience;
+use App\Models\News;
+use App\Models\SupportRequest;
+use App\Models\User;
+use App\Models\WantedPerson;
+use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     return view('welcome');
@@ -19,8 +25,8 @@ Route::get('/', function () {
 Route::get('/dashboard', function () {
     $user = auth()->user();
     // Thống kê phân loại cảnh báo cho tất cả user (chỉ lấy cảnh báo đã duyệt)
-    $alertsForStats = \App\Models\Alert::where('status', 'approved')->get();
-    $alertTypes = ["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực"];
+    $alertsForStats = Alert::where('status', 'approved')->get();
+    $alertTypes = ['Cướp giật', 'Trộm cắp', 'Lừa đảo', 'Bạo lực'];
     $typeCountsAdmin = array_fill_keys($alertTypes, 0);
     $typeCountsAdmin['Khác'] = 0;
     foreach ($alertsForStats as $alert) {
@@ -46,18 +52,18 @@ Route::get('/dashboard', function () {
         }
     }
     if ($user->isAdmin) {
-        $totalAlerts = \App\Models\Alert::count();
-        $pendingAlerts = \App\Models\Alert::where('status', 'pending')->count();
-        $approvedAlerts = \App\Models\Alert::where('status', 'approved')->count();
-        $rejectedAlerts = \App\Models\Alert::where('status', 'rejected')->count();
-        $totalUsers = \App\Models\User::count();
-        $latestAlerts = \App\Models\Alert::orderByDesc('created_at')->take(5)->get();
-        $latestPending = \App\Models\Alert::where('status', 'pending')->orderByDesc('created_at')->take(5)->get();
-        $latestAlert = \App\Models\Alert::orderByDesc('created_at')->first();
-        $pendingExperiences = \App\Models\Experience::where('status', 'pending')->orderByDesc('created_at')->get();
-        $latestPendingExperience = \App\Models\Experience::where('status', 'pending')->orderByDesc('created_at')->first();
-        $latestExperience = \App\Models\Experience::orderByDesc('created_at')->first();
-        $latestSupportRequest = \App\Models\SupportRequest::with('user')->latest()->first();
+        $totalAlerts = Alert::count();
+        $pendingAlerts = Alert::where('status', 'pending')->count();
+        $approvedAlerts = Alert::where('status', 'approved')->count();
+        $rejectedAlerts = Alert::where('status', 'rejected')->count();
+        $totalUsers = User::count();
+        $latestAlerts = Alert::orderByDesc('created_at')->take(5)->get();
+        $latestPending = Alert::where('status', 'pending')->orderByDesc('created_at')->take(5)->get();
+        $latestAlert = Alert::orderByDesc('created_at')->first();
+        $pendingExperiences = Experience::where('status', 'pending')->orderByDesc('created_at')->get();
+        $latestPendingExperience = Experience::where('status', 'pending')->orderByDesc('created_at')->first();
+        $latestExperience = Experience::orderByDesc('created_at')->first();
+        $latestSupportRequest = SupportRequest::with('user')->latest()->first();
 
         // Thống kê cảnh báo theo tháng (số liệu thật)
         $currentYear = now()->year;
@@ -66,24 +72,27 @@ Route::get('/dashboard', function () {
         $lastMonthYear = $currentMonth == 1 ? $currentYear - 1 : $currentYear;
 
         // Tổng cảnh báo tháng này & tháng trước
-        $totalAlertsThisMonth = \App\Models\Alert::whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $totalAlertsLastMonth = \App\Models\Alert::whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
+        $totalAlertsThisMonth = Alert::whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
+        $totalAlertsLastMonth = Alert::whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
         // Chờ duyệt
-        $pendingThisMonth = \App\Models\Alert::where('status', 'pending')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $pendingLastMonth = \App\Models\Alert::where('status', 'pending')->whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
+        $pendingThisMonth = Alert::where('status', 'pending')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
+        $pendingLastMonth = Alert::where('status', 'pending')->whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
         // Đã duyệt
-        $approvedThisMonth = \App\Models\Alert::where('status', 'approved')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $approvedLastMonth = \App\Models\Alert::where('status', 'approved')->whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
+        $approvedThisMonth = Alert::where('status', 'approved')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
+        $approvedLastMonth = Alert::where('status', 'approved')->whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
         // Từ chối
-        $rejectedThisMonth = \App\Models\Alert::where('status', 'rejected')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $rejectedLastMonth = \App\Models\Alert::where('status', 'rejected')->whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
+        $rejectedThisMonth = Alert::where('status', 'rejected')->whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
+        $rejectedLastMonth = Alert::where('status', 'rejected')->whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
         // Tổng user
-        $totalUsersThisMonth = \App\Models\User::whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
-        $totalUsersLastMonth = \App\Models\User::whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
+        $totalUsersThisMonth = User::whereYear('created_at', $currentYear)->whereMonth('created_at', $currentMonth)->count();
+        $totalUsersLastMonth = User::whereYear('created_at', $lastMonthYear)->whereMonth('created_at', $lastMonth)->count();
 
         // Hàm tính phần trăm thay đổi
-        $percentChange = function($current, $last) {
-            if ($last == 0) return $current > 0 ? 100 : 0;
+        $percentChange = function ($current, $last) {
+            if ($last == 0) {
+                return $current > 0 ? 100 : 0;
+            }
+
             return round((($current - $last) / $last) * 100);
         };
         $totalAlertsPercent = $percentChange($totalAlertsThisMonth, $totalAlertsLastMonth);
@@ -93,12 +102,12 @@ Route::get('/dashboard', function () {
         $totalUsersPercent = $percentChange($totalUsersThisMonth, $totalUsersLastMonth);
 
         // Thống kê cảnh báo theo tháng (số liệu thật)
-        $alertsCreated = \App\Models\Alert::selectRaw('MONTH(created_at) as month, COUNT(*) as count')
+        $alertsCreated = Alert::selectRaw('MONTH(created_at) as month, COUNT(*) as count')
             ->whereYear('created_at', $currentYear)
             ->groupBy('month')
             ->pluck('count', 'month')
             ->toArray();
-        $alertsApproved = \App\Models\Alert::selectRaw('MONTH(created_at) as month, COUNT(*) as count')
+        $alertsApproved = Alert::selectRaw('MONTH(created_at) as month, COUNT(*) as count')
             ->where('status', 'approved')
             ->whereYear('created_at', $currentYear)
             ->groupBy('month')
@@ -111,15 +120,15 @@ Route::get('/dashboard', function () {
             $approvedData[] = $alertsApproved[$i] ?? 0;
         }
 
-        $latestNews = \App\Models\News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
-        $hotWanted = \App\Models\WantedPerson::orderByDesc('id')->take(3)->get();
-        $topExperiences = \App\Models\Experience::where('status', 'approved')
+        $latestNews = News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
+        $hotWanted = WantedPerson::orderByDesc('id')->take(3)->get();
+        $topExperiences = Experience::where('status', 'approved')
             ->withCount('comments')
             ->orderByDesc('comments_count')
             ->orderByDesc('created_at')
             ->take(3)
             ->get();
-        $topAlerts = \App\Models\Alert::where('status', 'approved')
+        $topAlerts = Alert::where('status', 'approved')
             ->withCount('comments')
             ->orderByDesc('comments_count')
             ->orderByDesc('created_at')
@@ -159,14 +168,14 @@ Route::get('/dashboard', function () {
         $currentYear = now()->year;
         $currentMonth = now()->month;
         // Lấy cảnh báo của user/tháng này (CHỈ ĐÃ DUYỆT)
-        $myAlertsThisMonth = \App\Models\Alert::where('user_id', $user->id)
+        $myAlertsThisMonth = Alert::where('user_id', $user->id)
             ->where('status', 'approved')
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
             ->orderByDesc('created_at')
             ->get();
         // Lấy kinh nghiệm của user/tháng này
-        $myExperiencesThisMonth = \App\Models\Experience::where('user_id', $user->id)
+        $myExperiencesThisMonth = Experience::where('user_id', $user->id)
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
             ->orderByDesc('created_at')
@@ -176,7 +185,7 @@ Route::get('/dashboard', function () {
         // Đã duyệt/tháng này
         $totalApprovedPosts = $myAlertsThisMonth->where('status', 'approved')->count() + $myExperiencesThisMonth->where('status', 'approved')->count();
         // Chuẩn hóa type/tháng này
-        $alertTypes = ["Cướp giật", "Trộm cắp", "Lừa đảo", "Bạo lực"];
+        $alertTypes = ['Cướp giật', 'Trộm cắp', 'Lừa đảo', 'Bạo lực'];
         $typeCounts = array_fill_keys($alertTypes, 0);
         $typeCounts['Khác'] = 0;
         foreach ($myAlertsThisMonth as $alert) {
@@ -202,18 +211,18 @@ Route::get('/dashboard', function () {
             }
         }
         $monthLabel = now()->format('m/Y');
-        $myExperience = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
-        $myAlerts = \App\Models\Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
-        $latestSupportRequest = \App\Models\SupportRequest::where('user_id', $user->id)->latest()->first();
-        $latestNews = \App\Models\News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
-        $hotWanted = \App\Models\WantedPerson::orderByDesc('id')->take(3)->get();
-        $topExperiences = \App\Models\Experience::where('status', 'approved')
+        $myExperience = Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
+        $myAlerts = Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        $latestSupportRequest = SupportRequest::where('user_id', $user->id)->latest()->first();
+        $latestNews = News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get();
+        $hotWanted = WantedPerson::orderByDesc('id')->take(3)->get();
+        $topExperiences = Experience::where('status', 'approved')
             ->withCount('comments')
             ->orderByDesc('comments_count')
             ->orderByDesc('created_at')
             ->take(3)
             ->get();
-        $topAlerts = \App\Models\Alert::where('status', 'approved')
+        $topAlerts = Alert::where('status', 'approved')
             ->withCount('comments')
             ->orderByDesc('comments_count')
             ->orderByDesc('created_at')
@@ -221,6 +230,7 @@ Route::get('/dashboard', function () {
             ->get();
         // Cảnh báo mới nhất (toàn bộ của user)
         $myLatest = $myAlerts->first();
+
         return view('dashboard', [
             'myTotal' => $myTotal,
             'myApproved' => $myAlertsThisMonth->where('status', 'approved')->count(),
@@ -266,9 +276,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::get('/comments/{comment}/edit', [CommentController::class, 'edit'])->name('comments.edit');
-    Route::get('/experiences/{experience}/edit', [\App\Http\Controllers\ExperienceController::class, 'edit'])->name('experiences.edit');
-    Route::put('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'update'])->name('experiences.update');
-    Route::delete('/experiences/{experience}', [\App\Http\Controllers\ExperienceController::class, 'destroy'])->name('experiences.destroy');
+    Route::get('/experiences/{experience}/edit', [ExperienceController::class, 'edit'])->name('experiences.edit');
+    Route::put('/experiences/{experience}', [ExperienceController::class, 'update'])->name('experiences.update');
+    Route::delete('/experiences/{experience}', [ExperienceController::class, 'destroy'])->name('experiences.destroy');
     Route::post('/like', [LikeController::class, 'store'])->name('like.store');
     Route::post('/like/unlike', [LikeController::class, 'destroy'])->name('like.destroy');
     // Hỗ trợ trực tuyến - user
@@ -281,13 +291,13 @@ Route::middleware('auth')->group(function () {
 });
 
 // Hỗ trợ trực tuyến - admin
-Route::middleware(['auth', 'admin'])->group(function() {
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::get('/admin/support', [SupportRequestController::class, 'adminIndex'])->name('admin.support.index');
     Route::post('/admin/support/{supportRequest}/close', [SupportRequestController::class, 'close'])->name('admin.support.close');
     Route::delete('/admin/support/{supportRequest}', [SupportRequestController::class, 'destroy'])->name('admin.support.destroy');
 });
 
-Route::get('/test-map', function() {
+Route::get('/test-map', function () {
     return 'Test map route OK';
 });
 
@@ -297,7 +307,7 @@ Route::get('/experiences', [ExperienceController::class, 'index'])->name('experi
 Route::get('/experiences/create', [ExperienceController::class, 'create'])->middleware('auth')->name('experiences.create');
 Route::post('/experiences', [ExperienceController::class, 'store'])->middleware('auth')->name('experiences.store');
 Route::get('/experiences/{experience}', [ExperienceController::class, 'show'])->name('experiences.show');
-Route::middleware(['auth', 'can:admin'])->group(function() {
+Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::get('/admin/experiences', [ExperienceController::class, 'adminIndex'])->name('admin.experiences');
     Route::post('/admin/experiences/{experience}/approve', [ExperienceController::class, 'approve'])->name('admin.experiences.approve');
     Route::post('/admin/experiences/{experience}/reject', [ExperienceController::class, 'reject'])->name('admin.experiences.reject');
@@ -305,14 +315,14 @@ Route::middleware(['auth', 'can:admin'])->group(function() {
 });
 Route::view('/community-alerts', 'community_alerts.index')->name('community_alerts.index');
 Route::get('/wanted-list', [WantedListController::class, 'index'])->name('wanted_list.index');
-Route::get('/my-history', [App\Http\Controllers\ProfileController::class, 'myHistory'])->middleware(['auth'])->name('my-history');
+Route::get('/my-history', [ProfileController::class, 'myHistory'])->middleware(['auth'])->name('my-history');
 Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index')->middleware('auth');
 Route::get('/notifications/read/{id}', [NotificationController::class, 'read'])->name('notifications.read')->middleware('auth');
 Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.readAll')->middleware('auth');
 Route::post('/chatbot/gemini', [ChatbotController::class, 'askGemini'])->name('chatbot.gemini');
-Route::post('/chatbot/openai', [App\Http\Controllers\ChatbotController::class, 'askOpenAI'])->name('chatbot.openai');
-Route::post('/chatbot/deepseek', [App\Http\Controllers\ChatbotController::class, 'askDeepSeek'])->name('chatbot.deepseek');
-Route::post('/chatbot/openrouter', [App\Http\Controllers\ChatbotController::class, 'askOpenRouter'])
+Route::post('/chatbot/openai', [ChatbotController::class, 'askOpenAI'])->name('chatbot.openai');
+Route::post('/chatbot/deepseek', [ChatbotController::class, 'askDeepSeek'])->name('chatbot.deepseek');
+Route::post('/chatbot/openrouter', [ChatbotController::class, 'askOpenRouter'])
     ->middleware('allow.cors')
     ->name('chatbot.openrouter');
 Route::get('/notifications/unread', [NotificationController::class, 'unreadAjax'])->name('notifications.unread')->middleware('auth');

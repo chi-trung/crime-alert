@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -12,7 +11,9 @@ class NewPostNotification extends Notification
     use Queueable;
 
     protected $post;
+
     protected $user;
+
     protected $postType;
 
     /**
@@ -55,13 +56,14 @@ class NewPostNotification extends Notification
     {
         $typeText = $this->postType === 'alert' ? 'cảnh báo' : 'trải nghiệm';
         $actionText = $this->postType === 'alert' ? 'đã đăng cảnh báo mới' : 'đã đăng trải nghiệm mới';
+
         return [
             'post_id' => $this->post->id,
             'post_title' => $this->post->title ?? $this->post->name,
             'post_type' => $this->postType,
             'user_name' => $this->user->name,
             'url' => $this->postType === 'alert' ? route('alerts.show', $this->post->id) : route('experiences.show', $this->post->id),
-            'message' => $this->user->name . ' ' . $actionText . ': ' . ($this->post->title ?? $this->post->name),
+            'message' => $this->user->name.' '.$actionText.': '.($this->post->title ?? $this->post->name),
         ];
     }
 }

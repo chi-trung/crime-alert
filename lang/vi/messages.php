@@ -36,4 +36,4 @@ return [
     'verify_email_sent' => 'Một liên kết xác thực mới đã được gửi đến địa chỉ email của bạn.',
     'verify_email_notice' => 'Trước khi tiếp tục, vui lòng kiểm tra email của bạn để lấy liên kết xác thực.',
     'verify_email_success' => 'Email của bạn đã được xác thực!',
-]; 
+];

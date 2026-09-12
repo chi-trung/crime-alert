@@ -1,11 +1,13 @@
 <?php
+
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\Alert;
-use App\Models\Experience;
-use App\Models\Like;
 use App\Models\Comment;
+use App\Models\Experience;
+use App\Notifications\LikeCommentNotification;
+use App\Notifications\LikePostNotification;
+use Illuminate\Http\Request;
 
 class LikeController extends Controller
 {
@@ -25,27 +27,28 @@ class LikeController extends Controller
         } else {
             $model = Comment::findOrFail($id);
         }
-        if (!$model->likes()->where('user_id', $user->id)->exists()) {
+        if (! $model->likes()->where('user_id', $user->id)->exists()) {
             $model->likes()->create(['user_id' => $user->id]);
             if ($type === 'comment' && $model->user_id != $user->id) {
                 $post = $model->alert_id ? Alert::find($model->alert_id) : Experience::find($model->experience_id);
                 $postType = $model->alert_id ? 'alert' : 'experience';
-                $model->user->notify(new \App\Notifications\LikeCommentNotification($user, $model, $post, $postType));
+                $model->user->notify(new LikeCommentNotification($user, $model, $post, $postType));
             }
             if (($type === 'alert' || $type === 'experience') && $model->user_id != $user->id) {
-                $model->user->notify(new \App\Notifications\LikePostNotification($user, $model, $type));
+                $model->user->notify(new LikePostNotification($user, $model, $type));
             }
         }
         $count = $model->likes()->count();
         if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
             return response()->json(['success' => true, 'count' => $count]);
         }
+
         return back();
     }
 
     public function destroy(Request $request)
     {
-        if (!auth()->check()) {
+        if (! auth()->check()) {
             return response()->json(['success' => false, 'redirect' => route('login')], 401);
         }
         try {
@@ -57,17 +60,18 @@ class LikeController extends Controller
             $type = $request->type;
             $id = $request->id;
             if ($type === 'alert') {
-                $model = \App\Models\Alert::findOrFail($id);
+                $model = Alert::findOrFail($id);
             } elseif ($type === 'experience') {
-                $model = \App\Models\Experience::findOrFail($id);
+                $model = Experience::findOrFail($id);
             } else {
-                $model = \App\Models\Comment::findOrFail($id);
+                $model = Comment::findOrFail($id);
             }
             $model->likes()->where('user_id', $user->id)->delete();
             $count = $model->likes()->count();
+
             return response()->json(['success' => true, 'count' => $count]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 500);
         }
     }
-} 
+}

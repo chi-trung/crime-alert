@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\CrimeReport;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
 class CrimeReportController extends Controller
@@ -11,6 +11,7 @@ class CrimeReportController extends Controller
     public function index()
     {
         $reports = CrimeReport::where('status', 'approved')->latest()->paginate(10);
+
         return view('crime_reports.index', compact('reports'));
     }
 
@@ -54,6 +55,7 @@ class CrimeReportController extends Controller
     public function adminIndex()
     {
         $reports = CrimeReport::latest()->paginate(15);
+
         return view('crime_reports.admin_index', compact('reports'));
     }
 
@@ -62,6 +64,7 @@ class CrimeReportController extends Controller
         $report = CrimeReport::findOrFail($id);
         $report->status = 'approved';
         $report->save();
+
         return back()->with('success', 'Đã duyệt cảnh báo!');
     }
 
@@ -70,6 +73,7 @@ class CrimeReportController extends Controller
         $report = CrimeReport::findOrFail($id);
         $report->status = 'rejected';
         $report->save();
+
         return back()->with('success', 'Đã từ chối cảnh báo!');
     }
 
@@ -77,6 +81,7 @@ class CrimeReportController extends Controller
     {
         $report = CrimeReport::findOrFail($id);
         $report->delete();
+
         return back()->with('success', 'Đã xóa cảnh báo!');
     }
 }

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
+use App\Models\Alert;
+use App\Models\Experience;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -67,14 +69,16 @@ class ProfileController extends Controller
         $user = $request->user();
         $user->password = bcrypt($request->new_password);
         $user->save();
+
         return back()->with('success', 'Đổi mật khẩu thành công!');
     }
 
     public function myHistory()
     {
         $user = auth()->user();
-        $myAlerts = \App\Models\Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
-        $myExperiences = \App\Models\Experience::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        $myAlerts = Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        $myExperiences = Experience::where('user_id', $user->id)->orderByDesc('created_at')->get();
+
         return view('profile.my_history', compact('myAlerts', 'myExperiences'));
     }
 }
