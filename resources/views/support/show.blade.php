@@ -102,10 +102,35 @@ function fetchMessages() {
         lastMessageCount = data.messages.length;
         chatBox.innerHTML = '';
         data.messages.forEach(msg => {
-            const div = document.createElement('div');
-            div.className = 'support-chat-msg ' + (msg.is_me ? 'user' : 'admin');
-            div.innerHTML = `<div class=\"support-chat-bubble\"><div class=\"small fw-bold mb-1\">${msg.user}${msg.is_me ? '' : ' <span class=\\"badge bg-warning text-dark ms-2\\" style=\\"font-size:0.85em;vertical-align:middle;\\">Quản trị viên</span>'}</div><div>${msg.content}</div><div class=\"small text-muted mt-1\">${msg.created_at}</div></div>`;
-            chatBox.appendChild(div);
+            // Build DOM with textContent only — never interpolate user content
+            // into innerHTML (stored XSS). Mirrors the server-rendered markup.
+            const wrapper = document.createElement('div');
+            wrapper.className = 'support-chat-msg ' + (msg.is_admin ? 'admin' : 'user');
+
+            const bubble = document.createElement('div');
+            bubble.className = 'support-chat-bubble';
+
+            const nameRow = document.createElement('div');
+            nameRow.className = 'small fw-bold mb-1';
+            nameRow.textContent = msg.user;
+            if (msg.is_admin) {
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-warning text-dark ms-2';
+                badge.style.cssText = 'font-size:0.85em;vertical-align:middle;';
+                badge.textContent = 'Quản trị viên';
+                nameRow.appendChild(badge);
+            }
+
+            const body = document.createElement('div');
+            body.textContent = msg.content;
+
+            const time = document.createElement('div');
+            time.className = 'small text-muted mt-1';
+            time.textContent = msg.created_at;
+
+            bubble.append(nameRow, body, time);
+            wrapper.appendChild(bubble);
+            chatBox.appendChild(wrapper);
         });
         chatBox.scrollTop = chatBox.scrollHeight;
     });
@@ -114,7 +139,8 @@ setInterval(fetchMessages, 3000);
 document.addEventListener('DOMContentLoaded', fetchMessages);
 
 document.addEventListener('DOMContentLoaded', function() {
-    const form = document.querySelector('form[action*="support/sendMessage"]');
+    // URL thật là /support/{id}/message — selector cũ ("support/sendMessage") không bao giờ khớp
+    const form = document.querySelector('form[action$="/message"]');
     if (form) {
         form.addEventListener('submit', function(e) {
             e.preventDefault();
