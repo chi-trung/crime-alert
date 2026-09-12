@@ -39,7 +39,9 @@ class Comment extends Model
 
     public function replies(): HasMany
     {
-        return $this->hasMany(Comment::class, 'parent_id');
+        // Oldest-first is the thread order the view renders; declared on the
+        // relation so eager-loaded replies keep it (issue #25).
+        return $this->hasMany(Comment::class, 'parent_id')->orderBy('created_at');
     }
 
     public function likes(): MorphMany

@@ -24,14 +24,20 @@
                 </form>
             @endif
             @auth
-                <button type="button" class="btn btn-like-comment px-2 py-0{{ $comment->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-id="{{ $comment->id }}" data-liked="{{ $comment->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}">
-                    <i class="fa-heart {{ $comment->likes()->where('user_id', auth()->id())->exists() ? 'fa-solid text-danger' : 'fa-regular text-secondary' }}"></i>
-                    <span class="like-count">{{ $comment->likes()->count() }}</span>
+                @php
+                    // Likes were eager-loaded by the show pages (issue #25):
+                    // read from the loaded collection instead of re-querying.
+                    $isLiked = $comment->likes->contains('user_id', auth()->id());
+                    $likeCount = $comment->likes->count();
+                @endphp
+                <button type="button" class="btn btn-like-comment px-2 py-0{{ $isLiked ? ' liked' : '' }}" data-id="{{ $comment->id }}" data-liked="{{ $isLiked ? '1' : '0' }}">
+                    <i class="fa-heart {{ $isLiked ? 'fa-solid text-danger' : 'fa-regular text-secondary' }}"></i>
+                    <span class="like-count">{{ $likeCount }}</span>
                 </button>
             @else
                 <a href="{{ route('login') }}" class="btn btn-like-comment px-2 py-0" title="Đăng nhập để thích">
                     <i class="fa-regular fa-heart text-secondary"></i>
-                    <span class="like-count">{{ $comment->likes()->count() }}</span>
+                    <span class="like-count">{{ $comment->likes->count() }}</span>
                 </a>
             @endauth
         </div>
@@ -50,8 +56,8 @@
             <button type="button" class="btn btn-link btn-sm text-secondary cancel-reply-btn" data-comment-id="{{ $comment->id }}">Hủy</button>
         </form>
     </div>
-    <!-- Hiển thị replies lồng nhau -->
-    @foreach($comment->replies()->orderBy('created_at')->get() as $reply)
+    <!-- Hiển thị replies lồng nhau (đã eager-load, không truy vấn lại) -->
+    @foreach($comment->replies as $reply)
         @include('comments._item', ['comment' => $reply, 'parentType' => $parentType, 'parentId' => $parentId, 'level' => (isset($level) ? $level + 1 : 1)])
     @endforeach
 </div>

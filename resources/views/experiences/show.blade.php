@@ -165,7 +165,10 @@
                     @endif
                     <div class="comments-section">
                         @php
-                            $comments = $experience->comments()->whereNull('parent_id')->latest()->get();
+                            // Eager-load everything the thread renders (issue #25).
+                            $comments = $experience->comments()->whereNull('parent_id')->latest()
+                                ->with(['user', 'likes', 'replies.user', 'replies.likes'])
+                                ->get();
                         @endphp
                         @forelse($comments as $comment)
                             @include('comments._item', ['comment' => $comment, 'parentType' => 'experience', 'parentId' => $experience->id])
