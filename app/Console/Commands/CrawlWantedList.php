@@ -3,23 +3,34 @@
 namespace App\Console\Commands;
 
 use App\Models\WantedPerson;
-use GuzzleHttp\Client;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlWantedList extends Command
 {
     protected $signature = 'crawl:wanted-list';
 
-    protected $description = 'Crawl đúng STT 1-50 từ trang chủ truyna.bocongan.gov.vn';
+    protected $description = 'Crawl danh sách truy nã từ truyna.bocongan.gov.vn';
 
-    public function handle()
+    public function handle(): int
     {
-        $client = new Client(['cookies' => true]);
         $url = 'https://truyna.bocongan.gov.vn/';
         // Chỉ GET trang chủ
-        $html = $client->get($url)->getBody()->getContents();
-        $crawler = new Crawler($html);
+        try {
+            $response = Http::timeout(30)->connectTimeout(10)->get($url);
+        } catch (\Throwable $e) {
+            $this->warn('Không tải được trang truy nã ('.$e->getMessage().'), bỏ lượt crawl này.');
+
+            return self::FAILURE;
+        }
+        if ($response->failed()) {
+            $this->warn('Không tải được trang truy nã (HTTP '.$response->status().'), bỏ lượt crawl này.');
+
+            return self::FAILURE;
+        }
+
+        $crawler = new Crawler($response->body());
         $rows = $crawler->filter('table tr');
         $count = 0;
         // Duyệt từ cuối lên đầu để đảo ngược thứ tự
@@ -31,7 +42,7 @@ class CrawlWantedList extends Command
             }
             $name = trim($cols->eq(1)->text());
             $birthYear = trim($cols->eq(2)->text());
-            if (is_numeric($name) || $name === '' || $name === 'Họ tên' || ! preg_match('/^(19|20)\\d{2}$/', $birthYear)) {
+            if (is_numeric($name) || $name === '' || $name === 'Họ tên' || ! preg_match('/^(19|20)\d{2}$/', $birthYear)) {
                 continue;
             }
             WantedPerson::updateOrCreate([
@@ -47,5 +58,7 @@ class CrawlWantedList extends Command
             $count++;
         }
         $this->info("Đã crawl xong , tổng cộng: $count đối tượng.");
+
+        return self::SUCCESS;
     }
 }

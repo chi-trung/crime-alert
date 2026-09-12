@@ -3,8 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Models\News;
-use GuzzleHttp\Client;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\DomCrawler\Crawler;
 
 class CrawlNews extends Command
@@ -26,12 +26,24 @@ class CrawlNews extends Command
     /**
      * Execute the console command.
      */
-    public function handle()
+    public function handle(): int
     {
-        $client = new Client(['timeout' => 20]);
         $url = 'https://vnexpress.net/phap-luat';
-        $html = $client->get($url)->getBody()->getContents();
-        $crawler = new Crawler($html);
+
+        try {
+            $response = Http::timeout(20)->connectTimeout(10)->get($url);
+        } catch (\Throwable $e) {
+            $this->warn('Không tải được trang tin tức ('.$e->getMessage().'), bỏ lượt crawl này.');
+
+            return self::FAILURE;
+        }
+        if ($response->failed()) {
+            $this->warn('Không tải được trang tin tức (HTTP '.$response->status().'), bỏ lượt crawl này.');
+
+            return self::FAILURE;
+        }
+
+        $crawler = new Crawler($response->body());
         $count = 0;
         $crawler->filter('.item-news')->each(function ($node) use (&$count) {
             $titleNode = $node->filter('.title-news a');
@@ -56,17 +68,22 @@ class CrawlNews extends Command
             ) {
                 $isVideo = true;
             }
-            News::updateOrCreate([
-                'link' => $link,
-            ], [
-                'title' => $title,
-                'description' => $desc,
-                'image_url' => $img,
-                'published_at' => null,
-                'is_video' => $isVideo,
-            ]);
+            // published_at is intentionally NOT part of the update payload:
+            // the listing carries no timestamp, and re-writing null here on
+            // every crawl wiped values set manually/elsewhere (issue #16).
+            News::updateOrCreate(
+                ['link' => $link],
+                [
+                    'title' => $title,
+                    'description' => $desc,
+                    'image_url' => $img,
+                    'is_video' => $isVideo,
+                ]
+            );
             $count++;
         });
         $this->info("Đã crawl xong $count tin tức pháp luật từ VnExpress.");
+
+        return self::SUCCESS;
     }
 }

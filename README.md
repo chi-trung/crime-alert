@@ -128,6 +128,13 @@ php artisan crawl:news          # Crawl tin tức pháp luật
 php artisan crawl:wanted-list   # Crawl danh sách truy nã
 ```
 
+Lệnh crawl đã được lên lịch tự động trong `routes/console.php`
+(`crawl:news` mỗi 30 phút, `crawl:wanted-list` mỗi giờ, `withoutOverlapping`).
+Để lịch chạy trên server, thêm cron entry theo hướng dẫn Laravel scheduler:
+```cron
+* * * * * cd /duong-dan/toi/crime-alert && php artisan schedule:run >> /dev/null 2>&1
+```
+
 ---
 
 ## 🧪 <b>Kiểm thử</b>
