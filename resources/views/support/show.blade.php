@@ -82,7 +82,13 @@
     </div>
 </div>
 
-@push('scripts')
+{{-- Issue #149: @push('scripts') targets a @stack that layouts/app.blade.php
+     never renders (it only has @yield('scripts') at line 755), so this
+     entire live-chat block was silently dropped from the page. Same idiom
+     as alerts/edit.blade.php:66. --}}
+@endsection
+
+@section('scripts')
 <script>
 let lastMessageCount = {{ count($messages) }};
 function fetchMessages() {
@@ -167,6 +173,4 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 </script>
-@endpush
-
 @endsection 
