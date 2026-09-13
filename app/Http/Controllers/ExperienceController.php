@@ -16,7 +16,8 @@ class ExperienceController extends Controller
      */
     public function index()
     {
-        $experiences = Experience::with('user')->where('status', 'approved')->orderByDesc('created_at')->paginate(9);
+        // Issue #81: id tiebreak for stable page boundaries (see #75).
+        $experiences = Experience::with('user')->where('status', 'approved')->orderByDesc('created_at')->orderByDesc('id')->paginate(9);
 
         return view('experiences.index', compact('experiences'));
     }
@@ -139,7 +140,7 @@ class ExperienceController extends Controller
     // Trang quản lý cho admin
     public function adminIndex()
     {
-        $experiences = Experience::orderByDesc('created_at')->paginate(15);
+        $experiences = Experience::orderByDesc('created_at')->orderByDesc('id')->paginate(15);
 
         return view('experiences.admin_index', compact('experiences'));
     }

@@ -138,14 +138,17 @@ class AlertController extends Controller
                 ->orderByRaw($dist2, [$lat, $lat, $lng, $lng]);
         }
 
-        $alerts = $query->orderByDesc('created_at')->paginate(10)->withQueryString();
+        // Issue #81: created_at is second-resolution, so same-second rows had
+        // no deterministic order and page boundaries shuffled on refresh —
+        // the id tiebreak #75 established for the support lists.
+        $alerts = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(10)->withQueryString();
 
         return view('alerts.index', compact('alerts'));
     }
 
     public function adminIndex()
     {
-        $alerts = Alert::with('user')->orderByDesc('created_at')->paginate(15);
+        $alerts = Alert::with('user')->orderByDesc('created_at')->orderByDesc('id')->paginate(15);
 
         return view('alerts.admin_index', compact('alerts'));
     }

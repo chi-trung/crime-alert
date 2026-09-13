@@ -6,7 +6,10 @@ class NotificationController extends Controller
 {
     public function index()
     {
-        $notifications = auth()->user()->notifications()->paginate(20);
+        // Issue #81: the framework relation ends in a plain ->latest()
+        // (created_at desc only), so same-second notifications had no
+        // deterministic order across pages. Id tiebreak, #75's idiom.
+        $notifications = auth()->user()->notifications()->orderByDesc('id')->paginate(20);
 
         return view('notifications.index', compact('notifications'));
     }
