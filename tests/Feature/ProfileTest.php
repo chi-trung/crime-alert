@@ -5,6 +5,8 @@ namespace Tests\Feature;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password;
 use Tests\TestCase;
 
 class ProfileTest extends TestCase
@@ -174,5 +176,59 @@ class ProfileTest extends TestCase
 
         $this->assertDatabaseHas('sessions', ['id' => 'still-valid-session', 'user_id' => $user->id]);
         $this->assertNotNull($user->fresh()->remember_token);
+    }
+
+    /**
+     * Issue #191: `password_reset_tokens` is keyed by email, so the #48 FK
+     * cascades and the #53/#57/#61/#115 model sweeps all miss it — a token
+     * minted before account deletion outlived the account. These pin both
+     * halves: the row is gone after /profile deletion, and the deletion (not
+     * just the sweep) closes the takeover path for a recycled email address.
+     */
+    public function test_account_deletion_sweeps_password_reset_tokens(): void
+    {
+        $user = User::factory()->create();
+        Password::broker()->createToken($user);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+
+        $this->actingAs($user)
+            ->delete('/profile', ['password' => 'password'])
+            ->assertSessionHasNoErrors()
+            ->assertRedirect('/');
+
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
+    }
+
+    public function test_reset_token_from_a_deleted_account_cannot_take_over_a_reregistered_email(): void
+    {
+        $victim = User::factory()->create(['email' => 'recycled@example.com']);
+        $token = Password::broker()->createToken($victim);
+
+        $this->actingAs($victim)->delete('/profile', ['password' => 'password']);
+
+        // The address is free again, and a newcomer registers on it.
+        $this->post('/register', [
+            'name' => 'Newcomer',
+            'email' => 'recycled@example.com',
+            'password' => 'brand-new-secret',
+            'password_confirmation' => 'brand-new-secret',
+        ])->assertSessionHasNoErrors();
+
+        // Registration auto-logs-in, and /reset-password sits in the guest
+        // group — a real takeover is attempted from a guest session.
+        $this->post('/logout');
+
+        // The dead account's stale token must not reset the newcomer: the
+        // broker looks up password_reset_tokens by email, so without the
+        // sweep this POST succeeded and rewrote the new user's password.
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => 'recycled@example.com',
+            'password' => 'pwned-password',
+            'password_confirmation' => 'pwned-password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertTrue(Hash::check('brand-new-secret', User::where('email', 'recycled@example.com')->value('password')));
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'recycled@example.com']);
     }
 }
