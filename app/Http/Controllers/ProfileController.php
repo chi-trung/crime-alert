@@ -111,12 +111,15 @@ class ProfileController extends Controller
         // alerts index. The page names keep the two side-by-side tables
         // independent: ?alerts_page= moves only the alerts table, ?exp_page=
         // only the experiences one.
+        // Issue #81: id tiebreak for stable page boundaries (see #75).
         $myAlerts = Alert::where('user_id', $user->id)
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(10, ['*'], 'alerts_page')
             ->withQueryString();
         $myExperiences = Experience::where('user_id', $user->id)
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->paginate(10, ['*'], 'exp_page')
             ->withQueryString();
 
