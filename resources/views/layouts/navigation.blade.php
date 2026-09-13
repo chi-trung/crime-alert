@@ -117,8 +117,11 @@
           <!-- Notifications -->
           <div class="user-notification dropdown">
             @php
+              // Issue #69: the dropdown previews 10, but the badge shows the
+              // true total — it used to count this truncated list and froze
+              // at "10". Mirrors NotificationController::unreadAjax().
               $unreadNotifications = auth()->user()->unreadNotifications()->take(10)->get();
-              $unreadCount = $unreadNotifications->count();
+              $unreadCount = auth()->user()->unreadNotifications()->count();
             @endphp
             <a href="#" class="notification-icon">
               <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">

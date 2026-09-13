@@ -30,6 +30,10 @@ class NotificationController extends Controller
     public function unreadAjax()
     {
         $unreadNotifications = auth()->user()->unreadNotifications()->take(10)->get();
+        // Issue #69: the badge used to report this take(10) list's size, so
+        // it froze at "10" for anyone with more unread notifications. The
+        // dropdown is a 10-item preview, but the badge shows the true total;
+        // count() on the relation is a second, tiny SELECT.
         $data = $unreadNotifications->map(function ($notification) {
             return [
                 'id' => $notification->id,
@@ -41,7 +45,7 @@ class NotificationController extends Controller
         });
 
         return response()->json([
-            'count' => $unreadNotifications->count(),
+            'count' => auth()->user()->unreadNotifications()->count(),
             'notifications' => $data,
         ]);
     }
