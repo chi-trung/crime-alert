@@ -67,4 +67,17 @@ class MyHistoryPaginationTest extends TestCase
             ->assertSee('alerts_page=2', false)
             ->assertSee('exp_page=3', false);
     }
+
+    public function test_a_single_page_table_renders_no_pager(): void
+    {
+        $user = User::factory()->create();
+        Alert::create(['user_id' => $user->id, 'title' => 'only', 'description' => 'd', 'status' => 'approved']);
+
+        // 1 alert, 0 experiences: neither table crosses a page boundary, so
+        // neither may grow the pager gutter.
+        $this->actingAs($user)->get('/my-history')
+            ->assertOk()
+            ->assertViewHas('myAlerts', fn ($pager) => $pager->hasPages() === false)
+            ->assertDontSee('page-link', false);
+    }
 }
