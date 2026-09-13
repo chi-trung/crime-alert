@@ -174,4 +174,37 @@ class NotificationTest extends TestCase
         $this->assertStringNotContainsString('a.href = noti.url', $html);
         $this->assertStringContainsString('noti.read_url', $html);
     }
+
+    public function test_support_request_notification_renders_a_real_message(): void
+    {
+        // Issue #192: NewSupportRequest::toArray shipped without a 'message'
+        // key, so both renderers (the dropdown feed here and the
+        // notifications page) fell back to 'Bạn có thông báo mới' — an admin
+        // could not tell WHO opened a thread or ABOUT WHAT without clicking
+        // each one. End-to-end through POST /support so the store() fan-out
+        // itself is what's pinned, not just the class in isolation.
+        $sender = User::factory()->create(['name' => 'Nguyễn Dân']);
+        $admin = User::factory()->admin()->create();
+
+        $this->actingAs($sender)->post('/support', [
+            'subject' => 'Tài khoản bị khóa nhầm',
+            'message' => 'Tôi không đăng nhập được từ hôm qua.',
+        ])->assertRedirect();
+
+        $response = $this->actingAs($admin)->getJson('/notifications/unread')->assertOk();
+
+        $message = $response->json('notifications.0.message');
+        $this->assertSame(
+            'Người dùng Nguyễn Dân đã mở yêu cầu hỗ trợ: Tài khoản bị khóa nhầm',
+            $message
+        );
+        // The generic fallback would render identically for every row —
+        // asserting it is absent is the actual red-before-fix signal.
+        $this->assertStringNotContainsString('Bạn có thông báo mới', $response->getContent());
+
+        // The page renderer reads the same key.
+        $this->actingAs($admin)->get('/notifications')
+            ->assertOk()
+            ->assertSee('Người dùng Nguyễn Dân đã mở yêu cầu hỗ trợ: Tài khoản bị khóa nhầm', false);
+    }
 }
