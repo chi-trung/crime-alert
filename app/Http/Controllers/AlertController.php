@@ -27,6 +27,10 @@ class AlertController extends Controller
             'location' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'confirmCheckbox' => 'accepted',
+            // Issue #31: these three used to be persisted unvalidated.
+            'type' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
 
         $data = $request->only(['title', 'description', 'location', 'type']);
@@ -144,6 +148,11 @@ class AlertController extends Controller
             'description' => 'required|string',
             'location' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // Issue #31: mirrors store() — junk coords and oversized type
+            // used to be written straight to the database.
+            'type' => 'nullable|string|max:255',
+            'latitude' => 'nullable|numeric|between:-90,90',
+            'longitude' => 'nullable|numeric|between:-180,180',
         ]);
         $data = $request->only(['title', 'description', 'location', 'type']);
         // Mirrors ExperienceController::update (issue #23): content that passes

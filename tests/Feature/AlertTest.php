@@ -257,4 +257,41 @@ class AlertTest extends TestCase
 
         $this->get("/alerts/{$alert->id}")->assertRedirect('/login');
     }
+
+    public function test_store_rejects_junk_coordinates_and_oversized_type(): void
+    {
+        // Issue #31: type/latitude/longitude were persisted without any rule.
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/alerts', $this->alertPayload([
+            'latitude' => 'not-a-number',
+            'longitude' => '99999999',
+        ]))->assertSessionHasErrors(['latitude', 'longitude']);
+
+        $this->actingAs($user)->post('/alerts', $this->alertPayload([
+            'type' => str_repeat('x', 400),
+        ]))->assertSessionHasErrors('type');
+
+        $this->assertSame(0, Alert::count());
+    }
+
+    public function test_update_rejects_junk_coordinates_and_keeps_clean_values(): void
+    {
+        $owner = User::factory()->create();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'Cu', 'description' => 'd', 'status' => 'pending']);
+
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi', 'description' => 'd2', 'latitude' => '1000',
+        ])->assertSessionHasErrors('latitude');
+        $this->assertSame('Cu', $alert->fresh()->title);
+
+        // A legitimate coordinate pair (the JS geocoder sends these) still works.
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi', 'description' => 'd2',
+            'latitude' => '10.7626220', 'longitude' => '106.6601720',
+        ])->assertRedirect(route('dashboard'));
+        $fresh = $alert->fresh();
+        $this->assertEqualsWithDelta(10.762622, (float) $fresh->latitude, 0.0001);
+        $this->assertEqualsWithDelta(106.660172, (float) $fresh->longitude, 0.0001);
+    }
 }
