@@ -320,6 +320,23 @@ class AlertTest extends TestCase
         $this->assertSame(10000, mb_strlen($alert->fresh()->description));
     }
 
+    public function test_view_count_is_not_fillable(): void
+    {
+        // Issue #49: 'view_count' sat in $fillable but no migration ever
+        // created the column. While listed, any mass-assignment path that
+        // includes the key produces "Unknown column" SQL errors; removing
+        // it makes fill()/save() silently drop the junk key instead.
+        $owner = User::factory()->create();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'a', 'description' => 'd', 'status' => 'pending']);
+
+        $this->assertFalse($alert->isFillable('view_count'));
+
+        // Before the fix this save() built an UPDATE ... SET view_count = 99
+        // and died with a QueryException.
+        $alert->fill(['view_count' => 99, 'title' => 'Sạch'])->save();
+        $this->assertSame('Sạch', $alert->fresh()->title);
+    }
+
     public function test_index_ignores_a_client_supplied_status_filter(): void
     {
         // Issue #41: the branch used to AND a second status clause onto the
