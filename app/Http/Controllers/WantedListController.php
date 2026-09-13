@@ -9,6 +9,11 @@ class WantedListController extends Controller
 {
     public function index(Request $request)
     {
+        // Issue #145: ?q[]=a passes filled() (non-empty array), reaches the
+        // #51 str_replace (array in -> array out) and the first '.' concat
+        // throws 'Array to string conversion' — a public-route 500. Pin q to
+        // a string so crafted arrays 302/422 instead.
+        $request->validate(['q' => 'nullable|string']);
         $query = WantedPerson::query();
         if ($request->filled('q')) {
             // Issue #51: the old code matched "$q" as a raw LIKE pattern, so

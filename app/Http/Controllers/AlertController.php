@@ -87,6 +87,17 @@ class AlertController extends Controller
         $query = Alert::query();
         $query->with('user')->withCount('comments');
 
+        // Issue #145: q/location reach the #51 escaping closure's '%…%'
+        // concat and type reaches where() binding; an array (?q[]=a) passes
+        // filled() and 500s both filter paths with 'Array to string
+        // conversion'. The index has no other validation — these three are
+        // free-form client strings, so declare their type.
+        $request->validate([
+            'type' => 'nullable|string',
+            'location' => 'nullable|string',
+            'q' => 'nullable|string',
+        ]);
+
         // Issue #51: '%' and '_' typed into a search box are LIKE wildcards.
         // Escape them (and the escape char itself) and declare ESCAPE '!' so
         // every character matches literally on both CI databases — '!' is
