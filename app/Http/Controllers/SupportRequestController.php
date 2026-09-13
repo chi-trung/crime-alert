@@ -187,22 +187,95 @@ class SupportRequestController extends Controller
             // Issue #39: same bound as store().
             'message' => 'required|string|max:5000',
         ]);
-        $msg = SupportMessage::create([
-            'support_request_id' => $supportRequest->id,
-            'user_id' => Auth::id(),
-            'message' => $data['message'],
-        ]);
-        // Gửi notification cho đối phương
-        $sender = Auth::user();
-        if ($sender->isAdmin) {
-            // Admin gửi, notify cho user
-            $supportRequest->user?->notify(new NewSupportMessage($supportRequest, $msg, $sender));
-        } else {
-            // User gửi, notify cho admin (nếu có admin nào, hoặc notify cho tất cả admin)
-            $admins = User::where('isAdmin', true)->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new NewSupportMessage($supportRequest, $msg, $sender));
+        // Issue #163: the gate above, the insert, and the notify used to be
+        // separate autocommitted statements, so an admin closing the thread
+        // between the route-binding snapshot and the insert landed a message
+        // row and a full admin fan-out in a now-closed thread (defeating the
+        // closed-thread invariant #98/#141 keep), and a destroy committed in
+        // that window turned the insert into an uncaught FK violation (MySQL
+        // 1452 / SQLite "FOREIGN KEY constraint failed" -> 500). A delete
+        // landing after the row but before the notify rang bells whose
+        // support_request_id payload pointed at a dead thread (the #102
+        // orphan class). Same check-then-act shape as #153/#139 (and the
+        // #164 fix above), closed the same way: one DB::transaction whose
+        // current read re-runs the open-status gate on the authoritative row
+        // (lockForUpdate forces MySQL's REPEATABLE READ to return the latest
+        // committed version; SQLite's grammar drops the clause, where its
+        // write lock already makes mid-transaction interleaving impossible),
+        // a narrow FK catch, and a post-insert re-read that erases the row
+        // and backs out *before* any notification fires. Back-out answers
+        // mirror the endpoint's own pre-race responses: a vanished thread
+        // gets the 404 the route binding would have produced, a raced close
+        // gets the same closed-thread error flash as the snapshot gate.
+        // (Documented residual inherited from #153: a close/commit landing
+        // after the post-insert re-read but before this transaction commits
+        // still slips through — closing that fully needs row locking in the
+        // thread's own delete/close paths.)
+        $outcome = DB::transaction(function () use ($supportRequest, $data) {
+            $live = SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->first();
+            if (! $live) {
+                return 'vanished';
             }
+            if ($live->status !== 'open') {
+                return 'closed';
+            }
+            try {
+                $msg = SupportMessage::create([
+                    'support_request_id' => $live->id,
+                    'user_id' => Auth::id(),
+                    'message' => $data['message'],
+                ]);
+            } catch (QueryException $e) {
+                if (! $this->isForeignKeyViolation($e)) {
+                    throw $e;
+                }
+
+                // The insert raced a delete that landed after the current
+                // read and the FK rejected the row.
+                return 'vanished';
+            }
+            // Post-insert current read: covers a delete that lands between
+            // the re-read and the insert on a backend whose FKs are off (and
+            // the created-hook window), where the row wrote fine but the
+            // thread then vanished underneath it. Erase the message (a no-op
+            // where an FK cascade already dropped it) and back out before any
+            // bell is written. A close that lands in the same window is
+            // backed out the same way — the thread's whole point is that a
+            // closed thread takes no new messages.
+            $after = SupportRequest::whereKey($live->id)->lockForUpdate()->first();
+            if (! $after) {
+                SupportMessage::whereKey($msg->id)->delete();
+
+                return 'vanished';
+            }
+            if ($after->status !== 'open') {
+                SupportMessage::whereKey($msg->id)->delete();
+
+                return 'closed';
+            }
+            // Gửi notification cho đối phương. $after is the live, re-verified
+            // thread — passing it through (instead of the binding snapshot the
+            // old code used) means the bell payload can never describe a state
+            // this transaction has already backed out of.
+            $sender = Auth::user();
+            if ($sender->isAdmin) {
+                // Admin gửi, notify cho user
+                $after->user?->notify(new NewSupportMessage($after, $msg, $sender));
+            } else {
+                // User gửi, notify cho admin (nếu có admin nào, hoặc notify cho tất cả admin)
+                $admins = User::where('isAdmin', true)->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new NewSupportMessage($after, $msg, $sender));
+                }
+            }
+
+            return null;
+        });
+        if ($outcome === 'vanished') {
+            abort(404);
+        }
+        if ($outcome === 'closed') {
+            return back()->with('error', 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.');
         }
 
         return back();
