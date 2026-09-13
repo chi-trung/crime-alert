@@ -864,7 +864,12 @@
                   if (data.notifications.length > 0) {
                       data.notifications.forEach(function(noti) {
                           const a = document.createElement('a');
-                          a.href = noti.url ? noti.url : '#';
+                          // Issue #113: rows used to navigate straight to the
+                          // raw data['url'], bypassing read()'s #110 target
+                          // validation (and a javascript: payload would run
+                          // as a href). Rows go through the read route, which
+                          // marks read and validates server-side.
+                          a.href = noti.read_url ? noti.read_url : '#';
                           a.className = 'notification-item';
                           // textContent, not innerHTML: noti.message interpolates the
                           // notifier's name and post title, which are user input (issue #18).

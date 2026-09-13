@@ -137,4 +137,41 @@ class NotificationTest extends TestCase
 
         $this->assertNull(DB::table('notifications')->where('id', $id)->whereNotNull('read_at')->first());
     }
+
+    public function test_unread_feed_links_through_the_read_route_not_the_raw_url(): void
+    {
+        // Issue #113: unreadAjax() returned the raw data['url'] and the
+        // dropdown assigned it straight to a.href — clicks bypassed the
+        // #110 isLocalUrl gate entirely (plus a javascript: href vector).
+        // The feed now carries a server-built read_url; the raw url never
+        // leaves the server.
+        $user = User::factory()->create();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $id,
+            'type' => 'App\\Notifications\\NewPostNotification',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $user->id,
+            'data' => json_encode(['message' => 'm', 'url' => 'https://evil.example/phish']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $response = $this->actingAs($user)->getJson('/notifications/unread')->assertOk();
+
+        $response->assertJsonPath('notifications.0.read_url', route('notifications.read', $id));
+        $this->assertStringNotContainsString('evil.example', $response->getContent());
+    }
+
+    public function test_dropdown_clicks_go_through_the_read_route(): void
+    {
+        // The rendered dropdown must point rows at the read route (which
+        // marks read and validates the target, #110), never at raw urls.
+        $user = User::factory()->create();
+
+        $html = $this->actingAs($user)->get('/dashboard')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('a.href = noti.url', $html);
+        $this->assertStringContainsString('noti.read_url', $html);
+    }
 }
