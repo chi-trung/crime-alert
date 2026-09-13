@@ -26,7 +26,13 @@ class SupportRequestController extends Controller
     // Danh sách yêu cầu của user
     public function index()
     {
-        $requests = SupportRequest::where('user_id', Auth::id())->latest()->get();
+        // Issue #75: unbounded ->get() of every request the user ever filed;
+        // the id tiebreak keeps page boundaries stable when requests share a
+        // created_at second (latest() alone orders by created_at only).
+        $requests = SupportRequest::where('user_id', Auth::id())
+            ->latest()
+            ->orderByDesc('id')
+            ->paginate(10);
 
         return view('support.index', compact('requests'));
     }
@@ -107,7 +113,12 @@ class SupportRequestController extends Controller
     // Danh sách yêu cầu cho admin
     public function adminIndex()
     {
-        $requests = SupportRequest::with('user')->latest()->get();
+        // Issue #75: same class as #67/#71 — the whole request table loaded
+        // on every admin page view. Paginate like every other list.
+        $requests = SupportRequest::with('user')
+            ->latest()
+            ->orderByDesc('id')
+            ->paginate(15);
 
         return view('support.admin_index', compact('requests'));
     }
