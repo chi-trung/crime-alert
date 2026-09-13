@@ -6,6 +6,7 @@ use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Experience;
+use App\Models\SupportRequest;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -61,9 +62,15 @@ class ProfileController extends Controller
         // convention: the morph `likes` rows can only be swept by the model
         // hooks, and comments are deleted here too because their DB cascade
         // would strand replies' likes.
+        // Issue #115: same class once more — the DB-level user_id cascade on
+        // support_requests deletes the departing user's threads without
+        // firing SupportRequest::deleting, so the #102 notification sweep
+        // never runs and the admin's copy survives as a 404 link. Eloquent
+        // first, cascade stays as the safety net.
         Alert::where('user_id', $user->id)->get()->each->delete();
         Experience::where('user_id', $user->id)->get()->each->delete();
         Comment::where('user_id', $user->id)->get()->each->delete();
+        SupportRequest::where('user_id', $user->id)->get()->each->delete();
 
         Auth::logout();
 
