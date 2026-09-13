@@ -45,6 +45,39 @@ class CrawlerTest extends TestCase
         ]);
     }
 
+    /**
+     * Issue #181: Crawler::attr() returns null for an anchor without href,
+     * and the null used to flow through strpos/mb_substr (PHP 8.1+ only
+     * deprecates, Laravel's null deprecations channel hides it) into the
+     * literal base domain — so every href-less article collapsed into ONE
+     * fake row keyed link='https://vnexpress.net' on the UNIQUE column while
+     * the run still reported success. Href-less items are now skipped and
+     * surfaced by a warn line, never written.
+     */
+    public function test_news_crawl_skips_href_less_articles_instead_of_collapsing_them(): void
+    {
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response(
+                '<div class="item-news"><h3 class="title-news"><a>Tin A</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a href="">Tin Empty</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a>Tin B</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a href="/phap-luat/tin-c-789.html">Tin C</a></h3></div>',
+                200
+            ),
+        ]);
+
+        // Two href-less (null/empty) items must be skipped; the well-formed
+        // relative-link item still lands.
+        $this->artisan('crawl:news')->assertSuccessful();
+
+        $this->assertSame(1, News::count());
+        $this->assertDatabaseMissing('news', ['link' => 'https://vnexpress.net']);
+        $this->assertDatabaseHas('news', [
+            'link' => 'https://vnexpress.net/phap-luat/tin-c-789.html',
+            'title' => 'Tin C',
+        ]);
+    }
+
     public function test_news_crawl_fails_gracefully_on_network_error(): void
     {
         Http::fake([

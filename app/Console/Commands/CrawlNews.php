@@ -45,13 +45,30 @@ class CrawlNews extends Command
 
         $crawler = new Crawler($response->body());
         $count = 0;
-        $crawler->filter('.item-news')->each(function ($node) use (&$count) {
+        // Issue #181: count href-less items so a silent upstream markup
+        // change surfaces as one warn line per run instead of vanishing.
+        $skipped = 0;
+        $crawler->filter('.item-news')->each(function ($node) use (&$count, &$skipped) {
             $titleNode = $node->filter('.title-news a');
             if (! $titleNode->count()) {
                 return;
             }
             $title = trim($titleNode->text());
             $link = $titleNode->attr('href');
+            // Issue #181: Crawler::attr() returns null when the anchor has no
+            // href. Passing that to the strpos/mb_substr below only raises
+            // E_DEPRECATED (routed to the null deprecations channel —
+            // invisible), then strpos(null,'http') === false makes the code
+            // "absolutize" the null into the literal base domain, and every
+            // href-less article on the page collapses into ONE fake row keyed
+            // link='https://vnexpress.net' on the UNIQUE column, each
+            // overwriting the last, with the crawl still reporting SUCCESS.
+            // Skip such items outright instead.
+            if (! is_string($link) || trim($link) === '') {
+                $skipped++;
+
+                return;
+            }
             if (strpos($link, 'http') !== 0) {
                 $link = 'https://vnexpress.net'.$link;
             }
@@ -91,6 +108,9 @@ class CrawlNews extends Command
             );
             $count++;
         });
+        if ($skipped > 0) {
+            $this->warn("Bỏ qua {$skipped} tin không có đường dẫn (nguồn có thể đã đổi cấu trúc).");
+        }
         $this->info("Đã crawl xong $count tin tức pháp luật từ VnExpress.");
 
         return self::SUCCESS;
