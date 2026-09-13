@@ -13,6 +13,20 @@ use Illuminate\Support\Facades\Auth;
 class SupportRequestController extends Controller
 {
     /**
+     * Only administrators may run the admin queue actions. The routes
+     * already sit behind the ['auth','admin'] group (AdminMiddleware 403s
+     * non-admins end-to-end — issue #97's HTTP probe passes with or without
+     * this), but close()/destroy() mutate state and must not depend on route
+     * wiring alone: every sibling mutating action in this app carries its
+     * own check. abort_unless keeps the no-session CLI shape out — an
+     * unauthenticated direct call 403s the same as a signed-in non-admin.
+     */
+    private function authorizeAdmin(): void
+    {
+        abort_unless(Auth::check() && Auth::user()->isAdmin, 403);
+    }
+
+    /**
      * Only the thread owner and administrators may view/participate.
      */
     private function authorizeViewer(SupportRequest $supportRequest): void
@@ -129,6 +143,9 @@ class SupportRequestController extends Controller
     // Đóng yêu cầu (admin)
     public function close(SupportRequest $supportRequest)
     {
+        // Issue #97: defense in depth — the route group already 403s, but a
+        // state-changing action must assert adminship itself.
+        $this->authorizeAdmin();
         // Issue #98: closing an already-closed thread rewrote the same
         // status and reported success — a misleading no-op on every repeat
         // click. The sibling sendMessage() already treats closed as a
@@ -145,6 +162,8 @@ class SupportRequestController extends Controller
     // Xóa yêu cầu hỗ trợ (admin)
     public function destroy(SupportRequest $supportRequest)
     {
+        // Issue #97: same in-method assertion as close() above.
+        $this->authorizeAdmin();
         $supportRequest->delete();
 
         return back()->with('success', 'Đã xóa yêu cầu hỗ trợ!');
