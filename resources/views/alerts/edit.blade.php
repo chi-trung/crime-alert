@@ -39,7 +39,12 @@
             <label for="image" class="form-label">Ảnh minh họa (tùy chọn)</label>
             @if($alert->image)
                 <div class="mb-2 position-relative d-inline-block image-preview-block" id="image-preview-block">
-                    <img src="/{{ $alert->image }}" alt="Ảnh hiện tại" class="preview-img" style="max-width: 350px; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
+                    {{-- Issue #137: the old src="/{{ $alert->image }}" built
+                         /alerts/x.jpg, but the file lives under the public
+                         disk's storage/ URL (see the asset('storage/...')
+                         siblings) — the preview never loaded, so the
+                         #125 remove-image button was operated blind. --}}
+                    <img src="{{ asset('storage/'.$alert->image) }}" alt="Ảnh hiện tại" class="preview-img" style="max-width: 350px; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
                     <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 rounded-circle remove-image-btn" style="z-index:10;">
                         <i class="fas fa-times"></i>
                     </button>
