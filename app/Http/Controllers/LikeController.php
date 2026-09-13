@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class LikeController extends Controller
 {
@@ -75,20 +76,55 @@ class LikeController extends Controller
         $id = $request->id;
         $model = $this->resolveLikeable($type, $id);
         $this->ensureLikeableIsApproved($model);
-        if (! $model->likes()->where('user_id', $user->id)->exists()) {
-            $inserted = true;
-            try {
-                $model->likes()->create(['user_id' => $user->id]);
-            } catch (QueryException $e) {
-                // Issue #43: check-then-insert raced with a concurrent like
-                // and hit the unique index. The row exists either way — the
-                // loser of the race continues as if the insert succeeded so
-                // the count below stays correct.
-                if (! $this->isDuplicateKey($e)) {
-                    throw $e;
+
+        // Issue #139: the exists() check, the insert and the notification
+        // used to be three autocommitted statements, so a like request that
+        // passed exists() while the target was being deleted in another
+        // request landed its row *after* the target's deleting sweeps —
+        // permanent ghost: morph pairs carry no FK to cascade the row (#57)
+        // and like notifications reference the post only inside the JSON
+        // payload (#121), and no scheduled janitor ever re-sweeps late
+        // writes. Wrapped in a transaction, the insert path re-verifies the
+        // target with a current read *after* inserting and backs out when it
+        // vanished; the notification sits after that re-check, so backing
+        // out means there is never a bell row to erase. (Documented
+        // residual: a delete committed after the re-check but before this
+        // transaction's commit still slips through — closing that fully
+        // needs row locking in the three models' delete sweeps too.)
+        $vanished = false;
+        DB::transaction(function () use ($model, $user, $type, &$vanished) {
+            $inserted = false;
+            if (! $model->likes()->where('user_id', $user->id)->exists()) {
+                $inserted = true;
+                try {
+                    $model->likes()->create(['user_id' => $user->id]);
+                } catch (QueryException $e) {
+                    // Issue #43: check-then-insert raced with a concurrent like
+                    // and hit the unique index. The row exists either way — the
+                    // loser of the race continues as if the insert succeeded so
+                    // the count below stays correct.
+                    if (! $this->isDuplicateKey($e)) {
+                        throw $e;
+                    }
+                    $inserted = false;
                 }
-                $inserted = false;
             }
+
+            // Current read: lockForUpdate() forces MySQL's REPEATABLE READ to
+            // return the latest committed version instead of this
+            // transaction's snapshot (SQLite's grammar drops the lock clause,
+            // where its write lock makes mid-transaction interleaving
+            // impossible anyway). Covers the duplicate-key-loser row too:
+            // the user's like on a dead target is erased whichever way it
+            // arrived.
+            $stillThere = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->exists();
+            if (! $stillThere) {
+                $model->likes()->where('user_id', $user->id)->delete();
+                $vanished = true;
+
+                return;
+            }
+
             // Only the winner of the race notifies; the loser's like already
             // exists and was counted by whoever inserted first.
             if ($inserted && $type === 'comment' && $model->user_id != $user->id) {
@@ -99,7 +135,16 @@ class LikeController extends Controller
             if ($inserted && ($type === 'alert' || $type === 'experience') && $model->user_id != $user->id) {
                 $model->user->notify(new LikePostNotification($user, $model, $type));
             }
+        });
+
+        if ($vanished) {
+            if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Không tìm thấy bài viết.'], 404);
+            }
+
+            return back()->with('error', 'Bài viết không còn tồn tại.');
         }
+
         $count = $model->likes()->count();
         if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
             return response()->json(['success' => true, 'count' => $count]);
