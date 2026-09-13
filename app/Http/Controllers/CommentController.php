@@ -21,14 +21,28 @@ class CommentController extends Controller
         }
         $request->validate([
             'content' => 'required|string|max:1000',
+            // Issue #161: the three post-target fields gained 'integer' as
+            // well as their exists rule. validateExists EXPLICITLY accepts
+            // arrays (count(array_unique($value)) vs a getExistCount check),
+            // so alert_id=[<validId>] validated clean and the raw array then
+            // crashed downstream: at line ~57 it was copied into $data and
+            // Comment::create inside the transaction threw "Array to string
+            // conversion", and parent_id=[<validId>] reached findOrFail,
+            // which returns a Collection for array input, whose ->alert_id
+            // deref threw 'Property [id] does not exist on this collection
+            // instance' — both 500s for any verified user. 'integer' rejects
+            // the array before exists runs (no bail needed: exists on an
+            // array is wasteful but harmless — the attribute is already
+            // failed, and nothing downstream executes when validation
+            // returns).
             // A top-level comment needs a post; a reply inherits one from
             // its parent (checked below), so only requires the field when
             // neither sibling is present.
-            'alert_id' => 'nullable|required_without_all:experience_id,parent_id|exists:alerts,id',
-            'experience_id' => 'nullable|exists:experiences,id',
+            'alert_id' => 'nullable|required_without_all:experience_id,parent_id|integer|exists:alerts,id',
+            'experience_id' => 'nullable|integer|exists:experiences,id',
             // Issue #35: parent used to be stored unchecked — no existence
             // rule, and nothing bound it to the submitted post.
-            'parent_id' => 'nullable|exists:comments,id',
+            'parent_id' => 'nullable|integer|exists:comments,id',
         ]);
         $data = [
             'user_id' => auth()->id(),
