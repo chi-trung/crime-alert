@@ -60,6 +60,8 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Issue #67: its own pager, keyed to alerts_page. --}}
+                    {{ $myAlerts->links('pagination::bootstrap-4') }}
                 </div>
             </div>
         </div>
@@ -117,6 +119,8 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Issue #67: its own pager, keyed to exp_page. --}}
+                    {{ $myExperiences->links('pagination::bootstrap-4') }}
                 </div>
             </div>
         </div>
