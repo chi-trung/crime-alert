@@ -12,6 +12,13 @@ class Experience extends Model
         // Issue #53: same contract as Alert — the avatar file must not
         // outlive the row.
         static::deleting(function (Experience $experience) {
+            // Issue #57: morph likes have no FK, so they need the same
+            // explicit sweep as Alert. Replies inherit experience_id, so
+            // this covers comment threads too.
+            $experience->likes()->delete();
+            Like::where('likeable_type', Comment::class)
+                ->whereIn('likeable_id', Comment::where('experience_id', $experience->id)->pluck('id'))
+                ->delete();
             if ($experience->avatar) {
                 Storage::disk('public')->delete($experience->avatar);
             }
