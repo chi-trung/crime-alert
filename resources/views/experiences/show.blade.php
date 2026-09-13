@@ -6,9 +6,13 @@
         <div class="col-md-10 col-lg-8">
             <!-- Card bài chia sẻ -->
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
-                @if($experience->image)
+                {{-- Issue #133: this block guarded $experience->image, but the
+                     post's uploaded picture lives in the `avatar` column
+                     (ExperienceController::store line 64; the #53 deleting
+                     cascade reads it too). The image never rendered. --}}
+                @if($experience->avatar)
                     <div class="alert-image-container" style="max-height: 400px; overflow: hidden;">
-                        <img src="{{ asset('storage/' . $experience->image) }}" class="img-fluid w-100" alt="Ảnh minh họa" style="object-fit: cover;">
+                        <img src="{{ asset('storage/' . $experience->avatar) }}" class="img-fluid w-100" alt="Ảnh minh họa" style="object-fit: cover;">
                     </div>
                 @endif
                 <div class="card-body p-4">

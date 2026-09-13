@@ -26,7 +26,11 @@
             <div class="card h-100 shadow rounded-4 border-0">
                 <div class="card-body d-flex flex-column">
                     <div class="d-flex align-items-center mb-3">
-                        <img src="{{ $item->user && $item->user->avatar ? asset('storage/'.$item->user->avatar) : 'https://ui-avatars.com/api/?name='.urlencode($item->user->name ?? 'U').'&background=0D8ABC&color=fff' }}" class="rounded-circle border me-3" width="48" height="48" alt="avatar">
+                        {{-- Issue #133: the old ternary checked $item->user->avatar,
+                             but `users` has no avatar column — the storage branch
+                             was dead code. Same ui-avatars fallback the dashboard
+                             already uses for author avatars. --}}
+                        <img src="{{ 'https://ui-avatars.com/api/?name='.urlencode($item->user->name ?? 'U').'&background=0D8ABC&color=fff' }}" class="rounded-circle border me-3" width="48" height="48" alt="avatar">
                         <div>
                             <strong>{{ $item->name }}</strong>
                             <div class="text-muted small">{{ $item->created_at->format('d/m/Y') }}</div>
