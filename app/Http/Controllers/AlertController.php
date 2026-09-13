@@ -6,6 +6,7 @@ use App\Models\Alert;
 use App\Models\User;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
+use App\Services\DashboardStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -117,7 +118,28 @@ class AlertController extends Controller
         $query->where('status', 'approved');
         // Lọc theo loại tội phạm
         if ($request->filled('type')) {
-            $query->where('type', $request->type);
+            // Issue #195: the dashboard's 'Khác' tile counts every approved
+            // alert whose trimmed type falls outside ALERT_TYPES (NULL,
+            // '', whitespace, arbitrary free text — typeBreakdown:166-167),
+            // because store/update validate type as nullable|string, never
+            // an enum (#31 bounded length, not membership). The list filter
+            // used equality on that same label, so /alerts?type=Khác showed
+            // only rows literally typed 'Khác': on the shipped database
+            // (6/6 approved alerts NULL-typed) the dashboard said Khác: 100%
+            // while the filter returned zero rows — and those rows matched
+            // none of the other four options either, hiding them under every
+            // choice. The read path now mirrors the bucket exactly; equality
+            // still serves the canonical types, and no data migration is
+            // implied (free-text types stay what they are).
+            if ($request->type === 'Khác') {
+                $query->where(function ($q) {
+                    $q->whereNull('type')
+                        ->orWhere('type', '')
+                        ->orWhereNotIn('type', DashboardStatsService::ALERT_TYPES);
+                });
+            } else {
+                $query->where('type', $request->type);
+            }
         }
         // Lọc theo vị trí
         if ($request->filled('location')) {
