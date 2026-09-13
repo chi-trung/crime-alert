@@ -7,6 +7,7 @@ use App\Models\Alert;
 use App\Models\User;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
+use App\Services\DashboardStatsService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Storage;
@@ -439,6 +440,62 @@ class AlertTest extends TestCase
         $html = $this->actingAs($user)->get('/alerts?status=pending')->assertOk()->getContent();
         $this->assertStringNotContainsString('name="status"', $html);
         $this->assertStringNotContainsString('for="status"', $html);
+    }
+
+    public function test_type_khac_filter_returns_the_same_rows_the_dashboard_buckets(): void
+    {
+        // Issue #195: the dashboard 'Khác' tile counts every approved alert
+        // whose trimmed type is outside ALERT_TYPES (NULL / '' / whitespace /
+        // free text) via typeBreakdown, but the list filter equality-matched
+        // the literal 'Khác'. On the shipped database (all approved alerts
+        // NULL-typed) the dashboard read "Khác: 100%" while
+        // /alerts?type=Khác returned zero — and the same rows matched none
+        // of the other four options, so they were invisible under every
+        // filter. The read path now mirrors the bucket; canonical types keep
+        // equality. Assert both: the Khác set equals what typeBreakdown
+        // counts as Khác, and a canonical type still selects only its rows.
+        $user = User::factory()->create();
+        $rows = [
+            'literal khac' => 'Khác',
+            'null' => null,
+            'empty' => '',
+            'whitespace' => '   ',
+            'free text' => 'Mâu thuẫn',
+            'canonical trộm cắp' => 'Trộm cắp',
+            'canonical lừa đảo' => 'Lừa đảo',
+        ];
+        foreach ($rows as $title => $type) {
+            Alert::create([
+                'user_id' => $user->id, 'title' => $title, 'description' => 'd',
+                'status' => 'approved', 'type' => $type,
+            ]);
+        }
+
+        // What the dashboard counts as 'Khác' — same predicate typeBreakdown
+        // uses — must equal the /alerts?type=Khác row set exactly.
+        $expectedKhac = collect($rows)
+            ->filter(fn ($t) => ! in_array(trim((string) $t), DashboardStatsService::ALERT_TYPES, true))
+            ->keys()
+            ->sort()
+            ->values();
+
+        $page = $this->actingAs($user)->get('/alerts?type=Khác')->assertOk();
+        $actual = $page->viewData('alerts')->pluck('title')->sort()->values();
+        $this->assertSame($expectedKhac->all(), $actual->all(), '/alerts?type=Khác must match the dashboard bucket');
+
+        // Canonical types still equality-filter (the fix must not widen them).
+        $this->assertSame(
+            ['canonical trộm cắp'],
+            $this->actingAs($user)->get('/alerts?type=Trộm cắp')->viewData('alerts')->pluck('title')->all()
+        );
+        // A pending row of a bucket type must never appear (approved-only
+        // contract #41 holds across the new branch too).
+        Alert::create([
+            'user_id' => $user->id, 'title' => 'Cho duyet khac', 'description' => 'd',
+            'status' => 'pending', 'type' => null,
+        ]);
+        $this->actingAs($user)->get('/alerts?type=Khác')->assertOk()
+            ->assertDontSee('Cho duyet khac');
     }
 
     public function test_admin_queue_avatar_initial_is_a_full_vietnamese_letter(): void
