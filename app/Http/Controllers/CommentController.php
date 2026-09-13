@@ -8,6 +8,7 @@ use App\Models\Experience;
 use App\Notifications\NewCommentOnPost;
 use App\Notifications\NewReplyOnComment;
 use Illuminate\Http\Request;
+use Illuminate\Validation\ValidationException;
 
 class CommentController extends Controller
 {
@@ -18,20 +19,40 @@ class CommentController extends Controller
         }
         $request->validate([
             'content' => 'required|string|max:1000',
-            'alert_id' => 'nullable|exists:alerts,id',
+            // A top-level comment needs a post; a reply inherits one from
+            // its parent (checked below), so only requires the field when
+            // neither sibling is present.
+            'alert_id' => 'nullable|required_without_all:experience_id,parent_id|exists:alerts,id',
             'experience_id' => 'nullable|exists:experiences,id',
+            // Issue #35: parent used to be stored unchecked — no existence
+            // rule, and nothing bound it to the submitted post.
+            'parent_id' => 'nullable|exists:comments,id',
         ]);
         $data = [
             'user_id' => auth()->id(),
             'content' => $request->content,
         ];
         if ($request->filled('parent_id')) {
-            $data['parent_id'] = $request->parent_id;
-        }
-        if ($request->filled('alert_id')) {
+            $parent = Comment::findOrFail($request->parent_id);
+            // A reply hangs off its parent thread, so the parent defines the
+            // owning post. The client's own post id may only agree with it;
+            // anything else is a crafted cross-thread injection attempt.
+            if (($request->filled('alert_id') && (int) $request->alert_id !== (int) $parent->alert_id)
+                || ($request->filled('experience_id') && (int) $request->experience_id !== (int) $parent->experience_id)) {
+                throw ValidationException::withMessages([
+                    'parent_id' => 'Bình luận cha không thuộc bài viết này.',
+                ]);
+            }
+            $data['parent_id'] = $parent->id;
+            if ($parent->alert_id) {
+                $data['alert_id'] = $parent->alert_id;
+            }
+            if ($parent->experience_id) {
+                $data['experience_id'] = $parent->experience_id;
+            }
+        } elseif ($request->filled('alert_id')) {
             $data['alert_id'] = $request->alert_id;
-        }
-        if ($request->filled('experience_id')) {
+        } else {
             $data['experience_id'] = $request->experience_id;
         }
         $comment = Comment::create($data);
@@ -40,21 +61,17 @@ class CommentController extends Controller
         $post = null;
         $postType = null;
         $postOwnerId = null;
-        if ($request->filled('alert_id')) {
-            $post = Alert::find($request->alert_id);
+        if ($comment->alert_id) {
+            $post = Alert::find($comment->alert_id);
             $postType = 'alert';
             $postOwnerId = $post ? $post->user_id : null;
-        } elseif ($request->filled('experience_id')) {
-            $post = Experience::find($request->experience_id);
+        } elseif ($comment->experience_id) {
+            $post = Experience::find($comment->experience_id);
             $postType = 'experience';
             $postOwnerId = $post ? $post->user_id : null;
         }
-        $parentComment = null;
-        $parentOwnerId = null;
-        if ($request->filled('parent_id')) {
-            $parentComment = Comment::find($request->parent_id);
-            $parentOwnerId = $parentComment ? $parentComment->user_id : null;
-        }
+        $parentComment = $parent ?? null;
+        $parentOwnerId = $parentComment ? $parentComment->user_id : null;
         // Nếu là reply, chỉ gửi cho chủ comment cha (nếu khác người gửi)
         if ($parentComment && $parentOwnerId && $parentOwnerId != $currentUserId) {
             $parentComment->user->notify(new NewReplyOnComment($comment, $parentComment, $post, $postType));
@@ -62,8 +79,8 @@ class CommentController extends Controller
             // Nếu là bình luận gốc, chỉ gửi cho chủ bài viết (nếu khác người gửi)
             $post->user->notify(new NewCommentOnPost($comment, $post, $postType));
         }
-        if ($request->filled('experience_id')) {
-            return redirect()->route('experiences.show', $request->experience_id)->with('success', 'Bình luận đã được gửi!');
+        if ($comment->experience_id) {
+            return redirect()->route('experiences.show', $comment->experience_id)->with('success', 'Bình luận đã được gửi!');
         }
 
         return back()->with('success', 'Bình luận đã được gửi!');
