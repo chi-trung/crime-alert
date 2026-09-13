@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\AdminMiddleware;
 use App\Models\SupportMessage;
 use App\Models\SupportRequest;
 use App\Models\User;
@@ -171,6 +172,65 @@ class SupportTest extends TestCase
             ->post(route('support.sendMessage', $thread), ['message' => str_repeat('ạ', 5000)])
             ->assertSessionHasNoErrors();
         $this->assertSame(5000, mb_strlen(SupportMessage::latest('id')->value('message')));
+    }
+
+    public function test_non_admin_close_and_destroy_are_blocked_end_to_end(): void
+    {
+        // Issue #97: the ['auth','admin'] route group already 403s these,
+        // so these assertions hold with or without the in-method check —
+        // they pin the end-to-end behavior, not the fix.
+        [$owner, , $other, $thread] = $this->makeThread();
+
+        $this->actingAs($other)->post(route('admin.support.close', $thread))->assertForbidden();
+        $this->actingAs($owner)->post(route('admin.support.close', $thread))->assertForbidden();
+        $this->assertSame('open', $thread->fresh()->status);
+
+        $this->actingAs($other)->delete(route('admin.support.destroy', $thread))->assertForbidden();
+        $this->assertDatabaseCount('support_requests', 1);
+    }
+
+    public function test_non_admin_close_is_rejected_without_the_route_guard(): void
+    {
+        // Issue #97: close() carried no in-method authorization, so with the
+        // route middleware bypassed a non-admin's POST flipped the status.
+        // Owner included — owning the thread grants no admin rights.
+        [$owner, , $other, $thread] = $this->makeThread();
+        $this->withoutMiddleware(AdminMiddleware::class);
+
+        $this->actingAs($other)->post(route('admin.support.close', $thread))->assertForbidden();
+        $this->assertSame('open', $thread->fresh()->status);
+
+        $this->actingAs($owner)->post(route('admin.support.close', $thread))->assertForbidden();
+        $this->assertSame('open', $thread->fresh()->status);
+    }
+
+    public function test_non_admin_destroy_is_rejected_without_the_route_guard(): void
+    {
+        // Same gap as close(): destroy() deleted on route wiring alone.
+        [$owner, , $other, $thread] = $this->makeThread();
+        $this->withoutMiddleware(AdminMiddleware::class);
+
+        $this->actingAs($other)->delete(route('admin.support.destroy', $thread))->assertForbidden();
+        $this->assertDatabaseCount('support_requests', 1);
+
+        $this->actingAs($owner)->delete(route('admin.support.destroy', $thread))->assertForbidden();
+        $this->assertDatabaseCount('support_requests', 1);
+    }
+
+    public function test_admin_close_and_destroy_succeed_on_the_in_method_check_alone(): void
+    {
+        // Positive control: with the route guard bypassed, a real admin
+        // still passes the in-method check through both transitions.
+        [, $admin, , $thread] = $this->makeThread();
+        $this->withoutMiddleware(AdminMiddleware::class);
+
+        $this->actingAs($admin)->post(route('admin.support.close', $thread))
+            ->assertSessionHas('success');
+        $this->assertSame('closed', $thread->fresh()->status);
+
+        $this->actingAs($admin)->delete(route('admin.support.destroy', $thread))
+            ->assertRedirect();
+        $this->assertDatabaseCount('support_requests', 0);
     }
 
     public function test_dead_admin_id_column_is_gone(): void
