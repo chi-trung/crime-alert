@@ -44,12 +44,38 @@ document.addEventListener('DOMContentLoaded', function() {
             fillOpacity: 0.18,
             radius: 200
         }).addTo(map);
-        var popup = `<div style='min-width:200px'>
-            <b>${alert.title}</b><br>
-            <span class='badge bg-danger mb-1' style='color:#fff;font-weight:bold;'>${alert.type || 'Không rõ'}</span><br>
-            <span>${alert.location || ''}</span><br>
-            <a href='/alerts/${alert.id}' class='btn btn-sm mt-2' style='background:#dc3545;color:#fff;font-weight:bold;border:none;'>Xem chi tiết</a>
-        </div>`;
+        // Issue #77: this used to interpolate alert.title/type/location into
+        // an HTML template literal. Leaflet's bindPopup(string) innerHTMLs the
+        // string, so those three user-authored columns were a stored-XSS sink
+        // for every viewer of /alerts/map. Built as DOM nodes with textContent
+        // instead (same fix as #18's notification dropdown); bindPopup accepts
+        // an element and inserts it without HTML parsing.
+        var popup = document.createElement('div');
+        popup.style.minWidth = '200px';
+        var titleEl = document.createElement('b');
+        titleEl.textContent = alert.title;
+        popup.appendChild(titleEl);
+        popup.appendChild(document.createElement('br'));
+        var badge = document.createElement('span');
+        badge.className = 'badge bg-danger mb-1';
+        badge.style.color = '#fff';
+        badge.style.fontWeight = 'bold';
+        badge.textContent = alert.type || 'Không rõ';
+        popup.appendChild(badge);
+        popup.appendChild(document.createElement('br'));
+        var locEl = document.createElement('span');
+        locEl.textContent = alert.location || '';
+        popup.appendChild(locEl);
+        popup.appendChild(document.createElement('br'));
+        var link = document.createElement('a');
+        link.href = '/alerts/' + encodeURIComponent(alert.id);
+        link.className = 'btn btn-sm mt-2';
+        link.style.background = '#dc3545';
+        link.style.color = '#fff';
+        link.style.fontWeight = 'bold';
+        link.style.border = 'none';
+        link.textContent = 'Xem chi tiết';
+        popup.appendChild(link);
         marker.bindPopup(popup);
         markers.addLayer(marker);
     });
