@@ -25,7 +25,13 @@ class NotificationController extends Controller
 
     public function readAll()
     {
-        auth()->user()->unreadNotifications->markAsRead();
+        // Issue #93: the magic attribute loaded the whole unread set and
+        // markAsRead() on the collection proxied save() per row — one
+        // SELECT plus N UPDATEs. The relation's query builder scopes the
+        // same rows (unread() ends in whereNull('read_at')), so one
+        // bulk UPDATE does the job; notifications rows fire no model-event
+        // listeners in this app, so behavior is unchanged.
+        auth()->user()->unreadNotifications()->update(['read_at' => now()]);
 
         return back()->with('success', 'Đã đánh dấu tất cả thông báo là đã đọc!');
     }
