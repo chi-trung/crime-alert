@@ -8,6 +8,7 @@ use App\Models\SupportRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -115,6 +116,56 @@ class SupportTest extends TestCase
             ->assertSessionHas('error');
 
         $this->assertDatabaseCount('support_messages', 0);
+    }
+
+    public function test_unverified_users_cannot_open_threads_or_reply(): void
+    {
+        // Issue #129: support.store fans NewSupportRequest to every admin and
+        // sendMessage fans NewSupportMessage — the same content-that-notifies-
+        // others class the alert/experience/comment stores already gate on
+        // verified email. Factories are verified by default, hence ->unverified().
+        $unverified = User::factory()->unverified()->create();
+
+        Notification::fake();
+
+        $this->actingAs($unverified)
+            ->post(route('support.store'), ['subject' => 'spam', 'message' => 'spam body'])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('support_requests', 0);
+        $this->assertDatabaseCount('support_messages', 0);
+        Notification::assertNothingSent();
+    }
+
+    public function test_unverified_owner_cannot_reply_to_own_thread(): void
+    {
+        $unverified = User::factory()->unverified()->create();
+        $thread = SupportRequest::create(['user_id' => $unverified->id, 'subject' => 'mine']);
+
+        Notification::fake();
+
+        // The guard runs first, before authorizeViewer, so even the thread's
+        // own owner is turned away with the verification error.
+        $this->actingAs($unverified)
+            ->post(route('support.sendMessage', $thread), ['message' => 'still me'])
+            ->assertSessionHas('error');
+
+        $this->assertDatabaseCount('support_messages', 0);
+        Notification::assertNothingSent();
+    }
+
+    public function test_verified_user_still_opens_threads_normally(): void
+    {
+        // Control: the gate adds friction only for unverified accounts.
+        $owner = User::factory()->create();
+        User::factory()->admin()->create();
+
+        $this->actingAs($owner)
+            ->post(route('support.store'), ['subject' => 'fine', 'message' => 'body'])
+            ->assertSessionHas('success');
+
+        $this->assertDatabaseCount('support_requests', 1);
+        $this->assertDatabaseCount('support_messages', 1);
     }
 
     public function test_message_content_is_escaped_in_server_rendered_view(): void

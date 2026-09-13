@@ -58,6 +58,19 @@ class LikeController extends Controller
             'id' => 'required|integer',
         ]);
         $user = auth()->user();
+        // Issue #129: likes notify the post/comment author, so they carry the
+        // same email-verification gate as the alert/experience/comment stores.
+        // The real callers send Accept: application/json and branch on a
+        // redirect key (see destroy's 401 shape below and the fetch handlers
+        // in public/js/alerts_show.js), so the JSON branch matches the
+        // endpoint's own auth-state contract.
+        if (! $user->hasVerifiedEmail()) {
+            if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Bạn cần xác thực email để thích bài viết.'], 403);
+            }
+
+            return back()->with('error', 'Bạn cần xác thực email để thích bài viết.');
+        }
         $type = $request->type;
         $id = $request->id;
         $model = $this->resolveLikeable($type, $id);
