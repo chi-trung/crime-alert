@@ -7,8 +7,10 @@ use App\Models\SupportRequest;
 use App\Models\User;
 use App\Notifications\NewSupportMessage;
 use App\Notifications\NewSupportRequest;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class SupportRequestController extends Controller
 {
@@ -73,22 +75,86 @@ class SupportRequestController extends Controller
             // Issue #39: TEXT column, unbounded like #37 — bound it.
             'message' => 'required|string|max:5000',
         ]);
-        $supportRequest = SupportRequest::create([
-            'user_id' => Auth::id(),
-            'subject' => $data['subject'],
-        ]);
-        SupportMessage::create([
-            'support_request_id' => $supportRequest->id,
-            'user_id' => Auth::id(),
-            'message' => $data['message'],
-        ]);
-        // Gửi notification cho admin
-        $admins = User::where('isAdmin', true)->get();
-        foreach ($admins as $admin) {
-            $admin->notify(new NewSupportRequest($supportRequest, Auth::user()));
+        // Issue #164: the thread and its opening message are one conceptual
+        // act (show() renders the message list; a thread without its first
+        // message is meaningless) but used to autocommit separately, so an
+        // admin deleting the fresh thread from /admin/support between the two
+        // inserts made the late SupportMessage::create an uncaught FK
+        // violation (MySQL 1452 / SQLite "FOREIGN KEY constraint failed" ->
+        // 500, submission lost), and any failure of the second insert left an
+        // empty orphan thread in the queue (#53/#57 class). Same check-then-act
+        // shape as #153/#139, fixed the same way: one DB::transaction, and the
+        // back-out paths let their exception escape the closure so Laravel
+        // rolls the transaction (thread row and any bells) back before the
+        // outer catch answers with a flash instead of a 500 — a returned flag
+        // would commit the half submission. On back-end semantics: MySQL's row
+        // lock already blocks a concurrent DELETE until this transaction
+        // commits (the sweep then cascades both rows), and SQLite's write lock
+        // makes mid-transaction interleaving impossible — the catch and the
+        // post-insert re-read cover FK-disabled backends and same-transaction
+        // paths. A raced delete backs out with the error-flash shape the #129
+        // gate above already uses, not a 500.
+        $supportRequest = null;
+        $vanished = false;
+        try {
+            DB::transaction(function () use ($data, &$supportRequest) {
+                $supportRequest = SupportRequest::create([
+                    'user_id' => Auth::id(),
+                    'subject' => $data['subject'],
+                ]);
+                SupportMessage::create([
+                    'support_request_id' => $supportRequest->id,
+                    'user_id' => Auth::id(),
+                    'message' => $data['message'],
+                ]);
+                // Post-insert current read: the thread may have been deleted
+                // without tripping an FK (constraints off) — throw to roll the
+                // rows back and back out *before* the fan-out so no bell
+                // ever points at a dead thread.
+                if (! SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->exists()) {
+                    throw new \RuntimeException('support-request-vanished');
+                }
+                // Gửi notification cho admin
+                $admins = User::where('isAdmin', true)->get();
+                foreach ($admins as $admin) {
+                    $admin->notify(new NewSupportRequest($supportRequest, Auth::user()));
+                }
+            });
+        } catch (QueryException $e) {
+            // Ordered before the RuntimeException arm: QueryException extends
+            // it (PDOException's lineage), so an FK violation must not be
+            // re-thrown by the sentinel guard below and sail past here.
+            if (! $this->isForeignKeyViolation($e)) {
+                throw $e;
+            }
+            // The opening message's FK rejected a thread that vanished
+            // between the two inserts; the transaction (thread included) is
+            // already rolled back by the escape.
+            $vanished = true;
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() !== 'support-request-vanished') {
+                throw $e;
+            }
+            $vanished = true;
+        }
+        if ($vanished) {
+            return redirect()->back()->with('error', 'Yêu cầu không tồn tại, vui lòng thử lại.');
         }
 
         return redirect()->route('support.show', $supportRequest)->with('success', 'Đã gửi yêu cầu trợ giúp!');
+    }
+
+    /**
+     * 1452 = MySQL foreign-key child-row rejection; "FOREIGN KEY constraint
+     * failed" = the SQLite message (this repo's connection enforces FKs by
+     * default — config/database.php). Narrow enough to rethrow any other DB
+     * failure rather than swallow a real bug. (Same helper shape as
+     * CommentController::isForeignKeyViolation from #153.)
+     */
+    private function isForeignKeyViolation(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), '1452')
+            || str_contains($e->getMessage(), 'FOREIGN KEY constraint failed');
     }
 
     // Xem chi tiết và nhắn tin
