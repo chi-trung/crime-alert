@@ -89,6 +89,54 @@ class CommentStoreTest extends TestCase
         $this->assertSame(1, Comment::count()); // only the parent exists
     }
 
+    public function test_comment_on_pending_alert_is_rejected(): void
+    {
+        // Issue #95: the form only renders on approved posts and show()
+        // 403s strangers elsewhere (#20), but store() itself never checked —
+        // a crafted POST could pile comments onto pending/rejected posts.
+        $owner = $this->user();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'A', 'description' => 'd', 'status' => 'pending']);
+
+        $this->actingAs($this->user())->post('/comments', [
+            'content' => 'crafted',
+            'alert_id' => $alert->id,
+        ])->assertForbidden();
+
+        $this->assertSame(0, Comment::count());
+    }
+
+    public function test_comment_on_rejected_experience_is_rejected(): void
+    {
+        $owner = $this->user();
+        $experience = Experience::create([
+            'user_id' => $owner->id, 'name' => 'N', 'title' => 't', 'content' => 'c', 'status' => 'rejected',
+        ]);
+
+        $this->actingAs($this->user())->post('/comments', [
+            'content' => 'crafted',
+            'experience_id' => $experience->id,
+        ])->assertForbidden();
+
+        $this->assertSame(0, Comment::count());
+    }
+
+    public function test_reply_to_comment_on_pending_post_is_rejected(): void
+    {
+        // Replies inherit their post from the parent, so a thread rooted in
+        // a crafted comment on a pending post must be unreachable too.
+        $owner = $this->user();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'A', 'description' => 'd', 'status' => 'pending']);
+        $parent = Comment::create(['alert_id' => $alert->id, 'user_id' => $owner->id, 'content' => 'top']);
+
+        $this->actingAs($this->user())->post('/comments', [
+            'content' => 'nested',
+            'parent_id' => $parent->id,
+            'alert_id' => $alert->id,
+        ])->assertForbidden();
+
+        $this->assertSame(1, Comment::count()); // only the parent exists
+    }
+
     public function test_unknown_parent_is_rejected(): void
     {
         $owner = $this->user();

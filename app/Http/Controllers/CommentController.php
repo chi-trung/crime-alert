@@ -55,6 +55,16 @@ class CommentController extends Controller
         } else {
             $data['experience_id'] = $request->experience_id;
         }
+        // Issue #95: the blades only offer the form on approved posts and
+        // show() 403s strangers elsewhere (#20), but this endpoint accepted
+        // comments on pending/rejected posts — a verified user could spam
+        // an author's feed through a rejected post. Replies inherit their
+        // parent's post above, so checking the resolved target covers both
+        // branches with one gate.
+        $target = isset($data['alert_id'])
+            ? Alert::find($data['alert_id'])
+            : Experience::find($data['experience_id']);
+        abort_unless($target && $target->status === 'approved', 403);
         $comment = Comment::create($data);
         // Gửi notification hợp lý
         $currentUserId = auth()->id();
