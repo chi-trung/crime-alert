@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Alert;
+use App\Models\Comment;
 use App\Models\Experience;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -56,8 +57,13 @@ class ProfileController extends Controller
         // models' `deleting` events — so the uploaded image/avatar files
         // would survive account deletion. Delete the owned posts through
         // Eloquent first; the cascade stays as the safety net.
+        // Issue #57 adds the reason this must be Eloquent, not just a
+        // convention: the morph `likes` rows can only be swept by the model
+        // hooks, and comments are deleted here too because their DB cascade
+        // would strand replies' likes.
         Alert::where('user_id', $user->id)->get()->each->delete();
         Experience::where('user_id', $user->id)->get()->each->delete();
+        Comment::where('user_id', $user->id)->get()->each->delete();
 
         Auth::logout();
 

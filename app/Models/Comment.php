@@ -9,6 +9,34 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Comment extends Model
 {
+    protected static function booted(): void
+    {
+        // Issue #57: morph likes have no FK to cascade them. Deleting a
+        // parent also cascades its whole reply subtree at the DB level
+        // (without firing their events), so sweep every descendant id.
+        static::deleting(function (Comment $comment) {
+            Like::where('likeable_type', self::class)
+                ->whereIn('likeable_id', self::subtreeIds($comment->id))
+                ->delete();
+        });
+    }
+
+    /**
+     * The comment and every reply beneath it, at any depth. The UI nests one
+     * level, but the store endpoint accepts a parent_id for any comment, so
+     * crafted posts can go deeper; the loop is two queries for real threads.
+     */
+    public static function subtreeIds(int $id): array
+    {
+        $ids = [$id];
+        for ($frontier = $ids; $frontier !== []; $frontier = $next) {
+            $next = self::whereIn('parent_id', $frontier)->pluck('id')->all();
+            $ids = array_merge($ids, $next);
+        }
+
+        return $ids;
+    }
+
     protected $fillable = [
         'alert_id',
         'experience_id',
