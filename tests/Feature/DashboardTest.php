@@ -169,6 +169,54 @@ class DashboardTest extends TestCase
         }
     }
 
+    public function test_type_breakdown_reads_only_the_type_column(): void
+    {
+        // Issue #83: the pie chart's typeBreakdown() reads exactly one
+        // attribute per row, so the global approved-alerts read must select
+        // only `type` — hydrating full Alert models (description TEXT
+        // included) for every approved alert on every render is waste the
+        // DB removes for free.
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+        foreach (range(1, 5) as $i) {
+            Alert::create(['user_id' => $user->id, 'title' => "A{$i}", 'description' => 'd', 'status' => 'approved']);
+        }
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($admin)->get('/dashboard')->assertOk();
+        $this->actingAs($user)->get('/dashboard')->assertOk();
+        $log = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $narrowed = 0;
+        foreach ($log as $entry) {
+            $q = strtolower($entry['query']);
+            $strs = array_map('strval', $entry['bindings']);
+            $readsAlerts = (bool) preg_match('/\bfrom\s+["`]?alerts["`]?/i', $q);
+            if (! $readsAlerts) {
+                continue;
+            }
+            // The breakdown read is the global one: 'approved' bound, no
+            // user_id bound, no LIMIT (the pie must see every row). It must
+            // no longer ship full rows. The $myAlertsThisMonth read is also
+            // LIMIT-less but always binds a user_id, and latestAlert/myLatest
+            // carry a LIMIT, so neither trips this.
+            $isBreakdownScan = str_starts_with($q, 'select *')
+                && in_array('approved', $strs, true)
+                && ! str_contains($q, 'limit')
+                && ! in_array((string) $user->id, $strs, true);
+            $this->assertFalse($isBreakdownScan, "typeBreakdown still hydrates full models: {$q}");
+            if (preg_match('/\bselect\s+["`]?type["`]?(\s*,\s*["`]?type["`]?)*\s+from\s+["`]?alerts["`]?/i', $q)) {
+                $narrowed++;
+            }
+        }
+        // Positive control: both dashboards must still run the (now
+        // type-only) breakdown read — so the negatives above can't pass by
+        // the chart's query being deleted outright.
+        $this->assertGreaterThanOrEqual(2, $narrowed, 'no type-only alerts read ran on the two dashboard renders');
+    }
+
     public function test_empty_dashboard_shows_no_phantom_type_percentage(): void
     {
         // Issue #65: with zero approved alerts the old remainder scheme put

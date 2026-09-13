@@ -34,8 +34,12 @@ class DashboardStatsService
      */
     public function forAdmin(): array
     {
+        // Issue #83: get(['type']) — typeBreakdown reads exactly this one
+        // column, so hydrating full Alert models (description TEXT, Carbon
+        // timestamps, per-model bootstrapping) for every approved alert on
+        // every dashboard render was pure waste.
         [, $typePercents] = $this->typeBreakdown(
-            Alert::where('status', 'approved')->get()
+            Alert::where('status', 'approved')->get(['type'])
         );
 
         $currentYear = now()->year;
@@ -118,8 +122,9 @@ class DashboardStatsService
         // that call. What remains is the breakdown the pie chart actually
         // renders: the GLOBAL approved-alert one, by pre-existing design, not
         // the user's own mix.
+        // Issue #83: get(['type']) — see forAdmin; only type is read.
         [, $globalTypePercents] = $this->typeBreakdown(
-            Alert::where('status', 'approved')->get()
+            Alert::where('status', 'approved')->get(['type'])
         );
 
         $myExperience = Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
