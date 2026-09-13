@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Experience;
 use App\Models\User;
+use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -85,6 +86,45 @@ class ExperienceTest extends TestCase
 
         $this->actingAs($admin)->post("/admin/experiences/{$experience->id}/reject");
         $this->assertSame('rejected', $experience->fresh()->status);
+    }
+
+    public function test_non_admin_approve_reject_are_rejected_without_the_route_guard(): void
+    {
+        // Issue #117: approve()/reject() carried no in-method authorization,
+        // so with the can:admin route middleware bypassed a non-admin's POST
+        // flipped the status. The end-to-end route guard already 403s (test
+        // above), so these pin the in-method check itself. Approving one's
+        // own pending post grants no admin rights.
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $approveTarget = $this->experienceFor($owner, 'pending');
+        $rejectTarget = $this->experienceFor($owner, 'pending');
+        $this->withoutMiddleware(Authorize::class);
+
+        $this->actingAs($stranger)->post("/admin/experiences/{$approveTarget->id}/approve")->assertForbidden();
+        $this->assertSame('pending', $approveTarget->fresh()->status);
+
+        $this->actingAs($owner)->post("/admin/experiences/{$approveTarget->id}/approve")->assertForbidden();
+        $this->assertSame('pending', $approveTarget->fresh()->status);
+
+        $this->actingAs($stranger)->post("/admin/experiences/{$rejectTarget->id}/reject")->assertForbidden();
+        $this->assertSame('pending', $rejectTarget->fresh()->status);
+    }
+
+    public function test_admin_approve_reject_succeed_on_the_in_method_check_alone(): void
+    {
+        // Positive control for #117: with the route guard bypassed, a real
+        // admin still passes the in-method check through both transitions.
+        $admin = User::factory()->admin()->create();
+        $approveTarget = $this->experienceFor($admin, 'pending');
+        $rejectTarget = $this->experienceFor($admin, 'pending');
+        $this->withoutMiddleware(Authorize::class);
+
+        $this->actingAs($admin)->post("/admin/experiences/{$approveTarget->id}/approve");
+        $this->assertSame('approved', $approveTarget->fresh()->status);
+
+        $this->actingAs($admin)->post("/admin/experiences/{$rejectTarget->id}/reject");
+        $this->assertSame('rejected', $rejectTarget->fresh()->status);
     }
 
     public function test_user_experience_lands_pending_and_admin_experience_auto_approves(): void
