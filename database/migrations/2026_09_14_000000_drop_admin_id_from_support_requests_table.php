@@ -19,8 +19,10 @@ return new class extends Migration
     {
         Schema::table('support_requests', function (Blueprint $table) {
             // FK first: dropping the column while the constraint lives 500s
-            // on MySQL. dropConstrainedForeignId handles both (and is a
-            // no-op-safe single call on SQLite, which ignores FK DDL).
+            // on MySQL. dropConstrainedForeignId handles both in one call —
+            // on SQLite the dropForeign leg compiles to a no-op (FKs vanish
+            // implicitly when the table is rebuilt for the column drop)
+            // while dropColumn executes for real.
             $table->dropConstrainedForeignId('admin_id');
         });
     }
