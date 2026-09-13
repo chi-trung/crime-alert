@@ -45,15 +45,24 @@ class CrawlWantedList extends Command
             if (is_numeric($name) || $name === '' || $name === 'Họ tên' || ! preg_match('/^(19|20)\d{2}$/', $birthYear)) {
                 continue;
             }
+            // Issue #106: same class as #100 (News, fixed in #101) — these
+            // cells come off an untrusted third-party DOM but land in
+            // VARCHAR(255) columns, so one over-length cell 500s every
+            // scheduled run on MySQL (SQLite ignores the limit, so CI never
+            // caught it). Truncate on ingest, lookup keys included — the
+            // updateOrCreate query itself would 1406 before any insert.
+            // birth_year is regex-pinned to four digits, so it needs none.
+            // Same accepted tradeoff as #100/#101: mb_substr counts
+            // characters while utf8mb4 measures bytes.
             WantedPerson::updateOrCreate([
-                'name' => $name,
+                'name' => mb_substr($name, 0, 255),
                 'birth_year' => $birthYear,
-                'address' => trim($cols->eq(3)->text()),
+                'address' => mb_substr(trim($cols->eq(3)->text()), 0, 255),
             ], [
-                'parents' => trim($cols->eq(4)->text()),
-                'crime' => trim($cols->eq(5)->text()),
-                'decision' => trim($cols->eq(6)->text()),
-                'agency' => trim($cols->eq(7)->text()),
+                'parents' => mb_substr(trim($cols->eq(4)->text()), 0, 255),
+                'crime' => mb_substr(trim($cols->eq(5)->text()), 0, 255),
+                'decision' => mb_substr(trim($cols->eq(6)->text()), 0, 255),
+                'agency' => mb_substr(trim($cols->eq(7)->text()), 0, 255),
             ]);
             $count++;
         }
