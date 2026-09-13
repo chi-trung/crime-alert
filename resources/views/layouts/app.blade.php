@@ -632,6 +632,26 @@
                         });
 
                         if (!response.ok) {
+                            // Issue #208: the old shape threw on !response.ok
+                            // BEFORE reading the body, so every server-side
+                            // error message — notably #190's 403 "xác thực
+                            // email" JSON, which the controller emits
+                            // deliberately — was discarded and the catch
+                            // always rendered the generic connection-error
+                            // bubble. A freshly registered (auto-logged-in,
+                            // unverified) user was told to "retry later" for
+                            // a task that is actually email verification,
+                            // and each retry burned the 20,1,chatbot throttle
+                            // lane. Parse the body first and surface its
+                            // message when present; the generic line stays
+                            // only for real transport failures.
+                            const data = await response.json().catch(() => null);
+                            if (data && data.message) {
+                                this.hideLoading();
+                                this.addMessage(data.message, 'bot', true);
+                                return;
+                            }
+
                             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                         }
 

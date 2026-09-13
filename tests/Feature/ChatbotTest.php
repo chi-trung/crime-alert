@@ -218,4 +218,34 @@ class ChatbotTest extends TestCase
             $this->assertStringNotContainsString('gm-test-key', $line);
         }
     }
+
+    /**
+     * Issue #208: the widget's sendMessage threw on !response.ok BEFORE
+     * reading the body, so #190's deliberate 403 "verify your email" JSON —
+     * the one every freshly-registered user gets, since register auto-logs-in
+     * an unverified account and the widget renders under auth()->check() —
+     * was discarded for a canned "connection error, try later" bubble, and
+     * each retry burned the chatbot throttle lane. These pin that the shipped
+     * client now parses the error body and reaches for data.message.
+     */
+    public function test_widget_surfaces_the_server_error_message_instead_of_a_generic_one(): void
+    {
+        $html = $this->actingAs(User::factory()->create())
+            ->get('/alerts')
+            ->assertOk()
+            ->getContent();
+
+        // The parse-before-throw ordering is the whole fix: the catch-first
+        // json() parse must come before the throw inside the !response.ok
+        // guard (a body with a message now returns early; the throw only
+        // fires for message-less failures).
+        $guard = strpos($html, 'if (!response.ok) {');
+        $this->assertNotFalse($guard);
+        $parse = strpos($html, 'await response.json().catch(() => null)', $guard);
+        $throw = strpos($html, 'throw new Error(`HTTP', $guard);
+        $this->assertNotFalse($parse, 'the error body must be parsed');
+        $this->assertNotFalse($throw, 'a message-less failure still throws to the generic path');
+        $this->assertLessThan($throw, $parse, 'the body must be parsed before the throw');
+        $this->assertStringContainsString("this.addMessage(data.message, 'bot', true)", $html);
+    }
 }
