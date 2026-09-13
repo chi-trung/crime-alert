@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Experience;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -125,5 +126,34 @@ class ExperienceTest extends TestCase
             'title' => 'vua du', 'content' => str_repeat('ạ', 10000), 'name' => 'U',
         ])->assertSessionHasNoErrors();
         $this->assertSame(10000, mb_strlen($experience->fresh()->content));
+    }
+
+    public function test_account_deletion_removes_the_owners_experiences(): void
+    {
+        // Issue #47: alerts/comments/likes/support all cascade on user
+        // delete; experiences sat outside that contract and became ghosts.
+        $user = User::factory()->create();
+        $experience = $this->experienceFor($user, 'approved');
+
+        $this->actingAs($user)->delete('/profile', ['password' => 'password'])
+            ->assertRedirect('/');
+
+        $this->assertDatabaseMissing('experiences', ['id' => $experience->id]);
+        $this->assertDatabaseMissing('users', ['id' => $user->id]);
+    }
+
+    public function test_experience_user_id_is_enforced_by_the_database(): void
+    {
+        // The cascade only works because the FK now exists; a ghost author
+        // id must be rejected by the database itself, not just the model.
+        $this->expectException(QueryException::class);
+
+        Experience::create([
+            'user_id' => 999_999,
+            'name' => 'Ghost',
+            'title' => 'Khong chu',
+            'content' => 'c',
+            'status' => 'approved',
+        ]);
     }
 }
