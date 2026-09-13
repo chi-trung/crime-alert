@@ -24,6 +24,15 @@ class ConfirmablePasswordController extends Controller
      */
     public function store(Request $request): RedirectResponse
     {
+        // Issue #155: same array-input class as #154/#145 — $request->password
+        // with password[]=a is an array, and the guard's validate() ends at
+        // password_verify(array) -> TypeError 'password_verify(): Argument #1
+        // ($password) must be of type string, array given' -> 500. Rejecting
+        // non-strings up front turns the crash into a normal validation
+        // failure (302 back / 422 to JSON). The guard call below still owns
+        // the correctness check.
+        $request->validate(['password' => ['required', 'string']]);
+
         if (! Auth::guard('web')->validate([
             'email' => $request->user()->email,
             'password' => $request->password,
