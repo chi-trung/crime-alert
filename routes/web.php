@@ -40,7 +40,12 @@ Route::middleware('auth')->group(function () {
         Route::put('/admin/alerts/{alert}', [AlertController::class, 'update'])->name('admin.alerts.update');
     });
     Route::post('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.changePassword');
-    Route::post('/comments', [CommentController::class, 'store'])->name('comments.store');
+    // Issue #141: the only unthrottled user-facing write endpoints. Every
+    // comment bells the post author and thread parents, every support
+    // message bells the admin side — same class of abuse vector #33 put
+    // throttle:20,1 on the chatbot for. Per-user keying comes from
+    // ThrottleRequests inside the auth group; no RateLimiter::for needed.
+    Route::post('/comments', [CommentController::class, 'store'])->middleware('throttle:30,1')->name('comments.store');
     Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::get('/comments/{comment}/edit', [CommentController::class, 'edit'])->name('comments.edit');
@@ -54,7 +59,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/support/create', [SupportRequestController::class, 'create'])->name('support.create');
     Route::post('/support', [SupportRequestController::class, 'store'])->name('support.store');
     Route::get('/support/{supportRequest}', [SupportRequestController::class, 'show'])->name('support.show');
-    Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->name('support.sendMessage');
+    // Issue #141: flood of messages per thread bells the counterpart/admins
+    // (NewSupportMessage) — same brake as comments.store above.
+    Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->middleware('throttle:30,1')->name('support.sendMessage');
     Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->name('support.messages');
 });
 
