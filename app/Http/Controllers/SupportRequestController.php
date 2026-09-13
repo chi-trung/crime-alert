@@ -60,6 +60,14 @@ class SupportRequestController extends Controller
     // Lưu yêu cầu mới
     public function store(Request $request)
     {
+        // Issue #129: same gate as the alert/experience/comment stores —
+        // this endpoint fans NewSupportRequest out to every admin with user
+        // text in the payload, and unverified accounts (any fake email passes
+        // registration) must not get the cheapest notification-spam primitive
+        // in the app.
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để liên hệ hỗ trợ.');
+        }
         $data = $request->validate([
             'subject' => 'required|string|max:255',
             // Issue #39: TEXT column, unbounded like #37 — bound it.
@@ -98,6 +106,13 @@ class SupportRequestController extends Controller
     // Gửi tin nhắn mới
     public function sendMessage(Request $request, SupportRequest $supportRequest)
     {
+        // Issue #129: replies ride NewSupportMessage to the counterpart (or
+        // every admin) just like store() — same verification gate, checked
+        // before authorizeViewer so the guard reads as the method's first
+        // contract.
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để liên hệ hỗ trợ.');
+        }
         $this->authorizeViewer($supportRequest);
         if ($supportRequest->status !== 'open') {
             return back()->with('error', 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.');

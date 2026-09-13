@@ -117,6 +117,30 @@ class LikeTest extends TestCase
         $this->assertSame(1, $comment->fresh()->likes()->count());
     }
 
+    public function test_unverified_user_cannot_like(): void
+    {
+        // Issue #129: likes notify post/comment authors, so the endpoint
+        // carries the same verification gate as the content stores. The real
+        // callers send Accept: application/json, so the JSON error shape
+        // mirrors destroy()'s 401 pattern; the form-style branch falls back to
+        // the redirect+error the other gated stores produce.
+        $owner = User::factory()->create();
+        $unverified = User::factory()->unverified()->create();
+        $alert = $this->alert($owner);
+
+        Notification::fake();
+
+        $this->actingAs($unverified)->postJson('/like', ['type' => 'alert', 'id' => $alert->id])
+            ->assertForbidden()
+            ->assertJson(['success' => false]);
+        // A plain web POST gets the error-redirect shape instead.
+        $this->actingAs($unverified)->post('/like', ['type' => 'alert', 'id' => $alert->id])
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Like::count());
+        Notification::assertNothingSent();
+    }
+
     public function test_like_on_pending_alert_is_forbidden(): void
     {
         // Issue #104: store() resolved any existing id via bare findOrFail
