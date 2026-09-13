@@ -69,13 +69,19 @@ class NotificationController extends Controller
         // it froze at "10" for anyone with more unread notifications. The
         // dropdown is a 10-item preview, but the badge shows the true total;
         // count() on the relation is a second, tiny SELECT.
+        // Issue #113: the feed used to return the raw data['url'] and the
+        // dropdown assigned it straight to a.href — clicks navigated to the
+        // target directly, bypassing read()'s #110 isLocalUrl gate (and a
+        // javascript: payload would execute as a href). Rows now link to
+        // the read route, which marks read and validates server-side; the
+        // raw url never leaves the server.
         $data = $unreadNotifications->map(function ($notification) {
             return [
                 'id' => $notification->id,
                 'message' => $notification->data['message'] ?? 'Bạn có thông báo mới',
                 'created_at' => $notification->created_at->diffForHumans(),
                 'read_at' => $notification->read_at,
-                'url' => $notification->data['url'] ?? null,
+                'read_url' => route('notifications.read', $notification->id),
             ];
         });
 
