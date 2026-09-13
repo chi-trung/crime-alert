@@ -162,8 +162,18 @@ class ExperienceController extends Controller
     {
         // Issue #117: in-method admin assertion (see authorizeAdmin()).
         $this->authorizeAdmin();
-        $experience->status = 'approved';
-        $experience->save();
+        // Issue #189: the blind write let a stale moderation page resurrect
+        // a rejected experience or silently un-approve a public one, both
+        // answered with the success flash. Mirrors the fix in
+        // AlertController::approve() — one conditional pending-only UPDATE
+        // (check-then-act hardening idiom of #139/#153) after the #98 guard
+        // pattern from support close().
+        $decided = Experience::whereKey($experience->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'approved', 'updated_at' => now()]);
+        if (! $decided) {
+            return back()->with('info', 'Bài chia sẻ này đã được xử lý trước đó.');
+        }
 
         return back()->with('success', 'Đã duyệt bài chia sẻ!');
     }
@@ -172,8 +182,13 @@ class ExperienceController extends Controller
     {
         // Issue #117: same in-method assertion as approve() above.
         $this->authorizeAdmin();
-        $experience->status = 'rejected';
-        $experience->save();
+        // Issue #189: conditional pending-only write — see approve().
+        $decided = Experience::whereKey($experience->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'rejected', 'updated_at' => now()]);
+        if (! $decided) {
+            return back()->with('info', 'Bài chia sẻ này đã được xử lý trước đó.');
+        }
 
         return back()->with('success', 'Đã từ chối bài chia sẻ!');
     }

@@ -85,8 +85,13 @@ class ExperienceTest extends TestCase
         $this->actingAs($admin)->post("/admin/experiences/{$experience->id}/approve");
         $this->assertSame('approved', $experience->fresh()->status);
 
-        $this->actingAs($admin)->post("/admin/experiences/{$experience->id}/reject");
-        $this->assertSame('rejected', $experience->fresh()->status);
+        // Issue #189: the old flow then rejected THIS row to prove reject
+        // works — but that click is exactly the stale un-moderation #189
+        // removed (an approved post can no longer be flipped to rejected by a
+        // second click). Reject now needs its own pending row.
+        $toReject = $this->experienceFor($user, 'pending');
+        $this->actingAs($admin)->post("/admin/experiences/{$toReject->id}/reject");
+        $this->assertSame('rejected', $toReject->fresh()->status);
     }
 
     public function test_non_admin_approve_reject_are_rejected_without_the_route_guard(): void
