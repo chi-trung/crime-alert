@@ -72,16 +72,14 @@ class AlertController extends Controller
         $query = Alert::query();
         $query->with('user')->withCount('comments');
 
-        // Chỉ hiện cảnh báo đã duyệt
+        // Only approved alerts are ever listed here. The client-supplied
+        // `status` filter (issue #41) AND-ed against this constant, so any
+        // value other than 'approved' returned an empty page; admins have
+        // their own unfiltered route (adminIndex), so nothing was lost.
         $query->where('status', 'approved');
-
         // Lọc theo loại tội phạm
         if ($request->filled('type')) {
             $query->where('type', $request->type);
-        }
-        // Lọc theo trạng thái (nếu muốn cho admin/user xem các trạng thái khác)
-        if ($request->filled('status')) {
-            $query->where('status', $request->status);
         }
         // Lọc theo vị trí
         if ($request->filled('location')) {

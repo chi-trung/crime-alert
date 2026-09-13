@@ -319,4 +319,20 @@ class AlertTest extends TestCase
         ])->assertRedirect(route('dashboard'));
         $this->assertSame(10000, mb_strlen($alert->fresh()->description));
     }
+
+    public function test_index_ignores_a_client_supplied_status_filter(): void
+    {
+        // Issue #41: the branch used to AND a second status clause onto the
+        // constant 'approved', so any value — pending, rejected, garbage —
+        // returned a blank list. The contract is approved-only, always.
+        $user = User::factory()->create();
+        $approved = Alert::create(['user_id' => $user->id, 'title' => 'Cong khai', 'description' => 'd', 'status' => 'approved']);
+        $pending = Alert::create(['user_id' => $user->id, 'title' => 'Cho duyet', 'description' => 'd', 'status' => 'pending']);
+
+        foreach (['pending', 'rejected', 'approved', 'anything'] as $status) {
+            $this->actingAs($user)->get("/alerts?status={$status}")->assertOk()
+                ->assertSee($approved->title)
+                ->assertDontSee($pending->title);
+        }
+    }
 }
