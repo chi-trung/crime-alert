@@ -6,6 +6,7 @@ use App\Models\Alert;
 use App\Models\Experience;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class DashboardTest extends TestCase
@@ -30,12 +31,32 @@ class DashboardTest extends TestCase
 
         $this->actingAs($user)->get('/dashboard')
             ->assertOk()
-            ->assertViewHas('myAlerts')
+            ->assertViewHas('myLatest')
             ->assertViewHas('typePercents')
             ->assertViewHas('myExperience');
 
         // Admin-only aggregates must not leak into the regular-user payload.
         $this->actingAs($user)->get('/dashboard')->assertViewMissing('totalAlerts');
+    }
+
+    public function test_dashboard_payload_ships_no_dead_keys(): void
+    {
+        // Issue #71: these keys were computed (some by unbounded queries) and
+        // shipped to a view that never read them. They — and the queries
+        // behind them — must stay deleted.
+        $user = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+
+        $dead = ['myTotal', 'myApproved', 'myAlerts'];
+        foreach ($dead as $key) {
+            $this->actingAs($user)->get('/dashboard')->assertViewMissing($key);
+        }
+
+        // latestAlerts/latestPending/pendingExperiences/latestPendingExperience
+        // were admin-only; assert all four against the admin render.
+        foreach (array_merge($dead, ['latestAlerts', 'latestPending', 'pendingExperiences', 'latestPendingExperience']) as $key) {
+            $this->actingAs($admin)->get('/dashboard')->assertViewMissing($key);
+        }
     }
 
     public function test_admin_sees_admin_dashboard(): void
@@ -67,18 +88,85 @@ class DashboardTest extends TestCase
     public function test_user_dashboard_counts_only_approved_this_month(): void
     {
         $user = User::factory()->create();
-        Alert::create(['user_id' => $user->id, 'title' => 'ok', 'description' => 'd', 'type' => 'Lừa đảo', 'status' => 'approved']);
-        Alert::create(['user_id' => $user->id, 'title' => 'pend', 'description' => 'd', 'status' => 'pending']);
+        // Fixed this-month timestamps, a minute apart: totalPosts filters on
+        // month, and the myLatest assertion depends on which alert is newest —
+        // both would break if the rows shared now()'s second or crossed a
+        // boundary relative to the wall clock.
+        $earlyMonth = now()->startOfMonth()->addDay();
+        // forceCreate, not create: created_at is not in Alert::$fillable, so
+        // mass assignment would drop it and both rows would share now()'s
+        // second (undefined tie order).
+        Alert::forceCreate(['user_id' => $user->id, 'title' => 'ok', 'description' => 'd', 'type' => 'Lừa đảo', 'status' => 'approved', 'created_at' => $earlyMonth]);
+        Alert::forceCreate(['user_id' => $user->id, 'title' => 'pend', 'description' => 'd', 'status' => 'pending', 'created_at' => $earlyMonth->copy()->addMinute()]);
         Experience::create(['user_id' => $user->id, 'name' => 'Na', 'title' => 'e', 'content' => 'c', 'status' => 'approved']);
 
         $response = $this->actingAs($user)->get('/dashboard');
 
-        // myApproved: approved alerts this month = 1
-        $response->assertViewHas('myApproved', 1);
+        // myApproved is gone (issue #71); the same fact is now pinned through
+        // data the view renders: the pending alert must not be counted.
         // totalPosts counts this month: 1 approved alert + 1 experience
         $response->assertViewHas('totalPosts', 2);
         // totalApprovedPosts: 1 alert + approved experiences = 2
         $response->assertViewHas('totalApprovedPosts', 2);
+        // myLatest is the newest alert of any status, not the newest approved
+        // one — the "pend" row was created after "ok".
+        $response->assertViewHas('myLatest', fn ($alert) => $alert->title === 'pend');
+    }
+
+    public function test_dashboard_does_not_read_the_dead_queues_at_all(): void
+    {
+        // Issue #71: the admin dashboard used to pull the entire pending
+        // experience queue, and the user dashboard the user's whole alert
+        // history, to feed keys no view read. The surviving unbounded read is
+        // the global approved-alert breakdown typeBreakdown needs; nothing
+        // else may scan those tables without a LIMIT.
+        $admin = User::factory()->admin()->create();
+        $user = User::factory()->create();
+        foreach (range(1, 30) as $i) {
+            Experience::create(['user_id' => $user->id, 'name' => 'N', 'title' => "E{$i}", 'content' => 'c', 'status' => 'pending']);
+            Alert::create(['user_id' => $user->id, 'title' => "A{$i}", 'description' => 'd', 'status' => 'pending']);
+        }
+
+        $queries = [];
+        foreach ([$admin, $user] as $viewer) {
+            DB::flushQueryLog();
+            DB::enableQueryLog();
+            $this->actingAs($viewer)->get('/dashboard')->assertOk();
+            foreach (DB::getQueryLog() as $entry) {
+                $queries[] = [strtolower($entry['query']), $entry['bindings']];
+            }
+        }
+        DB::disableQueryLog();
+
+        foreach ($queries as [$q, $bindings]) {
+            $strs = array_map('strval', $bindings);
+            // sqlite quotes identifiers with "", mysql with ``, so match the
+            // table name tolerantly.
+            $readsAlerts = (bool) preg_match('/\bfrom\s+["`]?alerts["`]?/i', $q);
+            $readsExperiences = (bool) preg_match('/\bfrom\s+["`]?experiences["`]?/i', $q);
+
+            // Pending experiences must never be fetched as a list anymore:
+            // neither for the deleted queue nor per-row. COUNT(*) over the
+            // pending queue is still legitimate, so only a select * of rows
+            // counts as a regression.
+            $listsPendingExperiences = $readsExperiences
+                && str_starts_with($q, 'select *')
+                && in_array('pending', $strs, true);
+            $this->assertFalse($listsPendingExperiences, "Dashboard still lists pending experiences: {$q}");
+
+            // The user's full alert history was loaded to feed the deleted
+            // myAlerts key. The surviving user-scoped reads are $myLatest
+            // (LIMIT 1) and this-month totals (status='approved' bound). A
+            // user-scoped select * with no LIMIT and no status binding is the
+            // deleted whole-history scan returning. Keyed on bindings, not
+            // SQL dialect, so it holds on both sqlite and mysql.
+            $scansWholeHistory = $readsAlerts
+                && str_starts_with($q, 'select *')
+                && in_array((string) $user->id, $strs, true)
+                && ! str_contains($q, 'limit')
+                && ! array_intersect($strs, ['approved', 'pending', 'rejected']);
+            $this->assertFalse($scansWholeHistory, "Dashboard still scans the whole alert history: {$q}");
+        }
     }
 
     public function test_empty_dashboard_shows_no_phantom_type_percentage(): void

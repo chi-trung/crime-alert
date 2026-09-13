@@ -12,8 +12,11 @@ use Illuminate\Support\Collection;
 
 /**
  * Aggregates the data previously computed inline in the 220-line
- * /dashboard route closure (issue #7). Output shape is unchanged:
- * both methods return exactly the view payload the closure produced.
+ * /dashboard route closure (issue #7). Issue #71 pruned the payload:
+ * keys no view ever read (latestAlerts, latestPending,
+ * pendingExperiences, latestPendingExperience, myTotal, myApproved,
+ * myAlerts) are gone along with the queries backing them, so what is
+ * returned here is exactly what dashboard.blade.php consumes.
  */
 class DashboardStatsService
 {
@@ -31,10 +34,9 @@ class DashboardStatsService
      */
     public function forAdmin(): array
     {
-        [$totalAlertsAll, $typePercents] = $this->typeBreakdown(
+        [, $typePercents] = $this->typeBreakdown(
             Alert::where('status', 'approved')->get()
         );
-        unset($totalAlertsAll);
 
         $currentYear = now()->year;
         $currentMonth = now()->month;
@@ -73,8 +75,6 @@ class DashboardStatsService
             'rejectedAlerts' => Alert::where('status', 'rejected')->count(),
             'totalUsers' => User::count(),
             'latestAlert' => Alert::orderByDesc('created_at')->first(),
-            'latestAlerts' => Alert::orderByDesc('created_at')->take(5)->get(),
-            'latestPending' => Alert::where('status', 'pending')->orderByDesc('created_at')->take(5)->get(),
             'createdData' => $alertsCreated,
             'approvedData' => $alertsApproved,
             'totalAlertsPercent' => $this->percentChange(...$totals['total']),
@@ -83,8 +83,6 @@ class DashboardStatsService
             'rejectedPercent' => $this->percentChange(...$totals['rejected']),
             'totalUsersPercent' => $this->percentChange(...$totals['users']),
             'myExperience' => null,
-            'pendingExperiences' => Experience::where('status', 'pending')->orderByDesc('created_at')->get(),
-            'latestPendingExperience' => Experience::where('status', 'pending')->orderByDesc('created_at')->first(),
             'latestExperience' => Experience::orderByDesc('created_at')->first(),
             'typePercents' => $typePercents,
             'typePercentsAdmin' => $typePercents,
@@ -115,27 +113,27 @@ class DashboardStatsService
             ->orderByDesc('created_at')
             ->get();
 
-        [$myTotal] = $this->typeBreakdown($myAlertsThisMonth);
-
-        // Pre-existing behaviour kept deliberately: the pie chart for regular
-        // users shows the GLOBAL approved-alert breakdown (the user-local
-        // counts above are not surfaced).
+        // Issue #71: the user's own typeBreakdown call and its $myTotal were
+        // dead — no view reads myTotal/myApproved, so they are gone along with
+        // that call. What remains is the breakdown the pie chart actually
+        // renders: the GLOBAL approved-alert one, by pre-existing design, not
+        // the user's own mix.
         [, $globalTypePercents] = $this->typeBreakdown(
             Alert::where('status', 'approved')->get()
         );
 
         $myExperience = Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
-        $myAlerts = Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        // Only the newest row is rendered ($myLatest); the old unbounded
+        // $myAlerts collection (issue #67's read-side class) existed solely
+        // to call ->first() on it.
+        $myLatest = Alert::where('user_id', $user->id)->orderByDesc('created_at')->first();
 
         return array_merge($this->sharedLists(), [
-            'myTotal' => $myTotal,
-            'myApproved' => $myAlertsThisMonth->count(),
-            'myLatest' => $myAlerts->first(),
+            'myLatest' => $myLatest,
             'typePercents' => $globalTypePercents,
             'monthLabel' => now()->format('m/Y'),
             'myExperience' => $myExperience,
             'myExperiencesThisMonth' => $myExperiencesThisMonth,
-            'myAlerts' => $myAlerts,
             'totalPosts' => $myAlertsThisMonth->count() + $myExperiencesThisMonth->count(),
             'totalApprovedPosts' => $myAlertsThisMonth->count() + $myExperiencesThisMonth->where('status', 'approved')->count(),
             'latestSupportRequest' => SupportRequest::where('user_id', $user->id)->latest()->first(),
