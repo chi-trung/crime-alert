@@ -2,7 +2,14 @@
 
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/alerts_admin_index.css') }}">
-<script src="{{ asset('js/alerts_admin_index.js') }}"></script>
+{{-- Issue #210: this page used to ship TWO extra form-reject confirm
+     handlers (public/js/alerts_admin_index.js and an inline block), both
+     byte-identical to each other and near-identical to the layout's.
+     sweetalert2 is a singleton — only the LAST-registered handler's dialog
+     (the layout's, generic wording) ever rendered, so the page-specific
+     wording was dead code shipped twice. Both copies are deleted; the
+     layout's single handler reads the alert wording from the data
+     attributes on each reject form below. --}}
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-4 text-danger"><i class="fas fa-exclamation-triangle me-2"></i>Quản lý cảnh báo tội phạm</h1>
     @if(session('success'))
@@ -79,7 +86,9 @@
                                             @csrf
                                             <button class="btn btn-success btn-sm rounded-pill px-3" title="Duyệt"><i class="fas fa-check me-1"></i> Duyệt</button>
                                         </form>
-                                        <form action="{{ route('admin.alerts.reject', $alert) }}" method="POST" class="d-inline mb-1 form-reject">
+                                        <form action="{{ route('admin.alerts.reject', $alert) }}" method="POST" class="d-inline mb-1 form-reject"
+              data-reject-title="Bạn có chắc chắn muốn từ chối cảnh báo này?"
+              data-reject-text="Hành động này sẽ từ chối cảnh báo và không thể hoàn tác!">
                                             @csrf
                                             <button class="btn btn-warning btn-sm rounded-pill px-3" title="Từ chối"><i class="fas fa-times me-1"></i> Từ chối</button>
                                         </form>
@@ -114,28 +123,4 @@
         </div>
     </div>
 </div>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('form.form-reject').forEach(function(form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            Swal.fire({
-                title: 'Bạn có chắc chắn muốn từ chối cảnh báo này?',
-                text: 'Hành động này sẽ từ chối cảnh báo và không thể hoàn tác!',
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#ffc107',
-                cancelButtonColor: '#6c757d',
-                confirmButtonText: 'Từ chối',
-                cancelButtonText: 'Hủy',
-                reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    form.submit();
-                }
-            });
-        });
-    });
-});
-</script>
 @endsection
