@@ -144,7 +144,8 @@ class DashboardStatsService
 
     /**
      * Count + percentage breakdown by canonical alert type. Percents always
-     * sum to exactly 100 (rounding remainder lands on the last bucket).
+     * sum to exactly 100 and are never negative (largest-remainder
+     * apportionment); an empty input yields all zeros.
      *
      * @return array{0: int, 1: array<string, int>} [total, percents]
      */
@@ -160,17 +161,43 @@ class DashboardStatsService
 
         $total = array_sum($counts);
 
+        // Issue #65: the old code rounded every bucket but the last, which
+        // absorbed the rounding remainder. That broke both ends of the
+        // range: with zero alerts the sum of the rounded buckets is 0, so
+        // "Khác" received 100 - 0 = 100% and an empty dashboard claimed all
+        // crime was "other"; and with a split like 2/2/2/1 the first four
+        // round up to 29+29+29+14 = 101, so "Khác" went to -1%, which the
+        // view prints verbatim (`?? 0` only catches null, not negatives).
+        // Largest-remainder apportionment instead: floor each share, then
+        // hand the leftover +1 units to the buckets with the biggest
+        // fractional parts. Non-negative by construction, sums to exactly
+        // 100 whenever there is data, and 0 total => all buckets 0.
         $percents = [];
-        $sum = 0;
-        $keys = array_keys($counts);
-        $lastKey = end($keys);
+        if ($total === 0) {
+            foreach ($counts as $type => $count) {
+                $percents[$type] = 0;
+            }
+
+            return [$total, $percents];
+        }
+
+        $exact = [];
+        $used = 0;
         foreach ($counts as $type => $count) {
-            if ($type === $lastKey) {
-                $percents[$type] = 100 - $sum;
-            } else {
-                $percent = $total > 0 ? (int) round($count / $total * 100) : 0;
-                $percents[$type] = $percent;
-                $sum += $percent;
+            $value = $count * 100 / $total;
+            $floor = (int) floor($value);
+            $percents[$type] = $floor;
+            $exact[$type] = $value - $floor;
+            $used += $floor;
+        }
+        $leftover = 100 - $used;
+        if ($leftover > 0) {
+            // uasort is stable since PHP 8.0, so equal fractional parts keep
+            // the bucket declaration order — the +1 units never shuffle
+            // between page loads.
+            uasort($exact, fn ($a, $b) => $b <=> $a);
+            foreach (array_slice(array_keys($exact), 0, $leftover) as $type) {
+                $percents[$type]++;
             }
         }
 
