@@ -73,7 +73,10 @@ class SupportRequestController extends Controller
     public function show(SupportRequest $supportRequest)
     {
         $this->authorizeViewer($supportRequest);
-        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
+        // Issue #89: id ASC tiebreak — chat order is oldest-first, and two
+        // messages in the same second must not swap between renders (the
+        // AJAX feed on this list is polled, so the flicker was live).
+        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->orderBy('id')->get();
 
         return view('support.show', compact('supportRequest', 'messages'));
     }
@@ -143,7 +146,8 @@ class SupportRequestController extends Controller
     public function messagesAjax(SupportRequest $supportRequest)
     {
         $this->authorizeViewer($supportRequest);
-        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->get();
+        // Issue #89: id ASC tiebreak (see show()) — this is the polled feed.
+        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->orderBy('id')->get();
         $result = $messages->map(function ($msg) {
             return [
                 'id' => $msg->id,

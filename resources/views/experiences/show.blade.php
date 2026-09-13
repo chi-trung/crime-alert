@@ -166,7 +166,9 @@
                     <div class="comments-section">
                         @php
                             // Eager-load everything the thread renders (issue #25).
-                            $comments = $experience->comments()->whereNull('parent_id')->latest()
+                            // Issue #89: id tiebreak on same-second comments
+                            // (see alerts/show.blade.php).
+                            $comments = $experience->comments()->whereNull('parent_id')->latest()->orderByDesc('id')
                                 ->with(['user', 'likes', 'replies.user', 'replies.likes'])
                                 ->get();
                         @endphp

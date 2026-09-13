@@ -69,7 +69,9 @@ class Comment extends Model
     {
         // Oldest-first is the thread order the view renders; declared on the
         // relation so eager-loaded replies keep it (issue #25).
-        return $this->hasMany(Comment::class, 'parent_id')->orderBy('created_at');
+        // Issue #89: id ASC tiebreak — replies sent in the same second would
+        // otherwise render in scan order, eagerly loaded ones included.
+        return $this->hasMany(Comment::class, 'parent_id')->orderBy('created_at')->orderBy('id');
     }
 
     public function likes(): MorphMany
