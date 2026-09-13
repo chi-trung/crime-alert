@@ -36,6 +36,32 @@ class ChatbotTest extends TestCase
             ->assertJsonValidationErrors(['question']);
     }
 
+    public function test_unverified_users_cannot_burn_the_paid_ai_budget(): void
+    {
+        // Issue #190: every other authenticated action endpoint carries
+        // #129's hasVerifiedEmail gate; the chatbot missed it because it
+        // notifies nobody. Each accepted request bills the operator's key,
+        // so the gate must reject BEFORE any provider call — the
+        // assertNothingSent() below is what pins the money leak.
+        $this->configuredOpenRouter();
+
+        Http::fake([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => 'nope']]],
+            ], 200),
+        ]);
+
+        $response = $this->actingAs(User::factory()->unverified()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Xin chao'])
+            ->assertForbidden()
+            ->assertJson(['success' => false])
+            ->json();
+
+        $this->assertSame('Bạn cần xác thực email để dùng trợ lý AI.', $response['message']);
+
+        Http::assertNothingSent();
+    }
+
     public function test_it_returns_generic_message_when_no_key_configured(): void
     {
         config([

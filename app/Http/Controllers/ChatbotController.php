@@ -19,6 +19,24 @@ class ChatbotController extends Controller
      */
     public function ask(Request $request)
     {
+        // Issue #190: #129's email-verification invariant missed this
+        // endpoint because the chatbot notifies nobody — but unlike the
+        // notification-spam class it gates, every accepted request spends
+        // the OPERATOR's paid provider key. Registration auto-logs-in with
+        // an unverified (fake) email, so unverified throwaway accounts could
+        // make up to 20 billable completions per minute each, across
+        // unlimited accounts; the #33 throttle bounds volume per account,
+        // never account count. The gate mirrors the six sibling action
+        // endpoints (AlertController::store:35, CommentController::store:19,
+        // LikeController::store:68, ...) and every other response here is
+        // JSON, so the 403 is JSON unconditionally.
+        if (! $request->user()->hasVerifiedEmail()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Bạn cần xác thực email để dùng trợ lý AI.',
+            ], 403);
+        }
+
         $validated = $request->validate([
             'question' => 'required|string|max:2000',
         ]);
