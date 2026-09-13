@@ -17,8 +17,15 @@ Route::middleware('guest')->group(function () {
     // Issue #33: these POSTs were unthrottled — account flooding and
     // reset-link email spam. Login keeps its internal LoginRequest
     // limiter (per email+IP) instead of a raw route-level 429.
+    // Issue #179: the #33 throttles were bare 'throttle:N,1' with no lane
+    // prefix, so for guest requests (no user id) ThrottleRequests keys the
+    // bucket by IP alone — register/forgot/reset shared ONE counter and
+    // each route tested the shared hits against its own max. Signups from
+    // one NAT therefore 429'd everyone behind it out of password recovery.
+    // Named lanes give each endpoint the per-endpoint budget #33 intended
+    // — the same fix #147/#165 applied to every web.php throttle.
     Route::post('register', [RegisteredUserController::class, 'store'])
-        ->middleware('throttle:10,1');
+        ->middleware('throttle:10,1,auth-register');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -28,15 +35,17 @@ Route::middleware('guest')->group(function () {
     Route::get('forgot-password', [PasswordResetLinkController::class, 'create'])
         ->name('password.request');
 
+    // Issue #179: dedicated 'auth-forgot' lane — see the register note above.
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:6,1,auth-forgot')
         ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
         ->name('password.reset');
 
+    // Issue #179: dedicated 'auth-reset' lane — see the register note above.
     Route::post('reset-password', [NewPasswordController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:6,1,auth-reset')
         ->name('password.store');
 });
 
@@ -44,12 +53,17 @@ Route::middleware('auth')->group(function () {
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 
+    // Issue #179: these two bare throttles shared one per-user bucket, so a
+    // user who clicked a verification link 6x had also burned their right
+    // to re-send the email. Separate 'auth-verify' / 'auth-verify-send'
+    // lanes (these routes are auth'd, so #147's per-user keying already
+    // isolated them from the guest lanes — the split is intra-pair).
     Route::get('verify-email/{id}/{hash}', VerifyEmailController::class)
-        ->middleware(['signed', 'throttle:6,1'])
+        ->middleware(['signed', 'throttle:6,1,auth-verify'])
         ->name('verification.verify');
 
     Route::post('email/verification-notification', [EmailVerificationNotificationController::class, 'store'])
-        ->middleware('throttle:6,1')
+        ->middleware('throttle:6,1,auth-verify-send')
         ->name('verification.send');
 
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
