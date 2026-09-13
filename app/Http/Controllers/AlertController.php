@@ -106,11 +106,36 @@ class AlertController extends Controller
         if ($request->filled('radius') && $request->filled('lat') && $request->filled('lng')) {
             $lat = (float) $request->input('lat');
             $lng = (float) $request->input('lng');
-            $radius = (float) $request->input('radius');
+            // Clamped before it becomes a SQL literal below: radius=1e400
+            // parses to INF and sprintf would interpolate the bare word.
+            // 20015 km is half the earth's circumference — nothing further
+            // can sit inside the circle anyway.
+            $radius = min(max((float) $request->input('radius'), 0.0), 20015.0);
             $query->whereNotNull('latitude')->whereNotNull('longitude');
-            $query->selectRaw('alerts.*, (6371 * acos(cos(radians(?)) * cos(radians(latitude)) * cos(radians(longitude) - radians(?)) + sin(radians(?)) * sin(radians(latitude)))) AS distance', [$lat, $lng, $lat])
-                ->having('distance', '<=', $radius)
-                ->orderBy('distance');
+            // Issue #59: the old query used acos/cos/sin — PHP's SQLite build
+            // has no math functions, so this hard-500'd on SQLite, and it
+            // re-SELECTed `alerts.*` on top of the base query. Distances are
+            // never rendered, so filter and order by an approximation that
+            // uses only + - * and parentheses: squared equirectangular
+            // distance. Within ~0.5% of the haversine at these radii — same
+            // order as the original's spherical-earth error — so `dist <= r`
+            // and `ORDER BY dist` hold for any point not sitting exactly on
+            // the circle. cos, the km/degree scale and the squared radius are
+            // folded into PHP-side float literals (sprintf %.6F, so always an
+            // ASCII dot). The squared radius must NOT bind as a parameter:
+            // Laravel sends non-int values to PDO as PARAM_STR, and in SQLite
+            // any number sorts below any text, so `dist2 <= ?` with a
+            // float-bound radius is always true and the filter silently keeps
+            // every row. The coordinates do bind: subtraction coerces a text
+            // binding back to a number on both databases.
+            $kmPerDeg = sprintf('%.6F', 6371.0 * M_PI / 180.0);
+            $kmPerLng = sprintf('%.6F', 6371.0 * M_PI / 180.0 * cos(deg2rad($lat)));
+            $radius2 = sprintf('%.10F', $radius * $radius);
+            $dLat = "(latitude - ?) * {$kmPerDeg}";
+            $dLng = "(longitude - ?) * {$kmPerLng}";
+            $dist2 = "({$dLat}) * ({$dLat}) + ({$dLng}) * ({$dLng})";
+            $query->whereRaw("{$dist2} <= {$radius2}", [$lat, $lat, $lng, $lng])
+                ->orderByRaw($dist2, [$lat, $lat, $lng, $lng]);
         }
 
         $alerts = $query->orderByDesc('created_at')->paginate(10)->withQueryString();
