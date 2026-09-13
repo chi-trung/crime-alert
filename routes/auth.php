@@ -5,7 +5,6 @@ use App\Http\Controllers\Auth\ConfirmablePasswordController;
 use App\Http\Controllers\Auth\EmailVerificationNotificationController;
 use App\Http\Controllers\Auth\EmailVerificationPromptController;
 use App\Http\Controllers\Auth\NewPasswordController;
-use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
@@ -58,7 +57,14 @@ Route::middleware('auth')->group(function () {
 
     Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
 
-    Route::put('password', [PasswordController::class, 'update'])->name('password.update');
+    // Issue #63: stock Breeze registered a second password-change endpoint
+    // here (PUT /password -> Auth\PasswordController). It updates the hash
+    // but skips issue #27's rotation hygiene — neither nulling the remember
+    // token nor deleting other session rows — so a hijacker holding a live
+    // cookie survives a victim who happens to rotate through that door.
+    // The profile UI only ever used the hardened POST /profile/change-
+    // password; the route, its controller and the orphaned form partial are
+    // removed so there is exactly one door with one set of guarantees.
 
     Route::post('logout', [AuthenticatedSessionController::class, 'destroy'])
         ->name('logout');
