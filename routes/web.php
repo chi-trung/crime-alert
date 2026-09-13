@@ -48,7 +48,12 @@ Route::middleware('auth')->group(function () {
         Route::get('/admin/alerts/{alert}/edit', [AlertController::class, 'edit'])->name('admin.alerts.edit');
         Route::put('/admin/alerts/{alert}', [AlertController::class, 'update'])->name('admin.alerts.update');
     });
-    Route::post('/profile/change-password', [ProfileController::class, 'changePassword'])->name('profile.changePassword');
+    // Issue #180: second independent password oracle — the current_password
+    // rule runs before any state change, so a wrong guess is a clean 302
+    // boolean answer with no throttle. Same 5/min + dedicated 'auth-pw-
+    // change' lane as /confirm-password; the two lanes never share a bucket
+    // with each other or with #147/#165/#179's lanes.
+    Route::post('/profile/change-password', [ProfileController::class, 'changePassword'])->middleware('throttle:5,1,auth-pw-change')->name('profile.changePassword');
     // Issue #141: the only unthrottled user-facing write endpoints. Every
     // comment bells the post author and thread parents, every support
     // message bells the admin side — same class of abuse vector #33 put

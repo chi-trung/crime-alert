@@ -69,7 +69,15 @@ Route::middleware('auth')->group(function () {
     Route::get('confirm-password', [ConfirmablePasswordController::class, 'show'])
         ->name('password.confirm');
 
-    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store']);
+    // Issue #180: this POST is a correct/incorrect oracle on the account
+    // password (Auth::guard('web')->validate) with no limiter, while login
+    // deliberately caps at 5 attempts per email|IP — a live session (shared
+    // workstation; XSS demonstrated twice in #18/#77) could grind guesses
+    // at network speed with no 429, recover the plaintext, and re-login
+    // after #27/#63/#123 rotation. 5/min mirrors the login budget; its own
+    // lane per #147/#179 so it shares no counter with anything else.
+    Route::post('confirm-password', [ConfirmablePasswordController::class, 'store'])
+        ->middleware('throttle:5,1,auth-pw-confirm');
 
     // Issue #63: stock Breeze registered a second password-change endpoint
     // here (PUT /password -> Auth\PasswordController). It updates the hash
