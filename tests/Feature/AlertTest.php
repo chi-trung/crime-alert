@@ -430,4 +430,36 @@ class AlertTest extends TestCase
                 ->assertDontSee($pending->title);
         }
     }
+
+    public function test_admin_queue_avatar_initial_is_a_full_vietnamese_letter(): void
+    {
+        // Issue #131: the avatar used byte substr($name, 0, 1). Names
+        // starting with Đ (Đặng, Đào, Đình — very common) begin with the
+        // 2-byte C4 90, so the cut left a lone 0xC4 lead byte; e() rejects
+        // invalid UTF-8 and the avatar rendered empty. Lowercase names also
+        // never uppercased. navigation.blade.php:161's profile avatar
+        // already uses the mb idiom; the admin queue now matches it.
+        $admin = User::factory()->admin()->create();
+        foreach (['Đặng Văn Thành', 'trần minh', 'Nguyễn Thị Bình'] as $i => $name) {
+            $author = User::factory()->create(['name' => $name]);
+            Alert::create([
+                'user_id' => $author->id,
+                'title' => "Avatar Initial {$i}",
+                'description' => 'd',
+                'status' => 'pending',
+            ]);
+        }
+
+        $html = $this->actingAs($admin)->get('/admin/alerts')->assertOk()->getContent();
+
+        // The whole page must stay valid UTF-8 — the fix's whole point is
+        // no lone lead bytes reach the browser.
+        $this->assertTrue(mb_check_encoding($html, 'UTF-8'), 'admin queue rendered invalid UTF-8');
+
+        $count = preg_match_all('/avatar-title[^>]*>([^<]*)</', $html, $matches);
+        $this->assertSame(3, $count);
+        $initials = array_map('trim', $matches[1]);
+        sort($initials); // byte order: N, T, Đ — engine-independent
+        $this->assertSame(['N', 'T', 'Đ'], $initials, 'avatar initials: expected Đ (2-byte letter), T (uppercased), N (control)');
+    }
 }
