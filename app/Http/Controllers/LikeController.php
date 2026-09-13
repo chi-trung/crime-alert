@@ -28,6 +28,29 @@ class LikeController extends Controller
         };
     }
 
+    /**
+     * Issue #104: the blades render the like button for any authenticated
+     * viewer and show() 403s strangers on unapproved posts (#20), but these
+     * endpoints resolved any existing id via bare findOrFail (#43) — a user
+     * knowing a pending/rejected id could bump its count and spam the author
+     * with LikePostNotification/LikeCommentNotification. Same
+     * read-gated/write-open shape as #95, closed the same way: only approved
+     * posts accept like-state writes. Comments carry no status of their own,
+     * so the owning post governs, mirroring the reply gate in #96.
+     */
+    private function ensureLikeableIsApproved(Model $model): void
+    {
+        if ($model instanceof Comment) {
+            $post = $model->alert_id
+                ? Alert::find($model->alert_id)
+                : Experience::find($model->experience_id);
+            abort_unless($post && $post->status === 'approved', 403);
+
+            return;
+        }
+        abort_unless($model->status === 'approved', 403);
+    }
+
     public function store(Request $request)
     {
         $request->validate([
@@ -38,6 +61,7 @@ class LikeController extends Controller
         $type = $request->type;
         $id = $request->id;
         $model = $this->resolveLikeable($type, $id);
+        $this->ensureLikeableIsApproved($model);
         if (! $model->likes()->where('user_id', $user->id)->exists()) {
             $inserted = true;
             try {
@@ -90,6 +114,7 @@ class LikeController extends Controller
             // an exception body.
             return response()->json(['success' => false, 'message' => 'Không tìm thấy bài viết.'], 404);
         }
+        $this->ensureLikeableIsApproved($model);
         $model->likes()->where('user_id', $user->id)->delete();
         $count = $model->likes()->count();
 

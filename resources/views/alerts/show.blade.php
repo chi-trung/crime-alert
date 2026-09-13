@@ -151,6 +151,11 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                 @endif
                             </div>
                             <div>
+                                {{-- Issue #104: like writes are approved-only server-side (LikeController
+                                    gate, mirroring #96) — hide the button on unapproved posts like the
+                                    comment form above, so owners/admins previewing a pending post don't
+                                    get a dead button that 403s. --}}
+                                @if($alert->status == 'approved')
                                 @auth
                                 <button id="like-btn-alert" class="btn-like-custom{{ $alert->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $alert->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $alert->id }}" data-type="alert">
                                     <span id="like-text-alert">{{ $alert->likes()->where('user_id', auth()->id())->exists() ? 'Đã Thích' : 'Thích' }}</span> (<span id="like-count-alert">{{ $alert->likes()->count() }}</span>)
@@ -160,6 +165,7 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                     Thích (<span id="like-count-alert">{{ $alert->likes()->count() }}</span>)
                                 </a>
                                 @endauth
+                                @endif
                             </div>
                         </div>
                     </div>
