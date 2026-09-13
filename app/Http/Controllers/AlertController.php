@@ -23,7 +23,9 @@ class AlertController extends Controller
         }
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            // Issue #37: description is a TEXT column — without a bound a
+            // huge payload either 500s on MySQL's byte limit or bloats the DB.
+            'description' => 'required|string|max:10000',
             'location' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'confirmCheckbox' => 'accepted',
@@ -145,7 +147,9 @@ class AlertController extends Controller
         }
         $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string',
+            // Issue #37: description is a TEXT column — without a bound a
+            // huge payload either 500s on MySQL's byte limit or bloats the DB.
+            'description' => 'required|string|max:10000',
             'location' => 'nullable|string|max:255',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             // Issue #31: mirrors store() — junk coords and oversized type

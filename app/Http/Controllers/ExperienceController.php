@@ -39,7 +39,8 @@ class ExperienceController extends Controller
         }
         $request->validate([
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            // Issue #37: TEXT column needs a bound (see AlertController).
+            'content' => 'required|string|max:10000',
             'name' => 'required|string|max:100',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
@@ -103,7 +104,7 @@ class ExperienceController extends Controller
         }
         $request->validate([
             'title' => 'required|string|max:255',
-            'content' => 'required|string',
+            'content' => 'required|string|max:10000',
             'name' => 'required|string|max:100',
         ]);
         $data = $request->only(['title', 'content', 'name']);
