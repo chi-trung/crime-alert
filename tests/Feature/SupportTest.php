@@ -111,4 +111,29 @@ class SupportTest extends TestCase
             ->assertJsonPath('messages.0.is_admin', true)
             ->assertJsonPath('messages.0.is_me', false);
     }
+
+    public function test_message_is_length_bounded_on_create_and_reply(): void
+    {
+        // Issue #39: support_messages.message is TEXT with no validation max,
+        // the same overflow/storage-spam class closed for alerts/experiences
+        // in #37.
+        [$owner, , , $thread] = $this->makeThread();
+        $huge = str_repeat('ạ', 5001);
+
+        $this->actingAs($owner)->post('/support', [
+            'subject' => 'dai', 'message' => $huge,
+        ])->assertSessionHasErrors('message');
+        $this->assertDatabaseCount('support_requests', 1); // only makeThread's
+
+        $this->actingAs($owner)
+            ->post(route('support.sendMessage', $thread), ['message' => $huge])
+            ->assertSessionHasErrors('message');
+        $this->assertDatabaseCount('support_messages', 0);
+
+        // Exactly at the bound is accepted (3-byte UTF-8 stays inside TEXT).
+        $this->actingAs($owner)
+            ->post(route('support.sendMessage', $thread), ['message' => str_repeat('ạ', 5000)])
+            ->assertSessionHasNoErrors();
+        $this->assertSame(5000, mb_strlen(SupportMessage::latest('id')->value('message')));
+    }
 }
