@@ -48,7 +48,19 @@ class ProfileController extends Controller
     public function destroy(Request $request): RedirectResponse
     {
         $request->validateWithBag('userDeletion', [
-            'password' => ['required', 'current_password'],
+            // Issue #154: same array-input class #145 killed for GET filter
+            // params. Request::filled() is true for non-empty arrays, so
+            // password[]=a passed 'required' and the current_password rule
+            // ended at password_verify(array) -> TypeError 'password_verify():
+            // Argument #1 ($password) must be of type string, array given' ->
+            // 500. 'string' declares the type, but it is 'bail' that matters:
+            // Laravel's Validator keeps running later rules on an attribute
+            // even after one fails (only implicit-rule failures halt it —
+            // Validator::shouldStopValidating), so without bail the
+            // current_password rule still receives the array. Together they
+            // reject the crafted input with a validation error (302 back /
+            // 422 to JSON) before the account delete below can run.
+            'password' => ['required', 'string', 'bail', 'current_password'],
         ]);
 
         $user = $request->user();
@@ -85,7 +97,12 @@ class ProfileController extends Controller
     public function changePassword(Request $request)
     {
         $request->validate([
-            'current_password' => ['required', 'current_password'],
+            // Issue #154: see the destroy() comment above — the type guard
+            // is 'string', the reason the crash actually goes away is 'bail'
+            // (the Validator runs every rule on an attribute even after one
+            // fails, so current_password would still see the array). Rejected
+            // before the rule runs, the password below is never touched.
+            'current_password' => ['required', 'string', 'bail', 'current_password'],
             'new_password' => ['required', 'string', 'min:8', 'confirmed'],
         ]);
         $user = $request->user();
