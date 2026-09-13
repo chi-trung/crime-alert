@@ -72,6 +72,18 @@ class AlertController extends Controller
         $query = Alert::query();
         $query->with('user')->withCount('comments');
 
+        // Issue #51: '%' and '_' typed into a search box are LIKE wildcards.
+        // Escape them (and the escape char itself) and declare ESCAPE '!' so
+        // every character matches literally on both CI databases — '!' is
+        // used instead of the usual backslash because MySQL additionally
+        // eats backslashes in string literals while SQLite does not.
+        // str_replace with paired arrays is the correct idiom here;
+        // addcslashes would prefix with backslash and break the match.
+        $likeWhere = function ($column, $value) use ($query) {
+            $escaped = str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
+            $query->whereRaw("{$column} LIKE ? ESCAPE '!'", ['%'.$escaped.'%']);
+        };
+
         // Only approved alerts are ever listed here. The client-supplied
         // `status` filter (issue #41) AND-ed against this constant, so any
         // value other than 'approved' returned an empty page; admins have
@@ -83,11 +95,11 @@ class AlertController extends Controller
         }
         // Lọc theo vị trí
         if ($request->filled('location')) {
-            $query->where('location', 'like', '%'.$request->location.'%');
+            $likeWhere('location', $request->location);
         }
         // Tìm kiếm theo tiêu đề
         if ($request->filled('q')) {
-            $query->where('title', 'like', '%'.$request->q.'%');
+            $likeWhere('title', $request->q);
         }
         // Lọc theo bán kính (radius)
         if ($request->filled('radius') && $request->filled('lat') && $request->filled('lng')) {
