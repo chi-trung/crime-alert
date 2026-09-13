@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Http\Middleware\AdminMiddleware;
 use App\Models\Alert;
 use App\Models\User;
 use App\Notifications\NewPostNotification;
@@ -196,6 +197,45 @@ class AlertTest extends TestCase
         $this->actingAs($user)->get('/admin/alerts')->assertForbidden();
         $this->actingAs($user)->post("/admin/alerts/{$alert->id}/approve")->assertForbidden();
         $this->assertSame('pending', $alert->fresh()->status);
+    }
+
+    public function test_non_admin_approve_reject_are_rejected_without_the_route_guard(): void
+    {
+        // Issue #117: approve()/reject() carried no in-method authorization,
+        // so with the route middleware bypassed a non-admin's POST flipped the
+        // status. The end-to-end route guard already 403s (test above), so
+        // these pin the in-method check itself. Approving one's own pending
+        // post grants no admin rights.
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $approveTarget = Alert::create(['user_id' => $owner->id, 'title' => 'a', 'description' => 'd', 'status' => 'pending']);
+        $rejectTarget = Alert::create(['user_id' => $owner->id, 'title' => 'b', 'description' => 'd', 'status' => 'pending']);
+        $this->withoutMiddleware(AdminMiddleware::class);
+
+        $this->actingAs($stranger)->post("/admin/alerts/{$approveTarget->id}/approve")->assertForbidden();
+        $this->assertSame('pending', $approveTarget->fresh()->status);
+
+        $this->actingAs($owner)->post("/admin/alerts/{$approveTarget->id}/approve")->assertForbidden();
+        $this->assertSame('pending', $approveTarget->fresh()->status);
+
+        $this->actingAs($stranger)->post("/admin/alerts/{$rejectTarget->id}/reject")->assertForbidden();
+        $this->assertSame('pending', $rejectTarget->fresh()->status);
+    }
+
+    public function test_admin_approve_reject_succeed_on_the_in_method_check_alone(): void
+    {
+        // Positive control for #117: with the route guard bypassed, a real
+        // admin still passes the in-method check through both transitions.
+        $admin = User::factory()->admin()->create();
+        $approveTarget = Alert::create(['user_id' => $admin->id, 'title' => 'a', 'description' => 'd', 'status' => 'pending']);
+        $rejectTarget = Alert::create(['user_id' => $admin->id, 'title' => 'b', 'description' => 'd', 'status' => 'pending']);
+        $this->withoutMiddleware(AdminMiddleware::class);
+
+        $this->actingAs($admin)->post("/admin/alerts/{$approveTarget->id}/approve")->assertRedirect();
+        $this->assertSame('approved', $approveTarget->fresh()->status);
+
+        $this->actingAs($admin)->post("/admin/alerts/{$rejectTarget->id}/reject")->assertRedirect();
+        $this->assertSame('rejected', $rejectTarget->fresh()->status);
     }
 
     public function test_owner_update_keeps_status_untouched_for_admin(): void

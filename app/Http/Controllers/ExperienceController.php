@@ -12,6 +12,18 @@ use Illuminate\Support\Facades\Auth;
 class ExperienceController extends Controller
 {
     /**
+     * Only administrators may run the moderation transitions below. The
+     * routes already sit behind the 'can:admin' group, but approve()/reject()
+     * mutate state and must not depend on route wiring alone — same
+     * route-guard-only shape as #97 (support, fixed in #112) and #117's
+     * sibling AlertController::approve()/reject().
+     */
+    private function authorizeAdmin(): void
+    {
+        abort_unless(Auth::check() && Auth::user()->isAdmin, 403);
+    }
+
+    /**
      * Display a listing of the resource.
      */
     public function index()
@@ -148,6 +160,8 @@ class ExperienceController extends Controller
     // Duyệt bài
     public function approve(Experience $experience)
     {
+        // Issue #117: in-method admin assertion (see authorizeAdmin()).
+        $this->authorizeAdmin();
         $experience->status = 'approved';
         $experience->save();
 
@@ -156,6 +170,8 @@ class ExperienceController extends Controller
 
     public function reject(Experience $experience)
     {
+        // Issue #117: same in-method assertion as approve() above.
+        $this->authorizeAdmin();
         $experience->status = 'rejected';
         $experience->save();
 

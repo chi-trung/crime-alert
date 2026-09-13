@@ -11,6 +11,20 @@ use Illuminate\Support\Facades\Auth;
 
 class AlertController extends Controller
 {
+    /**
+     * Only administrators may run the moderation transitions below. The
+     * routes already sit behind the 'admin' group (AdminMiddleware 403s
+     * non-admins end-to-end), but approve()/reject() mutate state and must
+     * not depend on route wiring alone — the same route-guard-only shape as
+     * #97, fixed for support close/destroy in #112 with an identical helper.
+     * abort_unless keeps the no-session CLI shape out: an unauthenticated
+     * direct call 403s the same as a signed-in non-admin.
+     */
+    private function authorizeAdmin(): void
+    {
+        abort_unless(Auth::check() && Auth::user()->isAdmin, 403);
+    }
+
     public function create()
     {
         return view('alerts.create');
@@ -155,6 +169,8 @@ class AlertController extends Controller
 
     public function approve(Alert $alert)
     {
+        // Issue #117: in-method admin assertion (see authorizeAdmin()).
+        $this->authorizeAdmin();
         $alert->status = 'approved';
         $alert->save();
 
@@ -163,6 +179,8 @@ class AlertController extends Controller
 
     public function reject(Alert $alert)
     {
+        // Issue #117: same in-method assertion as approve() above.
+        $this->authorizeAdmin();
         $alert->status = 'rejected';
         $alert->save();
 
