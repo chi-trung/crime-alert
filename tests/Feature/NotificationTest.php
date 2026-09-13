@@ -175,6 +175,73 @@ class NotificationTest extends TestCase
         $this->assertStringContainsString('noti.read_url', $html);
     }
 
+    /**
+     * Seed notifications with controlled uuid ids: $read rows take 'f…'
+     * ids (sort FIRST under orderByDesc('id')), $unread take '0…' ids (sort
+     * LAST). With 20 read + 5 unread, paginate(20)'s page-1 window is
+     * entirely read rows and every unread sits on page 2 — the exact shape
+     * that hid the read-all button before #193.
+     */
+    private function seedSplit(User $user, int $read, int $unread): void
+    {
+        for ($i = 0; $i < $read; $i++) {
+            DB::table('notifications')->insert([
+                'id' => sprintf('f%031d', $i),
+                'type' => 'App\\Notifications\\NewPostNotification',
+                'notifiable_type' => User::class,
+                'notifiable_id' => $user->id,
+                'data' => json_encode(['message' => 'read']),
+                'read_at' => now(),
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+        for ($i = 0; $i < $unread; $i++) {
+            DB::table('notifications')->insert([
+                'id' => sprintf('0%031d', $i),
+                'type' => 'App\\Notifications\\NewPostNotification',
+                'notifiable_type' => User::class,
+                'notifiable_id' => $user->id,
+                'data' => json_encode(['message' => 'unread']),
+                'read_at' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
+    }
+
+    public function test_read_all_button_shows_when_unreads_live_on_a_later_page(): void
+    {
+        // Issue #193: the old gate read $notifications, the current page
+        // slice. With 20 read on page 1 and 5 unread pushed to page 2, the
+        // page-1 count of unread-in-slice is 0, so the button disappeared
+        // even though readAll() still had real work — stranding the older
+        // unreads behind per-row clicks. The fix gates on the global unread
+        // exists(); readAll() itself was never page-scoped (#93).
+        $user = User::factory()->create();
+        $this->seedSplit($user, 20, 5);
+
+        $html = $this->actingAs($user)->get('/notifications')->assertOk()->getContent();
+
+        $this->assertStringContainsString('Đánh dấu tất cả đã đọc', $html);
+
+        // And clicking it clears the whole backlog, not just page 1.
+        $this->actingAs($user)->post('/notifications/read-all')->assertRedirect();
+        $this->assertSame(0, $user->fresh()->unreadNotifications()->count());
+    }
+
+    public function test_read_all_button_hidden_only_when_nothing_is_unread(): void
+    {
+        // Control: the button still disappears when the account genuinely
+        // has no unreads — the gate is global-unread, not unconditional.
+        $user = User::factory()->create();
+        $this->seedSplit($user, 5, 0);
+
+        $html = $this->actingAs($user)->get('/notifications')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('Đánh dấu tất cả đã đọc', $html);
+    }
+
     public function test_support_request_notification_renders_a_real_message(): void
     {
         // Issue #192: NewSupportRequest::toArray shipped without a 'message'
