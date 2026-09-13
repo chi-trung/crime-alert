@@ -180,4 +180,23 @@ class ThreadOrderTiebreakTest extends TestCase
         $this->assertQueryOrdersBy('notifications', ['created_at', 'id'], 'desc');
         DB::disableQueryLog();
     }
+
+    public function test_navigation_bell_preview_orders_by_id_desc(): void
+    {
+        // Issue #91: layouts/navigation.blade.php carries a second copy of
+        // the take(10) preview query and renders inside layouts.app on every
+        // authenticated page — the AJAX-endpoint fix above never covered it.
+        $user = User::factory()->create();
+        $alert = Alert::forceCreate([
+            'user_id' => $user->id, 'title' => 'A', 'description' => 'd', 'status' => 'approved',
+        ]);
+        foreach (range(1, 12) as $i) {
+            $user->notify(new NewPostNotification($alert, $user, 'alert'));
+        }
+
+        $this->startLog();
+        $this->actingAs($user)->get('/dashboard')->assertOk();
+        $this->assertQueryOrdersBy('notifications', ['created_at', 'id'], 'desc');
+        DB::disableQueryLog();
+    }
 }

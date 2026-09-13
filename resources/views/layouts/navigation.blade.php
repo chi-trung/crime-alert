@@ -120,7 +120,11 @@
               // Issue #69: the dropdown previews 10, but the badge shows the
               // true total — it used to count this truncated list and froze
               // at "10". Mirrors NotificationController::unreadAjax().
-              $unreadNotifications = auth()->user()->unreadNotifications()->take(10)->get();
+              // Issue #91: id DESC tiebreak, the #89/#90 fix applied to this
+              // second copy of the query — the framework relation ends in
+              // plain ->latest(), so a same-second burst truncated to an
+              // arbitrary ten, re-rolled on every authenticated page view.
+              $unreadNotifications = auth()->user()->unreadNotifications()->orderByDesc('id')->take(10)->get();
               $unreadCount = auth()->user()->unreadNotifications()->count();
             @endphp
             <a href="#" class="notification-icon">
