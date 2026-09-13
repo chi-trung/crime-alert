@@ -122,6 +122,32 @@ class CrawlerTest extends TestCase
         $this->assertSame(255, mb_strlen($news->image_url));
     }
 
+    public function test_wanted_list_crawl_truncates_overlong_scraped_strings(): void
+    {
+        // Issue #106: same class as #100 (fixed for News in #101) — the
+        // wanted-list crawler fed untrusted table cells straight into seven
+        // VARCHAR(255) columns, 500ing every scheduled run on MySQL. Bound
+        // asserted on the stored row so the test holds on both CI dialects
+        // (SQLite would swallow the overflow silently).
+        $long = str_repeat('X', 400);
+        Http::fake([
+            'truyna.bocongan.gov.vn/*' => Http::response('<table>
+                <tr><td>STT</td><td>Họ tên</td><td>Năm sinh</td><td>Địa chỉ</td><td>Cha/Mẹ</td><td>Tội danh</td><td>Quyết định</td><td>Cơ quan</td></tr>
+                <tr><td>1</td><td>'.$long.'</td><td>1990</td><td>'.$long.'</td><td>'.$long.'</td><td>'.$long.'</td><td>'.$long.'</td><td>'.$long.'</td></tr>
+            </table>', 200),
+        ]);
+
+        $this->artisan('crawl:wanted-list')->assertSuccessful();
+
+        $person = WantedPerson::sole();
+        $this->assertSame(255, mb_strlen($person->name));
+        $this->assertSame(255, mb_strlen($person->address));
+        $this->assertSame(255, mb_strlen($person->parents));
+        $this->assertSame(255, mb_strlen($person->crime));
+        $this->assertSame(255, mb_strlen($person->decision));
+        $this->assertSame(255, mb_strlen($person->agency));
+    }
+
     public function test_both_crawls_are_scheduled(): void
     {
         $events = collect(app(Schedule::class)->events())
