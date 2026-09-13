@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Support\Facades\DB;
 
 class User extends Authenticatable implements MustVerifyEmail
 {
@@ -23,6 +24,17 @@ class User extends Authenticatable implements MustVerifyEmail
         // just the profile route.
         static::deleting(function (User $user) {
             $user->notifications()->delete();
+            // Issue #191: `password_reset_tokens` is keyed by EMAIL (its
+            // primary column), not user_id — so the #48 FK cascades never
+            // touch it and no Eloquent relation exists to sweep it. A reset
+            // token minted before account deletion therefore survives the
+            // user, and because the broker resolves recipients by email, a
+            // NEW account registered with the recycled address is matched by
+            // that stale row: POST /reset-password with the dead user's old
+            // token rewrites the newcomer's password and logs the takeover
+            // in via the reset link. Same orphan-morph class as #57/#61,
+            // with a security payload — delete the rows with the account.
+            DB::table('password_reset_tokens')->where('email', $user->email)->delete();
         });
     }
 
