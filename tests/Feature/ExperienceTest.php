@@ -103,6 +103,29 @@ class ExperienceTest extends TestCase
         $this->assertSame('approved', Experience::where('title', 'Cua admin')->value('status'));
     }
 
+    public function test_admin_edit_keeps_status_and_owner_edit_demotes_to_pending(): void
+    {
+        // Issue #73: update() set status='pending' for every editor, so an
+        // admin fixing a typo on an approved post threw it back into the
+        // moderation queue — while the sibling AlertController deliberately
+        // preserves admin-edit status. Both directions pinned here.
+        $owner = User::factory()->create();
+        $admin = User::factory()->admin()->create();
+
+        $byAdmin = $this->experienceFor($owner, 'approved');
+        $this->actingAs($admin)->put("/experiences/{$byAdmin->id}", [
+            'title' => 'Admin sua loi chinh ta', 'content' => 'x', 'name' => 'Y',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('approved', $byAdmin->fresh()->status, 'admin edit must not re-open moderation');
+        $this->assertSame('Admin sua loi chinh ta', $byAdmin->fresh()->title);
+
+        $byOwner = $this->experienceFor($owner, 'approved');
+        $this->actingAs($owner)->put("/experiences/{$byOwner->id}", [
+            'title' => 'Owner sua noi dung', 'content' => 'x', 'name' => 'Y',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame('pending', $byOwner->fresh()->status, 'owner edit of approved content must re-enter moderation');
+    }
+
     public function test_content_is_length_bounded_on_store_and_update(): void
     {
         // Issue #37: `content` sits in a TEXT column; unbounded payloads used

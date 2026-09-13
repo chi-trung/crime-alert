@@ -108,8 +108,16 @@ class ExperienceController extends Controller
             'name' => 'required|string|max:100',
         ]);
         $data = $request->only(['title', 'content', 'name']);
-        // Khi user sửa, luôn chuyển về trạng thái chờ duyệt lại
-        $data['status'] = 'pending';
+        // Issue #73: this used to demote unconditionally, so an admin fixing a
+        // typo on an approved post silently threw it back into the moderation
+        // queue its approval had just cleared — the opposite of what
+        // AlertController::update, whose comment claims to mirror this method,
+        // does. The rule (issue #23) is about owners rewriting content that
+        // already passed moderation; a reviewer editing is not that. Admin
+        // edits now keep the post's status, mirroring alerts.
+        if (! Auth::user()->isAdmin) {
+            $data['status'] = 'pending';
+        }
         $experience->update($data);
 
         return redirect()->route('experiences.show', $experience)->with('success', 'Cập nhật bài chia sẻ thành công!');
