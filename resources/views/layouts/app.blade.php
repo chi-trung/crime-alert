@@ -144,9 +144,21 @@
                 document.querySelectorAll('form.form-reject').forEach(function(form) {
                     form.addEventListener('submit', function(e) {
                         e.preventDefault();
+                        // Issue #210: this is the app's ONLY form-reject
+                        // listener. /admin/alerts used to register two more
+                        // byte-identical copies (an inline block in
+                        // alerts/admin_index.blade.php plus
+                        // public/js/alerts_admin_index.js), but
+                        // sweetalert2@11 is a singleton: each fire() destroys
+                        // the previous instance and resolves its promise with
+                        // isDismissed, so only this layout dialog ever
+                        // rendered and the page-specific wording shipped —
+                        // twice — was unreachable. Alert pages now pass their
+                        // own wording through the optional data attributes
+                        // below instead of stacking listeners.
                         Swal.fire({
-                            title: 'Bạn có chắc chắn muốn từ chối bài này?',
-                            text: 'Sau khi từ chối, bài sẽ không được hiển thị công khai!',
+                            title: form.dataset.rejectTitle || 'Bạn có chắc chắn muốn từ chối bài này?',
+                            text: form.dataset.rejectText || 'Sau khi từ chối, bài sẽ không được hiển thị công khai!',
                             icon: 'warning',
                             showCancelButton: true,
                             confirmButtonColor: '#ffc107',
