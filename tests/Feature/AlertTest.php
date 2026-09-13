@@ -147,6 +147,34 @@ class AlertTest extends TestCase
         $this->assertSame('Moi', $alert->fresh()->title);
     }
 
+    public function test_update_ignores_client_supplied_old_image(): void
+    {
+        // Issue #29: without an upload or a removal request, the image column
+        // used to be written from the client-supplied `old_image` field. It
+        // must keep the stored value no matter what is posted.
+        $owner = User::factory()->create();
+        $alert = Alert::create([
+            'user_id' => $owner->id, 'title' => 'Cu', 'description' => 'd',
+            'status' => 'pending', 'image' => 'alerts/real.png',
+        ]);
+
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi',
+            'description' => 'd2',
+            'old_image' => 'https://evil.example/x.png',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertSame('alerts/real.png', $alert->fresh()->image);
+
+        // Same via the admin route, and with no image stored at all.
+        $admin = User::factory()->admin()->create();
+        $blank = Alert::create(['user_id' => $admin->id, 'title' => 'a', 'description' => 'd', 'status' => 'approved']);
+        $this->actingAs($admin)->put("/admin/alerts/{$blank->id}", [
+            'title' => 'b', 'description' => 'd', 'old_image' => '../../bootstrap/app.php',
+        ]);
+        $this->assertNull($blank->fresh()->image);
+    }
+
     public function test_admin_can_approve_and_reject(): void
     {
         $admin = User::factory()->admin()->create();
