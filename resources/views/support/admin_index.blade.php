@@ -60,5 +60,9 @@
             </tbody>
         </table>
     </div>
+    {{-- Issue #75: pager for the admin queue, same idiom as the other lists. --}}
+    @if($requests->hasPages())
+        <div class="d-flex justify-content-center">{{ $requests->links('pagination::bootstrap-4') }}</div>
+    @endif
 </div>
 @endsection 

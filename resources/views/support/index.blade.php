@@ -49,6 +49,11 @@
                     </tbody>
                 </table>
             </div>
+            {{-- Issue #75: its own pager; the guard keeps a one-page list from
+                 growing the gutter inside the p-0 card body. --}}
+            @if($requests->hasPages())
+                <div class="px-3 py-2 d-flex justify-content-center">{{ $requests->links('pagination::bootstrap-4') }}</div>
+            @endif
         </div>
     </div>
 </div>
