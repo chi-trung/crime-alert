@@ -127,12 +127,22 @@ class LikeController extends Controller
 
             // Only the winner of the race notifies; the loser's like already
             // exists and was counted by whoever inserted first.
-            if ($inserted && $type === 'comment' && $model->user_id != $user->id) {
+            // Issue #162: experiences.user_id is nullable and the #47 FK
+            // migration deliberately KEEPS the legacy NULL-owner rows, so
+            // `$model->user_id != $user->id` is TRUE for null (loose compare)
+            // and the unguarded ->user->notify() dereferenced a null belongsTo
+            // -> "Call to a member function notify() on null" -> 500, and
+            // because this sits inside the #139 transaction the insert rolled
+            // back too — legacy posts were permanently un-likable for every
+            // user. The truthy-owner guard mirrors CommentController's #153
+            // `$postOwnerId &&` gate: a falsy owner records the like cleanly
+            // and attempts no notification.
+            if ($inserted && $type === 'comment' && $model->user_id && $model->user_id != $user->id) {
                 $post = $model->alert_id ? Alert::find($model->alert_id) : Experience::find($model->experience_id);
                 $postType = $model->alert_id ? 'alert' : 'experience';
                 $model->user->notify(new LikeCommentNotification($user, $model, $post, $postType));
             }
-            if ($inserted && ($type === 'alert' || $type === 'experience') && $model->user_id != $user->id) {
+            if ($inserted && ($type === 'alert' || $type === 'experience') && $model->user_id && $model->user_id != $user->id) {
                 $model->user->notify(new LikePostNotification($user, $model, $type));
             }
         });
