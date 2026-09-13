@@ -90,6 +90,24 @@
 
 @section('scripts')
 <script>
+// Issue #206: client-side rejection notice (the server's flash branches
+// never reach this fetch path anymore). textContent only — no user content
+// into innerHTML (#149 doctrine).
+function showChatError(message) {
+    const form = document.querySelector('form[action$="/message"]');
+    if (!form) return;
+    let box = document.getElementById('chat-error');
+    if (!box) {
+        box = document.createElement('div');
+        box.id = 'chat-error';
+        box.className = 'alert alert-danger mt-2';
+        form.after(box);
+    }
+    box.textContent = message;
+    box.hidden = false;
+    clearTimeout(showChatError.timer);
+    showChatError.timer = setTimeout(() => { box.hidden = true; }, 6000);
+}
 let lastMessageCount = {{ count($messages) }};
 function fetchMessages() {
     fetch(window.location.pathname + '/messages', {
@@ -164,10 +182,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 body: JSON.stringify({ message })
             })
             .then(res => {
+                // Issue #206: the server now answers JSON rejections with a
+                // real 403/404/409, so res.ok genuinely tracks acceptance.
+                // On rejection the draft must survive (the old bug silently
+                // ate it): surface the server's message and keep the text.
                 if (res.ok) {
                     textarea.value = '';
                     fetchMessages();
+                    return;
                 }
+                res.json().catch(() => null).then(data => {
+                    showChatError((data && data.message) || 'Không gửi được tin nhắn, vui lòng thử lại.');
+                });
             });
         });
     }
