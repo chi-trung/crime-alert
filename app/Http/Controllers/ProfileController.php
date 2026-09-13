@@ -51,6 +51,14 @@ class ProfileController extends Controller
 
         $user = $request->user();
 
+        // Issue #53: the FK cascades (#48 and the original alert schema)
+        // remove the rows at the database level, which never fires the
+        // models' `deleting` events — so the uploaded image/avatar files
+        // would survive account deletion. Delete the owned posts through
+        // Eloquent first; the cascade stays as the safety net.
+        Alert::where('user_id', $user->id)->get()->each->delete();
+        Experience::where('user_id', $user->id)->get()->each->delete();
+
         Auth::logout();
 
         $user->delete();
