@@ -231,4 +231,82 @@ class ProfileTest extends TestCase
         $this->assertTrue(Hash::check('brand-new-secret', User::where('email', 'recycled@example.com')->value('password')));
         $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'recycled@example.com']);
     }
+
+    /**
+     * Issue #203: #191's twin — the account SURVIVES an email change, so the
+     * deleting hook never fires, yet password_reset_tokens is keyed by email.
+     * A token minted for the old address stayed live after the move; once the
+     * abandoned address was free, a fresh registration on it was resolved by
+     * the broker into the stale token and POST /reset-password rewrote the
+     * newcomer's password. Pin both halves: the row dies with the address
+     * (and only the OLD address), and the full takeover chain through real
+     * routes closes.
+     */
+    public function test_email_change_sweeps_password_reset_tokens_of_the_old_address(): void
+    {
+        $user = User::factory()->create(['email' => 'moving@example.com']);
+        $token = Password::broker()->createToken($user);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'moving@example.com']);
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => $user->name, 'email' => 'moved@example.com'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'moving@example.com']);
+    }
+
+    public function test_reset_token_from_before_an_email_change_cannot_take_over_the_abandoned_address(): void
+    {
+        $alice = User::factory()->create(['email' => 'alice@example.com']);
+        $token = Password::broker()->createToken($alice);
+
+        $this->actingAs($alice)
+            ->patch('/profile', ['name' => $alice->name, 'email' => 'alice-new@example.com'])
+            ->assertSessionHasNoErrors();
+
+        // actingAs persists across test requests; /register is a guest route,
+        // so the mailbox-change must end Alice's session before Bob's fresh
+        // registration (in the wild these are two different browsers).
+        $this->post('/logout');
+
+        // Alice's new address is hers; the abandoned one is free, and Bob
+        // registers it.
+        $this->post('/register', [
+            'name' => 'Bob',
+            'email' => 'alice@example.com',
+            'password' => 'bobs-secret-password',
+            'password_confirmation' => 'bobs-secret-password',
+        ])->assertSessionHasNoErrors();
+
+        // Register auto-logs-in; /reset-password is a guest route.
+        $this->post('/logout');
+
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => 'alice@example.com',
+            'password' => 'pwned-password',
+            'password_confirmation' => 'pwned-password',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertTrue(Hash::check('bobs-secret-password', User::where('email', 'alice@example.com')->value('password')));
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'alice@example.com']);
+    }
+
+    public function test_email_change_keeps_reset_tokens_for_addresses_not_left_behind(): void
+    {
+        // Control: the sweep is scoped to the OLD address, not everything.
+        // A live token for an unrelated mailbox must survive the change.
+        $user = User::factory()->create(['email' => 'pair-a@example.com']);
+        DB::table('password_reset_tokens')->insert([
+            'email' => 'pair-b@example.com',
+            'token' => 'irrelevant-but-live',
+            'created_at' => now(),
+        ]);
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => $user->name, 'email' => 'pair-c@example.com'])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => 'pair-b@example.com']);
+    }
 }

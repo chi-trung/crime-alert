@@ -36,6 +36,27 @@ class User extends Authenticatable implements MustVerifyEmail
             // with a security payload — delete the rows with the account.
             DB::table('password_reset_tokens')->where('email', $user->email)->delete();
         });
+
+        // Issue #203: #191's twin. `password_reset_tokens` is keyed by email,
+        // so the same takeover payload reopens whenever an account CHANGES
+        // its address — the deleting hook above never fires because the user
+        // survives. A reset token minted for alice@example.com keeps its row
+        // after she moves to moved@example.com; the abandoned address is now
+        // unclaimed, anyone can register it, and the broker resolves that
+        // newcomer by email into alice's still-valid (TTL 60min) token —
+        // POST /reset-password forceFills the newcomer's password. Sweep the
+        // OLD address the moment it is left, in a saving hook rather than in
+        // ProfileController so every future email-mutating path inherits the
+        // guarantee, exactly like deleting does for #191. `exists` guards the
+        // INSERT: on creation isDirty('email') is trivially true and there
+        // is no previous address to sweep.
+        static::saving(function (User $user) {
+            if ($user->exists && $user->isDirty('email')) {
+                DB::table('password_reset_tokens')
+                    ->where('email', $user->getOriginal('email'))
+                    ->delete();
+            }
+        });
     }
 
     /**
