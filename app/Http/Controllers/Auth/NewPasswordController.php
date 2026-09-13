@@ -33,7 +33,19 @@ class NewPasswordController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $request->validate([
-            'token' => ['required'],
+            // Issue #159: array-input class of #145/#154/#155. token[]=x
+            // passes bare 'required' (Request::filled() is true for
+            // non-empty arrays), then Password::reset -> validateReset ->
+            // DatabaseTokenRepository::exists() feeds the array to
+            // Hash::check -> password_verify(array) -> TypeError
+            // 'password_verify(): Argument #1 ($password) must be of type
+            // string, array given' -> 500, guest-reachable once any reset
+            // row exists (the forgot-password form mints one for any
+            // registered email). 'bail' is NOT needed here: unlike #154,
+            // no further rule follows 'string' on this attribute, so the
+            // failing type rule is the last thing the array touches before
+            // the 302/422 response.
+            'token' => ['required', 'string'],
             'email' => ['required', 'email'],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
