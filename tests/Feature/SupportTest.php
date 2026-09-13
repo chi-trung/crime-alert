@@ -251,4 +251,24 @@ class SupportTest extends TestCase
             ->assertSessionHas('success');
         $this->assertSame('closed', $thread->fresh()->status);
     }
+
+    public function test_dead_is_read_column_is_gone(): void
+    {
+        // Issue #119: is_read had zero setters (nothing ever marked a message
+        // read) and zero readers (no query, blade, or AJAX payload used it) —
+        // the migration drops it and the model drops the fillable entry.
+        // migrate:fresh in every test already proves the migration runs on
+        // sqlite; mysql CI proves the other dialect.
+        $this->assertFalse(Schema::hasColumn('support_messages', 'is_read'));
+        $this->assertNotContains('is_read', (new SupportMessage)->getFillable());
+
+        // The message lifecycle the column used to ride along with is intact.
+        [$owner, , , $thread] = $this->makeThread();
+        SupportMessage::create([
+            'support_request_id' => $thread->id,
+            'user_id' => $owner->id,
+            'message' => 'xin chao',
+        ]);
+        $this->assertDatabaseCount('support_messages', 1);
+    }
 }
