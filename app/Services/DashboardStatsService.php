@@ -78,7 +78,10 @@ class DashboardStatsService
             'approvedAlerts' => Alert::where('status', 'approved')->count(),
             'rejectedAlerts' => Alert::where('status', 'rejected')->count(),
             'totalUsers' => User::count(),
-            'latestAlert' => Alert::orderByDesc('created_at')->first(),
+            // Issue #87: created_at is second-resolution, so same-second rows
+            // left even the single-row "latest" pick undefined — id DESC
+            // resolves the tie toward the newest row (#81's idiom).
+            'latestAlert' => Alert::orderByDesc('created_at')->orderByDesc('id')->first(),
             'createdData' => $alertsCreated,
             'approvedData' => $alertsApproved,
             'totalAlertsPercent' => $this->percentChange(...$totals['total']),
@@ -87,10 +90,10 @@ class DashboardStatsService
             'rejectedPercent' => $this->percentChange(...$totals['rejected']),
             'totalUsersPercent' => $this->percentChange(...$totals['users']),
             'myExperience' => null,
-            'latestExperience' => Experience::orderByDesc('created_at')->first(),
+            'latestExperience' => Experience::orderByDesc('created_at')->orderByDesc('id')->first(),
             'typePercents' => $typePercents,
             'typePercentsAdmin' => $typePercents,
-            'latestSupportRequest' => SupportRequest::with('user')->latest()->first(),
+            'latestSupportRequest' => SupportRequest::with('user')->latest()->orderByDesc('id')->first(),
         ]);
     }
 
@@ -127,11 +130,13 @@ class DashboardStatsService
             Alert::where('status', 'approved')->get(['type'])
         );
 
-        $myExperience = Experience::where('user_id', $user->id)->orderByDesc('created_at')->first();
+        // Issue #87: id tiebreak on the two single-row picks below — same
+        // second-resolution created_at ambiguity as the rest of this file.
+        $myExperience = Experience::where('user_id', $user->id)->orderByDesc('created_at')->orderByDesc('id')->first();
         // Only the newest row is rendered ($myLatest); the old unbounded
         // $myAlerts collection (issue #67's read-side class) existed solely
         // to call ->first() on it.
-        $myLatest = Alert::where('user_id', $user->id)->orderByDesc('created_at')->first();
+        $myLatest = Alert::where('user_id', $user->id)->orderByDesc('created_at')->orderByDesc('id')->first();
 
         return array_merge($this->sharedLists(), [
             'myLatest' => $myLatest,
@@ -141,7 +146,7 @@ class DashboardStatsService
             'myExperiencesThisMonth' => $myExperiencesThisMonth,
             'totalPosts' => $myAlertsThisMonth->count() + $myExperiencesThisMonth->count(),
             'totalApprovedPosts' => $myAlertsThisMonth->count() + $myExperiencesThisMonth->where('status', 'approved')->count(),
-            'latestSupportRequest' => SupportRequest::where('user_id', $user->id)->latest()->first(),
+            'latestSupportRequest' => SupportRequest::where('user_id', $user->id)->latest()->orderByDesc('id')->first(),
         ]);
     }
 
@@ -230,16 +235,21 @@ class DashboardStatsService
         return [
             'latestNews' => News::orderByDesc('published_at')->orderByDesc('id')->take(3)->get(),
             'hotWanted' => WantedPerson::orderByDesc('id')->take(3)->get(),
+            // Issue #87: the three-way sorts below end in created_at, which
+            // is second-resolution — rows from one burst are tied and LIMIT
+            // 3/1 would otherwise decide membership by scan order.
             'topExperiences' => Experience::where('status', 'approved')
                 ->withCount('comments')
                 ->orderByDesc('comments_count')
                 ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->take(3)
                 ->get(),
             'topAlerts' => Alert::where('status', 'approved')
                 ->withCount('comments')
                 ->orderByDesc('comments_count')
                 ->orderByDesc('created_at')
+                ->orderByDesc('id')
                 ->take(3)
                 ->get(),
         ];
