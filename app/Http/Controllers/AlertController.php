@@ -42,10 +42,11 @@ class AlertController extends Controller
         $data['longitude'] = $request->input('longitude');
 
         if ($request->hasFile('image')) {
-            $file = $request->file('image');
-            $filename = $file->hashName();
-            $file->move(storage_path('app/public/alerts'), $filename);
-            $data['image'] = 'alerts/'.$filename;
+            // Issue #55: store() through the public disk instead of a raw
+            // move() into storage_path() — same hashName() filename and the
+            // same alerts/ layout, but it honors the disk configuration and
+            // is visible to Storage::fake() in tests.
+            $data['image'] = $request->file('image')->store('alerts', 'public');
         }
 
         $alert = Alert::create($data);
@@ -194,10 +195,8 @@ class AlertController extends Controller
             if ($alert->image) {
                 \Storage::disk('public')->delete($alert->image);
             }
-            $file = $request->file('image');
-            $filename = $file->hashName();
-            $file->move(storage_path('app/public/alerts'), $filename);
-            $data['image'] = 'alerts/'.$filename;
+            // Issue #55: see store() above.
+            $data['image'] = $request->file('image')->store('alerts', 'public');
         }
         $alert->update($data);
 

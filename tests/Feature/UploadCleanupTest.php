@@ -35,12 +35,13 @@ class UploadCleanupTest extends TestCase
             'image' => UploadedFile::fake()->image('bang.png'),
         ]);
 
+        // Issue #55: the controller now writes through the public disk, so
+        // the fake caught the upload itself — assert that here rather than
+        // mirroring by hand. Path shape 'alerts/<hash>' matches what the
+        // views render via asset('storage/...').
         $alert = Alert::firstOrFail();
-        // store() moves the upload with a raw move() call rather than the
-        // Storage facade, so the fake disk never sees the write itself.
-        // Mirror the row's path into the fake so deletion cleanup is the
-        // only thing under test.
-        Storage::disk('public')->put($alert->image, 'fake-bytes');
+        $this->assertStringStartsWith('alerts/', $alert->image);
+        Storage::disk('public')->assertExists($alert->image);
 
         return $alert;
     }
@@ -127,8 +128,7 @@ class UploadCleanupTest extends TestCase
         Storage::disk('public')->assertMissing($old);
         $fresh = $alert->fresh();
         $this->assertNotSame($old, $fresh->image);
-        // (Raw move() again — mirror the replacement for the final check.)
-        Storage::disk('public')->put($fresh->image, 'fake-bytes');
+        Storage::disk('public')->assertExists($fresh->image);
 
         // And deleting afterwards removes the replacement cleanly.
         $this->actingAs($owner)->delete("/alerts/{$alert->id}");
