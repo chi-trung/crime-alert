@@ -1,5 +1,14 @@
 <?php
 
+// Issue #166: the Gemini model used to be frozen inside the endpoint URL
+// ('gemini-pro' — Gemini 1.0 Pro, retired per Google's changelog, so the
+// stock gemini path 4xx'd "model not found" forever) and unlike its
+// siblings there was no *_MODEL env to override it without a code change.
+// The endpoint is now built from GEMINI_MODEL and the model is also
+// exposed under providers.gemini.model for parity with openai/deepseek/
+// openrouter.
+$geminiModel = env('GEMINI_MODEL', 'gemini-2.5-flash');
+
 return [
 
     /*
@@ -42,7 +51,10 @@ return [
         'providers' => [
             'gemini' => [
                 'key' => env('GEMINI_API_KEY'),
-                'endpoint' => 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent',
+                // Issue #166: model env-overridable like the siblings — the
+                // retired 'gemini-pro' used to be frozen into this string.
+                'endpoint' => 'https://generativelanguage.googleapis.com/v1beta/models/'.$geminiModel.':generateContent',
+                'model' => $geminiModel,
             ],
             'openai' => [
                 'key' => env('OPENAI_API_KEY'),
@@ -57,7 +69,15 @@ return [
             'openrouter' => [
                 'key' => env('OPENROUTER_API_KEY'),
                 'endpoint' => 'https://openrouter.ai/api/v1/chat/completions',
-                'model' => env('OPENROUTER_MODEL', 'agentica-org/deepcoder-14b-preview:free'),
+                // Issue #166: the previous default (agentica-org/
+                // deepcoder-14b-preview:free) is delisted — re-verified
+                // against GET /api/v1/models on 2026-09-14: 445 ids live,
+                // zero agentica/deepcoder matches — so a stock deploy
+                // 4xx'd on every question. This slug was in the same live
+                // fetch (an instruction-tuned general model, 262k ctx).
+                // OpenRouter rotates its free tier, so override with
+                // OPENROUTER_MODEL rather than trusting any baked default.
+                'model' => env('OPENROUTER_MODEL', 'google/gemma-4-31b-it:free'),
                 'referer' => env('OPENROUTER_REFERER'),
             ],
         ],

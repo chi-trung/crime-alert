@@ -114,6 +114,8 @@ DEEPSEEK_API_KEY=
 # Tùy chọn: model + header giới thiệu với OpenRouter
 #OPENROUTER_MODEL=
 #OPENROUTER_REFERER=
+# Tùy chọn: model cho Gemini (mặc định gemini-2.5-flash)
+#GEMINI_MODEL=
 ```
 
 Provider nào trống key thì chatbot trả lời lịch sự "không khả dụng" thay vì gọi API.
