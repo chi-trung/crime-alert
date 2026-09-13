@@ -42,7 +42,8 @@ class SupportRequestController extends Controller
     {
         $data = $request->validate([
             'subject' => 'required|string|max:255',
-            'message' => 'required|string',
+            // Issue #39: TEXT column, unbounded like #37 — bound it.
+            'message' => 'required|string|max:5000',
         ]);
         $supportRequest = SupportRequest::create([
             'user_id' => Auth::id(),
@@ -79,7 +80,8 @@ class SupportRequestController extends Controller
             return back()->with('error', 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.');
         }
         $data = $request->validate([
-            'message' => 'required|string',
+            // Issue #39: same bound as store().
+            'message' => 'required|string|max:5000',
         ]);
         $msg = SupportMessage::create([
             'support_request_id' => $supportRequest->id,
