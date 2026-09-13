@@ -5,7 +5,16 @@
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2 class="mb-0">Tất cả thông báo</h2>
-        @if($notifications->whereNull('read_at')->count() > 0)
+        {{-- Issue #193: the old condition inspected $notifications, the
+             CURRENT paginate(20) slice — but readAll() marks every unread
+             row of the account. Once a user's 20 newest notifications were
+             all read while older unreads sat on page 2+, the button vanished
+             from page 1 (and every later page whose window happened to be
+             read), stranding the remaining unreads: the per-row click is the
+             only way left, one at a time, page after page. Gate on the
+             global unread exists() query — one indexed SELECT — so the
+             button shows exactly when readAll() has work to do. --}}
+        @if(auth()->user()->unreadNotifications()->exists())
         <form action="{{ route('notifications.readAll') }}" method="POST">
             @csrf
             <button type="submit" class="btn btn-outline-primary btn-sm"><i class="fas fa-check-double me-1"></i> Đánh dấu tất cả đã đọc</button>
