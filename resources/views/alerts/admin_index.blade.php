@@ -39,7 +39,12 @@
                                 <div class="d-flex align-items-center">
                                     <div class="avatar-sm me-2">
                                         <div class="avatar-title bg-light rounded-circle text-danger fw-bold">
-                                            {{ substr($alert->user->name ?? 'N/A', 0, 1) }}
+                                            {{-- Issue #131: substr() cut at byte 1, so a name
+                                 starting with a 2-byte Vietnamese letter (Đặng, Đào,
+                                 Đình...) yielded a lone 0xC4 lead byte — mojibake in
+                                 the avatar. Same mb idiom as navigation's profile
+                                 avatar (line 161), which also uppercases. --}}
+                                            {{ mb_strtoupper(mb_substr($alert->user->name ?? 'N/A', 0, 1, 'UTF-8'), 'UTF-8') }}
                                         </div>
                                     </div>
                                     <div>
