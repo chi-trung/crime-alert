@@ -176,11 +176,28 @@ class SupportRequestController extends Controller
         // every admin) just like store() — same verification gate, checked
         // before authorizeViewer so the guard reads as the method's first
         // contract.
+        // Issue #206: the /support/{id} live-chat form submits via fetch()
+        // with Accept: application/json, but fetch() follows the 302 these
+        // flash branches return transparently — the followed GET of the
+        // thread comes back 200, so res.ok was TRUE even on a rejection.
+        // The client then cleared the textarea as if the message had been
+        // sent: the draft was lost, no error appeared, and the user had to
+        // retype it. Under expectsJson() the rejections now answer with a
+        // real 4xx JSON the client can detect; the HTML form-POST shape
+        // (back()->with) stays untouched for non-JSON callers.
         if (! Auth::user()->hasVerifiedEmail()) {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Bạn cần xác thực email để liên hệ hỗ trợ.'], 403);
+            }
+
             return redirect()->back()->with('error', 'Bạn cần xác thực email để liên hệ hỗ trợ.');
         }
         $this->authorizeViewer($supportRequest);
         if ($supportRequest->status !== 'open') {
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.'], 409);
+            }
+
             return back()->with('error', 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.');
         }
         $data = $request->validate([
@@ -272,10 +289,28 @@ class SupportRequestController extends Controller
             return null;
         });
         if ($outcome === 'vanished') {
+            if ($request->expectsJson()) {
+                // Same status the abort below produces, so the client can
+                // branch on it; a 404 is a real !res.ok, so the draft is
+                // preserved either way.
+                return response()->json(['success' => false, 'message' => 'Yêu cầu không tồn tại.'], 404);
+            }
+
             abort(404);
         }
         if ($outcome === 'closed') {
+            // Issue #206: this raced close reached the same 302-plus-flash
+            // shape as the snapshot gate above, so the JSON client counted
+            // it as a successful send; it now mirrors that gate exactly.
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.'], 409);
+            }
+
             return back()->with('error', 'Yêu cầu đã đóng, không thể gửi thêm tin nhắn.');
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true]);
         }
 
         return back();
