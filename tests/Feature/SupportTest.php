@@ -7,6 +7,7 @@ use App\Models\SupportRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class SupportTest extends TestCase
@@ -170,5 +171,24 @@ class SupportTest extends TestCase
             ->post(route('support.sendMessage', $thread), ['message' => str_repeat('ạ', 5000)])
             ->assertSessionHasNoErrors();
         $this->assertSame(5000, mb_strlen(SupportMessage::latest('id')->value('message')));
+    }
+
+    public function test_dead_admin_id_column_is_gone(): void
+    {
+        // Issue #108: admin_id had no write site (store() sets user_id and
+        // subject only) and no read site (the admin() relation had zero
+        // callers) — the migration drops it, the model drops the relation
+        // and the fillable entry. migrate:fresh in every test already proves
+        // the migration runs on sqlite; mysql CI proves the other dialect.
+        $this->assertFalse(Schema::hasColumn('support_requests', 'admin_id'));
+        $this->assertFalse(method_exists(SupportRequest::class, 'admin'));
+
+        // The thread lifecycle the column used to ride along with is intact.
+        [$owner, $admin, , $thread] = $this->makeThread();
+        $this->assertSame('open', $thread->fresh()->status);
+        $this->actingAs($admin)
+            ->post(route('admin.support.close', $thread))
+            ->assertSessionHas('success');
+        $this->assertSame('closed', $thread->fresh()->status);
     }
 }
