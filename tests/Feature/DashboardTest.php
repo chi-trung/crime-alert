@@ -80,4 +80,25 @@ class DashboardTest extends TestCase
         // totalApprovedPosts: 1 alert + approved experiences = 2
         $response->assertViewHas('totalApprovedPosts', 2);
     }
+
+    public function test_empty_dashboard_shows_no_phantom_type_percentage(): void
+    {
+        // Issue #65: with zero approved alerts the old remainder scheme put
+        // 100% into the "Khác" bucket, so the pie cards claimed all crime was
+        // "other" on a fresh install. The payload must be all zeros.
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->get('/dashboard')
+            ->assertOk()
+            ->assertViewHas('typePercents', [
+                'Cướp giật' => 0,
+                'Trộm cắp' => 0,
+                'Lừa đảo' => 0,
+                'Bạo lực' => 0,
+                'Khác' => 0,
+            ]);
+        // (The cards render these values verbatim; a raw `assertDontSee('100%')`
+        // can't work here because the stylesheet legitimately contains
+        // `height: 100%`.)
+    }
 }
