@@ -53,9 +53,20 @@ class AdminUserSeederTest extends TestCase
         $this->runSeeder();
     }
 
+    public function test_production_refuses_to_seed_with_an_empty_admin_password(): void
+    {
+        // Set-but-empty is the same hole as unset.
+        $_ENV['ADMIN_PASSWORD'] = $_SERVER['ADMIN_PASSWORD'] = '';
+        $this->inEnvironment('production');
+
+        $this->expectException(\RuntimeException::class);
+
+        $this->runSeeder();
+    }
+
     public function test_production_seeds_normally_when_admin_password_is_set(): void
     {
-        $_ENV['ADMIN_PASSWORD'] = 'Sup3rs3cret!';
+        $_ENV['ADMIN_PASSWORD'] = $_SERVER['ADMIN_PASSWORD'] = 'Sup3rs3cret!';
         $this->inEnvironment('production');
 
         $this->runSeeder();

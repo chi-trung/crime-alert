@@ -21,7 +21,9 @@ class AdminUserSeeder extends Seeder
     {
         $password = env('ADMIN_PASSWORD');
 
-        if ($password === null) {
+        // Empty-string counts as unset: a deploy that sets ADMIN_PASSWORD=""
+        // is just as backdoored as one that omits it.
+        if ($password === null || $password === '') {
             if (app()->environment('production')) {
                 throw new RuntimeException(
                     'ADMIN_PASSWORD must be set in production: the seeder fallback is public knowledge.'
