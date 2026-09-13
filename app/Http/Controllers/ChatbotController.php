@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -58,11 +59,27 @@ class ChatbotController extends Controller
     {
         $url = $settings['endpoint'].'?key='.$settings['key'];
 
-        $response = Http::timeout(30)->post($url, [
-            'contents' => [
-                ['parts' => [['text' => $this->systemPrompt()."\n\nCâu hỏi: {$question}"]]],
-            ],
-        ]);
+        // Issue #135: an unreachable host (DNS failure, refused connection,
+        // cURL timeout) throws ConnectionException BEFORE any $response
+        // exists — the !successful() branch below only sees HTTP-level
+        // failures. Without this catch the widget got a 500 HTML page to
+        // JSON-parse, defeating fallbackMessage's exact "cannot connect"
+        // purpose. Same shape as CrawlerTest's host-unreachable case.
+        try {
+            $response = Http::timeout(30)->post($url, [
+                'contents' => [
+                    ['parts' => [['text' => $this->systemPrompt()."\n\nCâu hỏi: {$question}"]]],
+                ],
+            ]);
+        } catch (ConnectionException $e) {
+            // getMessage() is deliberately NOT logged here: Guzzle's
+            // connection-error text embeds the request URL, and the Gemini
+            // URL carries the API key as a query param (issue #32 pairing —
+            // keys stay out of logs).
+            Log::error('Chatbot: Gemini connection error ('.get_class($e).')');
+
+            return $this->fallbackMessage();
+        }
 
         if (! $response->successful()) {
             Log::error('Chatbot Gemini API error', [
@@ -92,17 +109,29 @@ class ChatbotController extends Controller
             $headers['X-Title'] = config('app.name', 'Crime Alert');
         }
 
-        $response = Http::timeout(30)
-            ->withHeaders($headers)
-            ->post($settings['endpoint'], [
-                'model' => $settings['model'],
-                'messages' => [
-                    ['role' => 'system', 'content' => $this->systemPrompt()],
-                    ['role' => 'user', 'content' => $question],
-                ],
-                'max_tokens' => 512,
-                'temperature' => 0.7,
+        // Issue #135: same unguarded-Http shape as askGemini — the key rides
+        // in a header, so Guzzle's connection-error text (which embeds the
+        // URL) is safe to log, unlike Gemini's query-param key.
+        try {
+            $response = Http::timeout(30)
+                ->withHeaders($headers)
+                ->post($settings['endpoint'], [
+                    'model' => $settings['model'],
+                    'messages' => [
+                        ['role' => 'system', 'content' => $this->systemPrompt()],
+                        ['role' => 'user', 'content' => $question],
+                    ],
+                    'max_tokens' => 512,
+                    'temperature' => 0.7,
+                ]);
+        } catch (ConnectionException $e) {
+            Log::error('Chatbot connection error', [
+                'provider' => $provider,
+                'message' => $e->getMessage(),
             ]);
+
+            return $this->fallbackMessage();
+        }
 
         if (! $response->successful()) {
             Log::error('Chatbot API error', [

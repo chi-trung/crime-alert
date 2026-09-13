@@ -4,7 +4,9 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Tests\TestCase;
 
 class ChatbotTest extends TestCase
@@ -147,5 +149,47 @@ class ChatbotTest extends TestCase
         }
 
         $this->postJson('/chatbot/ask', ['question' => 'Hello'])->assertStatus(429);
+    }
+
+    public function test_chat_completions_host_unreachable_answers_fallback_not_500(): void
+    {
+        // Issue #135: ConnectionException is thrown before any $response
+        // exists, so the !successful() fallback branch never sees it — the
+        // user got a 500 HTML page. Same host-unreachable shape as
+        // CrawlerTest's crawl:news coverage.
+        $this->configuredOpenRouter();
+
+        Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect'));
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.']);
+    }
+
+    public function test_gemini_host_unreachable_answers_fallback_without_leaking_key(): void
+    {
+        config([
+            'services.ai.provider' => 'gemini',
+            'services.ai.providers.gemini.key' => 'gm-test-key',
+        ]);
+
+        Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to https://generativelanguage.googleapis.com/v1beta?key=gm-test-key'));
+        $logged = [];
+        Log::shouldReceive('error')->andReturnUsing(function ($message, $context = []) use (&$logged): void {
+            $logged[] = $message.' '.json_encode($context);
+        });
+
+        $response = $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk();
+
+        // The Gemini key rides the URL, which Guzzle embeds in connection
+        // error text — it must appear neither in the client body nor the log.
+        $this->assertStringNotContainsString('gm-test-key', $response->getContent());
+        $this->assertNotEmpty($logged, 'the connection failure must still be logged');
+        foreach ($logged as $line) {
+            $this->assertStringNotContainsString('gm-test-key', $line);
+        }
     }
 }
