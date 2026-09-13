@@ -254,10 +254,16 @@ class AlertController extends Controller
 
     public function mapView()
     {
+        // Issue #79: this selected every column of every approved, geocoded
+        // alert and the blade @json'd the whole model set into
+        // window.ALERTS_DATA, so description/image/user_id/status/timestamps
+        // rode along to each viewer. alerts_map.js consumes exactly these six
+        // fields, so these are the only six columns read. (Marker clustering
+        // legitimately needs the whole set, hence no limit here.)
         $alerts = Alert::where('status', 'approved')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
-            ->get();
+            ->get(['id', 'title', 'type', 'location', 'latitude', 'longitude']);
 
         return view('alerts.map', compact('alerts'));
     }
