@@ -294,4 +294,29 @@ class AlertTest extends TestCase
         $this->assertEqualsWithDelta(10.762622, (float) $fresh->latitude, 0.0001);
         $this->assertEqualsWithDelta(106.660172, (float) $fresh->longitude, 0.0001);
     }
+
+    public function test_description_is_length_bounded_on_store_and_update(): void
+    {
+        // Issue #37: a TEXT column with no validation bound — oversized
+        // payloads either blow up on MySQL or bloat storage.
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post('/alerts', $this->alertPayload([
+            'description' => str_repeat('x', 10001),
+        ]))->assertSessionHasErrors('description');
+        $this->assertSame(0, Alert::count());
+
+        $owner = User::factory()->create();
+        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'Cu', 'description' => 'd', 'status' => 'pending']);
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi', 'description' => str_repeat('x', 10001),
+        ])->assertSessionHasErrors('description');
+        $this->assertSame('d', $alert->fresh()->description);
+
+        // Exactly at the bound is still accepted.
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi', 'description' => str_repeat('x', 10000),
+        ])->assertRedirect(route('dashboard'));
+        $this->assertSame(10000, mb_strlen($alert->fresh()->description));
+    }
 }

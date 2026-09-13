@@ -101,4 +101,29 @@ class ExperienceTest extends TestCase
         ]);
         $this->assertSame('approved', Experience::where('title', 'Cua admin')->value('status'));
     }
+
+    public function test_content_is_length_bounded_on_store_and_update(): void
+    {
+        // Issue #37: `content` sits in a TEXT column; unbounded payloads used
+        // to reach the database untouched.
+        $owner = User::factory()->create();
+        $huge = str_repeat('ạ', 10001);
+
+        $this->actingAs($owner)->post('/experiences', [
+            'title' => 'dai', 'content' => $huge, 'name' => 'U',
+        ])->assertSessionHasErrors('content');
+        $this->assertSame(0, Experience::count());
+
+        $experience = $this->experienceFor($owner);
+        $this->actingAs($owner)->put("/experiences/{$experience->id}", [
+            'title' => 'dai', 'content' => $huge, 'name' => 'U',
+        ])->assertSessionHasErrors('content');
+        $this->assertSame('Noi dung', $experience->fresh()->content);
+
+        // The exact bound still saves (10000 chars of 3-byte text fits TEXT).
+        $this->actingAs($owner)->put("/experiences/{$experience->id}", [
+            'title' => 'vua du', 'content' => str_repeat('ạ', 10000), 'name' => 'U',
+        ])->assertSessionHasNoErrors();
+        $this->assertSame(10000, mb_strlen($experience->fresh()->content));
+    }
 }
