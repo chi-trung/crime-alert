@@ -60,6 +60,12 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Issue #67: its own pager, keyed to alerts_page. The
+                         card-body is p-0, so the nav needs its own gutter; the
+                         guard keeps single-page tables from gaining the stub. --}}
+                    @if($myAlerts->hasPages())
+                        <div class="px-3 py-2 d-flex justify-content-center">{{ $myAlerts->links('pagination::bootstrap-4') }}</div>
+                    @endif
                 </div>
             </div>
         </div>
@@ -117,6 +123,10 @@
                             </tbody>
                         </table>
                     </div>
+                    {{-- Issue #67: its own pager, keyed to exp_page. --}}
+                    @if($myExperiences->hasPages())
+                        <div class="px-3 py-2 d-flex justify-content-center">{{ $myExperiences->links('pagination::bootstrap-4') }}</div>
+                    @endif
                 </div>
             </div>
         </div>

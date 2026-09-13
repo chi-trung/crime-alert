@@ -106,8 +106,19 @@ class ProfileController extends Controller
     public function myHistory()
     {
         $user = auth()->user();
-        $myAlerts = Alert::where('user_id', $user->id)->orderByDesc('created_at')->get();
-        $myExperiences = Experience::where('user_id', $user->id)->orderByDesc('created_at')->get();
+        // Issue #67: both lists were unbounded ->get() rendered in one page,
+        // the read-side twin of #37/#39. Paginate at the same size as the
+        // alerts index. The page names keep the two side-by-side tables
+        // independent: ?alerts_page= moves only the alerts table, ?exp_page=
+        // only the experiences one.
+        $myAlerts = Alert::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->paginate(10, ['*'], 'alerts_page')
+            ->withQueryString();
+        $myExperiences = Experience::where('user_id', $user->id)
+            ->orderByDesc('created_at')
+            ->paginate(10, ['*'], 'exp_page')
+            ->withQueryString();
 
         return view('profile.my_history', compact('myAlerts', 'myExperiences'));
     }
