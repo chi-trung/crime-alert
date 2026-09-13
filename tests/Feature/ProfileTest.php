@@ -309,4 +309,76 @@ class ProfileTest extends TestCase
 
         $this->assertDatabaseHas('password_reset_tokens', ['email' => 'pair-b@example.com']);
     }
+
+    /**
+     * Issue #204: changePassword already rotates sessions and the remember
+     * token (#27) — an outstanding reset link had to go too, or a leak
+     * response could be silently undone by the pre-rotation link for its
+     * full 60-minute TTL. Pin both halves: the row dies with the rotation,
+     * and the end-to-end chain (token minted first, password rotated, then
+     * POST /reset-password with the old token) is rejected and leaves the
+     * rotated hash intact.
+     */
+    public function test_password_rotation_sweeps_outstanding_reset_tokens(): void
+    {
+        $user = User::factory()->create();
+        Password::broker()->createToken($user);
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+
+        $this->actingAs($user)
+            ->post('/profile/change-password', [
+                'current_password' => 'password',
+                'new_password' => 'rotated-secret-password',
+                'new_password_confirmation' => 'rotated-secret-password',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => $user->email]);
+    }
+
+    public function test_reset_link_minted_before_a_password_change_cannot_undo_the_rotation(): void
+    {
+        $user = User::factory()->create();
+        $token = Password::broker()->createToken($user);
+
+        $this->actingAs($user)
+            ->post('/profile/change-password', [
+                'current_password' => 'password',
+                'new_password' => 'rotated-secret-password',
+                'new_password_confirmation' => 'rotated-secret-password',
+            ])
+            ->assertSessionHasNoErrors();
+
+        // The holder of the leaked pre-rotation link tries from a guest
+        // session (/reset-password is a guest route).
+        $this->post('/logout');
+        $this->post('/reset-password', [
+            'token' => $token,
+            'email' => $user->email,
+            'password' => 'pwned-again',
+            'password_confirmation' => 'pwned-again',
+        ])->assertSessionHasErrors('email');
+
+        $this->assertTrue(Hash::check('rotated-secret-password', $user->fresh()->password));
+    }
+
+    public function test_forgot_password_still_works_after_a_rotation_sweep(): void
+    {
+        // Control: the sweep kills only what existed at rotation time —
+        // recovery itself stays available.
+        $user = User::factory()->create();
+        $this->actingAs($user)
+            ->post('/profile/change-password', [
+                'current_password' => 'password',
+                'new_password' => 'rotated-secret-password',
+                'new_password_confirmation' => 'rotated-secret-password',
+            ])
+            ->assertSessionHasNoErrors();
+
+        $this->post('/logout');
+        $this->post('/forgot-password', ['email' => $user->email])
+            ->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
+    }
 }

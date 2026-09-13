@@ -113,6 +113,20 @@ class ProfileController extends Controller
         $user->remember_token = null;
         $user->save();
 
+        // Issue #204: rotation is the standard response to a suspected leak,
+        // so every credential that could undo it must die with it — the
+        // sessions below and, per #27/#123's doctrine, any outstanding
+        // recovery token. `password_reset_tokens` is keyed by email and
+        // nothing here touches it, so a reset link minted BEFORE this
+        // change (leaked mailbox, shared device, forwarded email) stayed
+        // valid for its full 60-minute TTL and POST /reset-password happily
+        // forceFilled over the brand-new password — the rotation was
+        // silently undone. Delete the address's rows as part of the
+        // rotation; a later forgot-password request re-mints normally
+        // because Password::broker()->createToken starts by sweeping its
+        // own email's residue anyway.
+        DB::table('password_reset_tokens')->where('email', $user->email)->delete();
+
         // NIST SP 800-63B: changing the password must end all other active
         // sessions. With SESSION_DRIVER=database that's a direct delete of
         // this user's rows minus the requesting one; it works without the
