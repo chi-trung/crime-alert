@@ -194,8 +194,23 @@ class AlertController extends Controller
     {
         // Issue #117: in-method admin assertion (see authorizeAdmin()).
         $this->authorizeAdmin();
-        $alert->status = 'approved';
-        $alert->save();
+        // Issue #189: the old blind write let a stale moderation page (two
+        // admins, or one admin in two tabs — the UI renders the buttons only
+        // while the row is pending and never auto-refreshes) flip an
+        // already-approved alert back to rejected or resurrect a rejected
+        // one, both answered with the normal success flash: silent
+        // un-moderation of public scam warnings, the exact misleading
+        // repeat-click class #98 fixed for support close(). The write is now
+        // one conditional UPDATE (same check-then-act hardening idiom as
+        // #139/#153): it lands only while status is still 'pending', so the
+        // guard cannot race a concurrent decide, and 0 affected rows tells
+        // the acting admin the item was already handled.
+        $decided = Alert::whereKey($alert->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'approved', 'updated_at' => now()]);
+        if (! $decided) {
+            return back()->with('info', 'Cảnh báo này đã được xử lý trước đó.');
+        }
 
         return back()->with('success', 'Đã duyệt cảnh báo thành công!');
     }
@@ -204,8 +219,13 @@ class AlertController extends Controller
     {
         // Issue #117: same in-method assertion as approve() above.
         $this->authorizeAdmin();
-        $alert->status = 'rejected';
-        $alert->save();
+        // Issue #189: conditional pending-only write — see approve().
+        $decided = Alert::whereKey($alert->id)
+            ->where('status', 'pending')
+            ->update(['status' => 'rejected', 'updated_at' => now()]);
+        if (! $decided) {
+            return back()->with('info', 'Cảnh báo này đã được xử lý trước đó.');
+        }
 
         return back()->with('success', 'Đã từ chối cảnh báo!');
     }
