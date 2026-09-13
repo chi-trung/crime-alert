@@ -2,7 +2,14 @@
 
 namespace App\Models;
 
+use App\Notifications\LikeCommentNotification;
+use App\Notifications\LikePostNotification;
+use App\Notifications\NewCommentOnPost;
+use App\Notifications\NewPostNotification;
+use App\Notifications\NewPostPendingApprovalNotification;
+use App\Notifications\NewReplyOnComment;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class Experience extends Model
@@ -18,6 +25,21 @@ class Experience extends Model
             $experience->likes()->delete();
             Like::where('likeable_type', Comment::class)
                 ->whereIn('likeable_id', Comment::where('experience_id', $experience->id)->pluck('id'))
+                ->delete();
+            // Issue #121: same notification sweep as Alert::deleting, scoped
+            // to post_type experience so experience N never eats alert N's
+            // rows (ids collide across the two tables).
+            DB::table('notifications')
+                ->whereIn('type', [
+                    NewPostNotification::class,
+                    NewPostPendingApprovalNotification::class,
+                    LikePostNotification::class,
+                    NewCommentOnPost::class,
+                    NewReplyOnComment::class,
+                    LikeCommentNotification::class,
+                ])
+                ->where('data', 'like', '%"post_id":'.$experience->id.',%')
+                ->where('data', 'like', '%"post_type":"experience"%')
                 ->delete();
             if ($experience->avatar) {
                 Storage::disk('public')->delete($experience->avatar);
