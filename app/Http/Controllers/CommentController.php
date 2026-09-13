@@ -7,7 +7,9 @@ use App\Models\Comment;
 use App\Models\Experience;
 use App\Notifications\NewCommentOnPost;
 use App\Notifications\NewReplyOnComment;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class CommentController extends Controller
@@ -32,6 +34,7 @@ class CommentController extends Controller
             'user_id' => auth()->id(),
             'content' => $request->content,
         ];
+        $parent = null;
         if ($request->filled('parent_id')) {
             $parent = Comment::findOrFail($request->parent_id);
             // A reply hangs off its parent thread, so the parent defines the
@@ -61,39 +64,125 @@ class CommentController extends Controller
         // an author's feed through a rejected post. Replies inherit their
         // parent's post above, so checking the resolved target covers both
         // branches with one gate.
-        $target = isset($data['alert_id'])
-            ? Alert::find($data['alert_id'])
-            : Experience::find($data['experience_id']);
-        abort_unless($target && $target->status === 'approved', 403);
-        $comment = Comment::create($data);
-        // Gửi notification hợp lý
+        // Issue #153: that #95 check, the Comment::create, and the notify
+        // used to be separate autocommitted statements, so a request that
+        // passed the check while its target (or parent) was deleted
+        // mid-flight landed a row the alert_id/experience_id/parent_id FKs
+        // then rejected (MySQL 1452 / SQLite "FOREIGN KEY constraint
+        // failed" -> 500), re-fetched a now-null $post and dereferenced it
+        // in the reply notify (NewReplyOnComment::toArray reads $post->id
+        // -> 500), or rang a bell at the author of a deleted thread that
+        // the post's own deleting sweeps had already finished. Same shape
+        // as #139 (likes); fixed the same way — the whole create+notify
+        // sequence runs in one transaction, the #95 target gate moves to a
+        // current read inside it, and the notifications use those
+        // re-verified models instead of a second fetch, so a raced delete
+        // backs out with exactly the response a pre-existing delete gets
+        // (403 for the post, 404 for the parent — the endpoint's own
+        // abort_unless/findOrFail at the top) and no bell row is ever
+        // written. (Documented residual, inherited from #139: a delete
+        // committed after the post-insert re-check but before this
+        // transaction's commit still slips through — closing that fully
+        // needs row locking in the three models' delete sweeps too.)
         $currentUserId = auth()->id();
-        $post = null;
-        $postType = null;
-        $postOwnerId = null;
-        if ($comment->alert_id) {
-            $post = Alert::find($comment->alert_id);
-            $postType = 'alert';
-            $postOwnerId = $post ? $post->user_id : null;
-        } elseif ($comment->experience_id) {
-            $post = Experience::find($comment->experience_id);
-            $postType = 'experience';
-            $postOwnerId = $post ? $post->user_id : null;
+        $vanished = null;
+        $comment = DB::transaction(function () use ($data, $parent, $currentUserId, &$vanished) {
+            // Authoritative re-check of the owning target as the
+            // transaction's first statement: lockForUpdate() forces MySQL's
+            // REPEATABLE READ to return the latest committed version instead
+            // of this transaction's snapshot (SQLite's grammar drops the
+            // lock clause, where its write lock makes mid-transaction
+            // interleaving impossible anyway). A vanished/unapproved target
+            // backs out to the same 403 the #95 gate gives pre-race.
+            $target = isset($data['alert_id'])
+                ? Alert::whereKey($data['alert_id'])->lockForUpdate()->first()
+                : Experience::whereKey($data['experience_id'])->lockForUpdate()->first();
+            if (! $target || $target->status !== 'approved') {
+                $vanished = 'target';
+
+                return null;
+            }
+            // A reply inherits its post from the parent, so the parent must
+            // be current too; backing out to 404 mirrors findOrFail's
+            // answer to an already-missing parent.
+            if ($parent && ! Comment::whereKey($parent->id)->lockForUpdate()->exists()) {
+                $vanished = 'parent';
+
+                return null;
+            }
+            try {
+                $created = Comment::create($data);
+            } catch (QueryException $e) {
+                if (! $this->isForeignKeyViolation($e)) {
+                    throw $e;
+                }
+                // The insert raced a delete that landed after the re-checks
+                // and the FK rejected the row. Name the vanished party with
+                // the same current reads the non-throwing path uses, so the
+                // response matches what an already-deleted target gets
+                // (the users FK is unreachable — the auth user is alive
+                // past the middleware and this endpoint's own gate).
+                $targetStillThere = $target->newQuery()->whereKey($target->getKey())->lockForUpdate()->exists();
+                $vanished = $targetStillThere ? 'parent' : 'target';
+
+                return null;
+            }
+            // Post-insert current read: covers a delete that lands between
+            // the re-check and the insert on a backend whose FKs are off,
+            // and the after-insert hook path where the row wrote fine but
+            // the post or parent then vanished underneath it. Erase the
+            // comment (a no-op where an FK cascade already dropped it) and
+            // back out *before* any notification fires — backing out here
+            // means there is never a bell row to chase.
+            $postStillThere = $target->newQuery()->whereKey($target->getKey())->lockForUpdate()->exists();
+            $parentStillThere = ! $parent || Comment::whereKey($parent->id)->lockForUpdate()->exists();
+            if (! $postStillThere || ! $parentStillThere) {
+                Comment::whereKey($created->id)->delete();
+                $vanished = $postStillThere ? 'parent' : 'target';
+
+                return null;
+            }
+            // Gửi notification hợp lý. $target/$parent are the live models
+            // both re-read and re-verified inside this transaction — passing
+            // them straight through replaces the old second fetch of $post,
+            // which is what let a raced delete hand NewReplyOnComment a null
+            // post to deref.
+            $postType = $target instanceof Alert ? 'alert' : 'experience';
+            $postOwnerId = $target->user_id;
+            $parentOwnerId = $parent ? $parent->user_id : null;
+            // Nếu là reply, chỉ gửi cho chủ comment cha (nếu khác người gửi)
+            if ($parent && $parentOwnerId && $parentOwnerId != $currentUserId) {
+                $parent->user->notify(new NewReplyOnComment($created, $parent, $target, $postType));
+            } elseif ($postOwnerId && $postOwnerId != $currentUserId) {
+                // Nếu là bình luận gốc, chỉ gửi cho chủ bài viết (nếu khác người gửi)
+                $target->user->notify(new NewCommentOnPost($created, $target, $postType));
+            }
+
+            return $created;
+        });
+        if ($vanished === 'target') {
+            abort(403);
         }
-        $parentComment = $parent ?? null;
-        $parentOwnerId = $parentComment ? $parentComment->user_id : null;
-        // Nếu là reply, chỉ gửi cho chủ comment cha (nếu khác người gửi)
-        if ($parentComment && $parentOwnerId && $parentOwnerId != $currentUserId) {
-            $parentComment->user->notify(new NewReplyOnComment($comment, $parentComment, $post, $postType));
-        } elseif ($post && $postOwnerId && $postOwnerId != $currentUserId) {
-            // Nếu là bình luận gốc, chỉ gửi cho chủ bài viết (nếu khác người gửi)
-            $post->user->notify(new NewCommentOnPost($comment, $post, $postType));
+        if ($vanished === 'parent') {
+            abort(404);
         }
         if ($comment->experience_id) {
             return redirect()->route('experiences.show', $comment->experience_id)->with('success', 'Bình luận đã được gửi!');
         }
 
         return back()->with('success', 'Bình luận đã được gửi!');
+    }
+
+    /**
+     * 1452 = MySQL foreign-key child-row rejection; "FOREIGN KEY constraint
+     * failed" = the SQLite message (this repo's connection enforces FKs by
+     * default — config/database.php). Narrow enough to rethrow any other DB
+     * failure rather than swallow a real bug.
+     */
+    private function isForeignKeyViolation(QueryException $e): bool
+    {
+        return str_contains($e->getMessage(), '1452')
+            || str_contains($e->getMessage(), 'FOREIGN KEY constraint failed');
     }
 
     public function edit(Comment $comment)
