@@ -223,7 +223,10 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                         @php
                             // Eager-load everything the thread renders: authors and
                             // likes for top-level comments and their replies (issue #25).
-                            $comments = $alert->comments()->whereNull('parent_id')->latest()
+                            // Issue #89: created_at is second-resolution, so
+                            // the id tiebreak keeps tied top-level comments in
+                            // a stable order across refreshes (#81's idiom).
+                            $comments = $alert->comments()->whereNull('parent_id')->latest()->orderByDesc('id')
                                 ->with(['user', 'likes', 'replies.user', 'replies.likes'])
                                 ->get();
                         @endphp
