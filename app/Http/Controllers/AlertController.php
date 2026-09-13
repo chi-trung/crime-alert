@@ -160,8 +160,11 @@ class AlertController extends Controller
             \Storage::disk('public')->delete($alert->image);
             $data['image'] = null;
         } elseif (! $request->hasFile('image')) {
-            // Nếu không upload ảnh mới và không xóa ảnh, giữ nguyên ảnh cũ hoặc old_image nếu có
-            $data['image'] = $request->input('old_image', $alert->image);
+            // No upload and no removal: keep the stored image. The old code
+            // trusted a client-supplied `old_image` hidden input here, which
+            // let any caller write an arbitrary string into the column
+            // (issue #29). The server already knows the truth.
+            $data['image'] = $alert->image;
         }
         if ($request->hasFile('image')) {
             // Nếu upload ảnh mới, xóa ảnh cũ trước (nếu có)
