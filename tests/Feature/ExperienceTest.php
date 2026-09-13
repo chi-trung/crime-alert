@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Auth\Middleware\Authorize;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class ExperienceTest extends TestCase
@@ -218,5 +219,46 @@ class ExperienceTest extends TestCase
             'content' => 'c',
             'status' => 'approved',
         ]);
+    }
+
+    public function test_uploaded_picture_renders_on_the_detail_page(): void
+    {
+        // Issue #133: show.blade.php guarded $experience->image, but the
+        // upload lands in the `avatar` column (store() line 64) — the hero
+        // block was dead and the picture rendered nowhere.
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $experience = $this->experienceFor($owner, 'approved');
+        $experience->update(['avatar' => 'avatars/picture.png']);
+
+        $this->get("/experiences/{$experience->id}")
+            ->assertOk()
+            ->assertSee('storage/avatars/picture.png', false);
+    }
+
+    public function test_pictureless_post_renders_no_hero_block(): void
+    {
+        // Guard control: the block is conditional, not unconditional markup.
+        $owner = User::factory()->create();
+        $experience = $this->experienceFor($owner, 'approved');
+
+        $this->get("/experiences/{$experience->id}")
+            ->assertOk()
+            ->assertDontSee('alert-image-container', false);
+    }
+
+    public function test_index_still_lists_posts_with_an_avatar_author(): void
+    {
+        // Issue #133: the card img ternary read the nonexistent
+        // users.avatar column; the fallback branch must still render every
+        // listed post with the ui-avatars URL (no dead storage branch).
+        $owner = User::factory()->create(['name' => 'Đặng Văn Test']);
+        $experience = $this->experienceFor($owner, 'approved');
+
+        $this->get('/experiences')
+            ->assertOk()
+            ->assertSee($experience->title)
+            ->assertSee('ui-avatars.com/api/?name='.urlencode('Đặng Văn Test'), false)
+            ->assertDontSee('storage/', false);
     }
 }
