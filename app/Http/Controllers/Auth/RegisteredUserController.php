@@ -32,7 +32,19 @@ class RegisteredUserController extends Controller
     {
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
+            // Issue #160: array-input class of #145/#154/#155. 'string' alone
+            // does not stop later rules on an attribute (Validator keeps
+            // running them unless one is implicit or 'bail' halts the chain —
+            // see Validator::shouldStopValidating), so email[]=a@b.com failed
+            // 'string' and then STILL reached 'lowercase' -> Str::lower ->
+            // mb_strtolower(array) -> TypeError 'mb_strtolower(): Argument #1
+            // ($string) must be of type string, array given' -> 500 on the
+            // guest-reachable POST /register. 'bail' after 'string' is what
+            // makes the type guard effective. Same fix at
+            // ProfileUpdateRequest (PATCH /profile, the second live caller of
+            // this rule list); the crash never happens on forgot/reset because
+            // their rules omit 'lowercase'.
+            'email' => ['required', 'string', 'bail', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 

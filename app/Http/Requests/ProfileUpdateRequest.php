@@ -21,6 +21,10 @@ class ProfileUpdateRequest extends FormRequest
             'email' => [
                 'required',
                 'string',
+                // Issue #160: see RegisteredUserController — 'string' does not
+                // halt the chain, so email[]=... reached 'lowercase' ->
+                // mb_strtolower(array) -> TypeError 500 on PATCH /profile too.
+                'bail',
                 'lowercase',
                 'email',
                 'max:255',
