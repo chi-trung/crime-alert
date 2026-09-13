@@ -429,6 +429,16 @@ class AlertTest extends TestCase
                 ->assertSee($approved->title)
                 ->assertDontSee($pending->title);
         }
+
+        // Issue #194: #41 removed the server branch but left the form's
+        // 'Trạng thái' <select> behind, and its options echo request('status')
+        // with selected — choosing "Chờ duyệt" visibly re-selected itself
+        // while the list stayed byte-identical. #41's premise that "no part
+        // of the UI sends status" was simply false. The control is gone now,
+        // so the offer no longer lies about a filter that does not exist.
+        $html = $this->actingAs($user)->get('/alerts?status=pending')->assertOk()->getContent();
+        $this->assertStringNotContainsString('name="status"', $html);
+        $this->assertStringNotContainsString('for="status"', $html);
     }
 
     public function test_admin_queue_avatar_initial_is_a_full_vietnamese_letter(): void

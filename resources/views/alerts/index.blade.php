@@ -27,15 +27,6 @@
                         <option value="Khác" {{ request('type') == 'Khác' ? 'selected' : '' }}>Khác</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label for="status" class="form-label fw-semibold">Trạng thái</label>
-                    <select name="status" id="status" class="form-select border-2">
-                        <option value="">Tất cả</option>
-                        <option value="pending" {{ request('status') == 'pending' ? 'selected' : '' }}>Chờ duyệt</option>
-                        <option value="approved" {{ request('status') == 'approved' ? 'selected' : '' }}>Đã duyệt</option>
-                        <option value="rejected" {{ request('status') == 'rejected' ? 'selected' : '' }}>Từ chối</option>
-                    </select>
-                </div>
                 <div class="col-md-3">
                     <label for="location" class="form-label fw-semibold">Khu vực</label>
                     <div class="input-group">
