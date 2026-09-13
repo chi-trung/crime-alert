@@ -13,6 +13,19 @@ class User extends Authenticatable implements MustVerifyEmail
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
 
+    protected static function booted(): void
+    {
+        // Issue #61: `notifications` is a morph relation (notifiable_type/id),
+        // so no FK can cascade it and the Notifiable trait registers no
+        // cleanup — every row the departing user had received would outlive
+        // them, keyed to an id that no longer resolves. Same class of bug as
+        // #57 (likes); this hook fires on any Eloquent user deletion, not
+        // just the profile route.
+        static::deleting(function (User $user) {
+            $user->notifications()->delete();
+        });
+    }
+
     /**
      * The attributes that are mass assignable.
      *
