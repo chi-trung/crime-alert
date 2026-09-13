@@ -111,7 +111,16 @@
                                         <i class="fas fa-cloud-upload-alt fa-3x text-danger opacity-50"></i>
                                     </div>
                                     <h5 class="mb-2">Chọn ảnh</h5>
-                                    <p class="text-muted mb-0">Chỉ chấp nhận ảnh (JPEG, PNG, GIF) tối đa 5MB</p>
+                                    {{-- Issue #211: this line advertised 5MB while
+                                         AlertController::store()/update() enforce
+                                         max:2048 (kilobytes) = 2MB, so users were
+                                         told to attach files the server would
+                                         reject after they finished the form. The
+                                         copy now honors the enforced limit;
+                                         AlertUploadCopyTest pins the number to
+                                         the validator rule so they cannot drift
+                                         apart again. --}}
+                                    <p class="text-muted mb-0">Chỉ chấp nhận ảnh (JPEG, PNG, GIF) tối đa 2MB</p>
                                 </label>
                             </div>
                             <div class="mt-3" id="image-preview"></div>
