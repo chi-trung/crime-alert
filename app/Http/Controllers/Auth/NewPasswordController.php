@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
@@ -47,6 +48,22 @@ class NewPasswordController extends Controller
                     'password' => Hash::make($request->password),
                     'remember_token' => Str::random(60),
                 ])->save();
+
+                // Issue #123: the same rotation guarantee #27 established for
+                // changePassword (ProfileController) — a hijacker holding a
+                // live session cookie must not survive the reset. The
+                // remember_token regeneration above closes only the
+                // remember-me door; with SESSION_DRIVER=database (the default)
+                // the attacker's session row carries the victim's user_id and
+                // re-authenticates them on their next request. Delete this
+                // user's other rows; the requesting session is excluded as in
+                // #27 (it is a guest row on this route, so the predicate is
+                // belt-and-braces). Other drivers leave the table unused and
+                // the delete is a harmless no-op.
+                DB::table('sessions')
+                    ->where('user_id', $user->id)
+                    ->where('id', '!=', $request->session()->getId())
+                    ->delete();
 
                 event(new PasswordReset($user));
             }
