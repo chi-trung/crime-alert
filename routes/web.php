@@ -24,7 +24,16 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
     Route::get('/alerts/create', [AlertController::class, 'create'])->name('alerts.create');
-    Route::post('/alerts', [AlertController::class, 'store'])->name('alerts.store');
+    // Issue #165: the three fan-out stores #141/#147 left bare. Each POST
+    // writes one bell per admin synchronously (alerts/experiences fan
+    // NewPostPendingApprovalNotification, /support fans NewSupportRequest),
+    // so an unthrottled verified user grows the admin inbox and the
+    // notifications table at request speed — probe on pre-fix main: 45
+    // rapid POST /support = 45 threads, 45x-admin bells, zero 429s. Each
+    // gets its own named lane (see comments.store below for why the third
+    // arg matters); 5/min is generous against a human actually writing a
+    // post and caps the fan-out multiplier per user.
+    Route::post('/alerts', [AlertController::class, 'store'])->middleware('throttle:5,1,alert-create')->name('alerts.store');
     Route::get('/alerts', [AlertController::class, 'index'])->name('alerts.index');
     Route::get('/alerts/map', [AlertController::class, 'mapView'])->name('alerts.map');
     Route::get('/alerts/{alert}', [AlertController::class, 'show'])->name('alerts.show');
@@ -68,7 +77,10 @@ Route::middleware('auth')->group(function () {
     // Hỗ trợ trực tuyến - user
     Route::get('/support', [SupportRequestController::class, 'index'])->name('support.index');
     Route::get('/support/create', [SupportRequestController::class, 'create'])->name('support.create');
-    Route::post('/support', [SupportRequestController::class, 'store'])->name('support.store');
+    // Issue #165: unbounded NewSupportRequest fan-out to every admin —
+    // same brake as alerts.store above, own 'support-create' lane so it
+    // never shares a counter with the sendMessage lane below.
+    Route::post('/support', [SupportRequestController::class, 'store'])->middleware('throttle:5,1,support-create')->name('support.store');
     Route::get('/support/{supportRequest}', [SupportRequestController::class, 'show'])->name('support.show');
     // Issue #141: flood of messages per thread bells the counterpart/admins
     // (NewSupportMessage) — same brake as comments.store above.
@@ -89,7 +101,11 @@ Route::get('/news', [NewsController::class, 'index'])->name('news.index');
 Route::view('/fraud-alerts', 'fraud_alerts.index')->name('fraud_alerts.index');
 Route::get('/experiences', [ExperienceController::class, 'index'])->name('experiences.index');
 Route::get('/experiences/create', [ExperienceController::class, 'create'])->middleware('auth')->name('experiences.create');
-Route::post('/experiences', [ExperienceController::class, 'store'])->middleware('auth')->name('experiences.store');
+// Issue #165: same fan-out class as POST /alerts and POST /support above
+// (every pending experience bells every admin) — the auth middleware here
+// is route-local because this pair sits outside the auth group, so the
+// 'exp-create' lane rides along with it.
+Route::post('/experiences', [ExperienceController::class, 'store'])->middleware(['auth', 'throttle:5,1,exp-create'])->name('experiences.store');
 Route::get('/experiences/{experience}', [ExperienceController::class, 'show'])->name('experiences.show');
 Route::middleware(['auth', 'can:admin'])->group(function () {
     Route::get('/admin/experiences', [ExperienceController::class, 'adminIndex'])->name('admin.experiences');
