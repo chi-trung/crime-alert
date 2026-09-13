@@ -16,10 +16,17 @@ class AdminUserSeeder extends Seeder
      * production ADMIN_PASSWORD is mandatory (issue #45): the fallback
      * value lives in this public repo, so a forgotten env var would
      * otherwise hand anyone who reads the seeder a working admin login.
+     *
+     * Issue #183: values arrive through config('admin.*'), never env().
+     * Laravel skips .env loading once configuration is cached, and every
+     * deploy recipe runs config:cache before migrate --seed — so env()
+     * here used to read null for a variable that WAS set: a false
+     * production throw, and a public-fallback admin seeded elsewhere.
+     * The null check below now correctly means "unset at cache time".
      */
     public function run(): void
     {
-        $password = env('ADMIN_PASSWORD');
+        $password = config('admin.password');
 
         // Empty-string counts as unset: a deploy that sets ADMIN_PASSWORD=""
         // is just as backdoored as one that omits it.
@@ -33,12 +40,12 @@ class AdminUserSeeder extends Seeder
             $password = 'ChangeMe!123';
         }
 
-        $email = env('ADMIN_EMAIL', 'admin@crime-alert.local');
+        $email = config('admin.email');
 
         $admin = User::updateOrCreate(
             ['email' => $email],
             [
-                'name' => env('ADMIN_NAME', 'Administrator'),
+                'name' => config('admin.name'),
                 'password' => $password,
                 'email_verified_at' => now(),
             ]
