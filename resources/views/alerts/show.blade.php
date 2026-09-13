@@ -15,7 +15,10 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
             <div class="card border-0 shadow-sm rounded-3 overflow-hidden mb-4">
                 @if($alert->image)
                     <div class="alert-image-container" style="max-height: 400px; overflow: hidden;">
-                        <img src=\"{{ asset('storage/'.$alert->image) }}\" class="img-fluid w-100" alt="Ảnh cảnh báo" style="object-fit: cover;">
+                        {{-- Issue #137: the attribute quotes were literal
+                             \" — shipped as part of an unquoted src value,
+                             so every alert image rendered broken. --}}
+                        <img src="{{ asset('storage/'.$alert->image) }}" class="img-fluid w-100" alt="Ảnh cảnh báo" style="object-fit: cover;">
                     </div>
                 @endif
                 

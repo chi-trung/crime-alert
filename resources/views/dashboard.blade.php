@@ -430,7 +430,8 @@
                         <div class="col-md-8 d-flex align-items-start gap-3">
                             <div class="flex-shrink-0">
                                 @if($myLatest->image)
-                                    <img src=\"{{ asset('storage/'.$myLatest->image) }}\" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                                    {{-- Issue #137: literal \" broke the src (see alerts/show). --}}
+                                    <img src="{{ asset('storage/'.$myLatest->image) }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
                                 @else
                                     <img src="https://cdn-icons-png.flaticon.com/512/2642/2642651.png" alt="Ảnh cảnh báo mặc định" class="rounded-circle border shadow-sm" width="56" height="56">
                                 @endif
@@ -467,7 +468,7 @@
                         </div>
                         <div class="col-md-4 text-center">
                             @if($myLatest->image)
-                                <img src=\"{{ asset('storage/'.$myLatest->image) }}\" alt="Ảnh minh họa" class="img-fluid shadow border" style="max-width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px;">
+                                <img src="{{ asset('storage/'.$myLatest->image) }}" alt="Ảnh minh họa" class="img-fluid shadow border" style="max-width: 100%; max-height: 220px; object-fit: cover; border-radius: 12px;">
                             @endif
                         </div>
                     </div>
@@ -706,7 +707,7 @@
                     <div class="card-body d-flex align-items-center gap-3" style="padding: 1.5rem;">
                         @if($latestAlert)
                             @if($latestAlert->image)
-                                <img src=\"{{ asset('storage/'.$latestAlert->image) }}\" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
+                                <img src="{{ asset('storage/'.$latestAlert->image) }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
                             @else
                                 <img src="https://cdn-icons-png.flaticon.com/512/2642/2642651.png" alt="Ảnh cảnh báo mặc định" class="rounded-circle border shadow-sm" width="56" height="56">
                             @endif
