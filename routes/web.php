@@ -45,15 +45,26 @@ Route::middleware('auth')->group(function () {
     // message bells the admin side — same class of abuse vector #33 put
     // throttle:20,1 on the chatbot for. Per-user keying comes from
     // ThrottleRequests inside the auth group; no RateLimiter::for needed.
-    Route::post('/comments', [CommentController::class, 'store'])->middleware('throttle:30,1')->name('comments.store');
+    // Issue #147: the third middleware arg is the bucket-key prefix. Without
+    // it ThrottleRequests keys by user id alone and EVERY inline throttle in
+    // the app shares one counter (probe: 31st comment 429'd support's first
+    // message), so each limiter gets its own named lane.
+    Route::post('/comments', [CommentController::class, 'store'])->middleware('throttle:30,1,comments')->name('comments.store');
     Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::get('/comments/{comment}/edit', [CommentController::class, 'edit'])->name('comments.edit');
     Route::get('/experiences/{experience}/edit', [ExperienceController::class, 'edit'])->name('experiences.edit');
     Route::put('/experiences/{experience}', [ExperienceController::class, 'update'])->name('experiences.update');
     Route::delete('/experiences/{experience}', [ExperienceController::class, 'destroy'])->name('experiences.destroy');
-    Route::post('/like', [LikeController::class, 'store'])->name('like.store');
-    Route::post('/like/unlike', [LikeController::class, 'destroy'])->name('like.destroy');
+    // Issue #147: unlike #141's deferral of this pair, likes are NOT a
+    // bounded primitive: store() fires a fresh LikePostNotification on every
+    // *insert*, so an alternating like/unlike cycle re-bells the author
+    // without limit (probe: 60 cycles -> 60 bell rows, no 429s). One shared
+    // 'like' bucket for both routes caps the cycle at 60/min (~30 full
+    // cycles) per user. destroy() also has no verified-email gate — the
+    // throttle is its only brake.
+    Route::post('/like', [LikeController::class, 'store'])->middleware('throttle:60,1,like')->name('like.store');
+    Route::post('/like/unlike', [LikeController::class, 'destroy'])->middleware('throttle:60,1,like')->name('like.destroy');
     // Hỗ trợ trực tuyến - user
     Route::get('/support', [SupportRequestController::class, 'index'])->name('support.index');
     Route::get('/support/create', [SupportRequestController::class, 'create'])->name('support.create');
@@ -61,7 +72,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/support/{supportRequest}', [SupportRequestController::class, 'show'])->name('support.show');
     // Issue #141: flood of messages per thread bells the counterpart/admins
     // (NewSupportMessage) — same brake as comments.store above.
-    Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->middleware('throttle:30,1')->name('support.sendMessage');
+    // Issue #147: 'support' lane — see comments.store for why every limiter
+    // needs its own prefix.
+    Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->middleware('throttle:30,1,support')->name('support.sendMessage');
     Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->name('support.messages');
 });
 
@@ -90,7 +103,9 @@ Route::get('/notifications', [NotificationController::class, 'index'])->name('no
 Route::get('/notifications/read/{id}', [NotificationController::class, 'read'])->name('notifications.read')->middleware('auth');
 Route::post('/notifications/read-all', [NotificationController::class, 'readAll'])->name('notifications.readAll')->middleware('auth');
 Route::post('/chatbot/ask', [ChatbotController::class, 'ask'])
-    ->middleware(['auth', 'throttle:20,1'])
+    // Issue #147: explicit 'chatbot' lane — the last bare throttle whose
+    // counter would otherwise be the old shared user-id bucket.
+    ->middleware(['auth', 'throttle:20,1,chatbot'])
     ->name('chatbot.ask');
 Route::get('/notifications/unread', [NotificationController::class, 'unreadAjax'])->name('notifications.unread')->middleware('auth');
 
