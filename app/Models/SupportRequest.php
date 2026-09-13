@@ -33,7 +33,10 @@ class SupportRequest extends Model
         });
     }
 
-    protected $fillable = ['user_id', 'subject', 'status', 'admin_id'];
+    // Issue #108: admin_id was a dead column (dropped by migration
+    // 2026_09_14) — no write site ever set it and the admin() relation had
+    // zero callers (admins are told apart via messages.user.isAdmin).
+    protected $fillable = ['user_id', 'subject', 'status'];
 
     public function messages()
     {
@@ -43,10 +46,5 @@ class SupportRequest extends Model
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
-    }
-
-    public function admin()
-    {
-        return $this->belongsTo(User::class, 'admin_id');
     }
 }
