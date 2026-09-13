@@ -226,7 +226,14 @@ class AlertController extends Controller
         $data['latitude'] = $request->input('latitude');
         $data['longitude'] = $request->input('longitude');
         // Xử lý xóa ảnh nếu có chọn
-        if ($request->has('remove_image') && $alert->image) {
+        // Issue #125: the edit form renders a hidden remove_image=0 whenever an
+        // image exists (edit.blade.php:46); the page JS flips it to '1' only on
+        // a click. The old has('remove_image') presence check matched the
+        // always-present '0', so every ordinary edit took this branch and
+        // destroyed the stored image. boolean() maps '1' -> true, '0'/absent ->
+        // false, so only an explicit removal reaches the delete. This restores
+        // the #29 keep-branch below for normal submissions.
+        if ($request->boolean('remove_image') && $alert->image) {
             \Storage::disk('public')->delete($alert->image);
             $data['image'] = null;
         } elseif (! $request->hasFile('image')) {

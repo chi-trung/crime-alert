@@ -9,6 +9,7 @@ use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Notification;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class AlertTest extends TestCase
@@ -174,6 +175,43 @@ class AlertTest extends TestCase
             'title' => 'b', 'description' => 'd', 'old_image' => '../../bootstrap/app.php',
         ]);
         $this->assertNull($blank->fresh()->image);
+    }
+
+    public function test_plain_edit_with_hidden_remove_image_zero_keeps_the_image(): void
+    {
+        // Issue #125: the edit form posts a hidden remove_image=0 on every
+        // submission; the JS only flips it to 1 when the user clicks the
+        // remove button. The old has('remove_image') check treated the
+        // always-present '0' as an explicit removal, so every ordinary edit
+        // deleted the stored file and nulled the column.
+        Storage::fake('public');
+        $owner = User::factory()->create();
+        $path = 'alerts/keep-me.png';
+        Storage::disk('public')->put($path, 'png-bytes');
+        $alert = Alert::create([
+            'user_id' => $owner->id, 'title' => 'Cu', 'description' => 'd',
+            'status' => 'approved', 'image' => $path,
+        ]);
+
+        // The exact payload the browser sends for a text-only edit.
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi',
+            'description' => 'd2',
+            'remove_image' => '0',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertSame($path, $alert->fresh()->image);
+        Storage::disk('public')->assertExists($path);
+
+        // An explicit removal (what the JS sets on click) must still delete.
+        $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Moi',
+            'description' => 'd2',
+            'remove_image' => '1',
+        ])->assertRedirect(route('dashboard'));
+
+        $this->assertNull($alert->fresh()->image);
+        Storage::disk('public')->assertMissing($path);
     }
 
     public function test_admin_can_approve_and_reject(): void
