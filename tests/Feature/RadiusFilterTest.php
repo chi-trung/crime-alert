@@ -76,4 +76,51 @@ class RadiusFilterTest extends TestCase
 
         $this->actingAs($user)->get('/alerts')->assertOk()->assertSee($far->title);
     }
+
+    public function test_non_finite_radius_inputs_answer_200_instead_of_500(): void
+    {
+        // Issue #127: 1e999 casts to INF, cos(deg2rad(INF)) is NAN, and
+        // sprintf('%.6F') emits the bare word NaN into the raw SQL — a 1054
+        // / "no such column" QueryException on both CI engines. #59 clamped
+        // radius' range but not its finiteness and left lat/lng bare.
+        $user = User::factory()->create();
+        $here = $this->alertAt($user, 'RadiusFiniteStillWorks', 21.03, 105.85);
+
+        foreach (['1e999', '-1e999'] as $junk) {
+            foreach (['lat' => $junk, 'lng' => $junk, 'radius' => $junk] as $param => $value) {
+                $this->actingAs($user)
+                    ->get('/alerts?radius=100&lat=21.03&lng=105.85&'.$param.'='.$value)
+                    ->assertOk();
+            }
+        }
+
+        // The word "nan" parses platform-dependent ((float)"nan" is NAN on
+        // glibc, 0.0 on the Windows CRT), so only the post-fix contract is
+        // assertable cross-engine: it must answer, not throw.
+        $this->actingAs($user)->get('/alerts?radius=100&lat=nan&lng=105.85')->assertOk();
+        $this->actingAs($user)->get('/alerts?radius=nan&lat=21.03&lng=105.85')->assertOk();
+
+        // A junk center clamps to 0 (like #59's radius fallback): the circle
+        // at (0, 105.85) is thousands of km from Hanoi, so nothing matches —
+        // but the request answers with a page instead of a QueryException.
+        $this->actingAs($user)->get('/alerts?radius=100&lat=1e999&lng=105.85')
+            ->assertOk()->assertDontSee($here->title);
+    }
+
+    public function test_out_of_range_finite_radius_inputs_are_clamped_not_rejected(): void
+    {
+        // lat=999 is finite; it falls outside [-90,90] and clamps to the pole
+        // rather than 500ing or interpolating. The near alert (~700km from
+        // the clamped pole center) stays outside a 100km circle.
+        $user = User::factory()->create();
+        $this->alertAt($user, 'RadiusClampBoundary', 21.03, 105.85);
+
+        $this->actingAs($user)->get('/alerts?radius=100&lat=999&lng=105.85')
+            ->assertOk()->assertDontSee('RadiusClampBoundary');
+        $this->actingAs($user)->get('/alerts?radius=100&lat=21.03&lng=-99999')
+            ->assertOk()->assertDontSee('RadiusClampBoundary');
+        // radius clamps to the half-circumference cap: every alert is inside.
+        $this->actingAs($user)->get('/alerts?radius=99999999&lat=21.03&lng=105.85')
+            ->assertOk()->assertSee('RadiusClampBoundary');
+    }
 }
