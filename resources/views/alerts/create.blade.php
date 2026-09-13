@@ -180,9 +180,11 @@
 
 @section('scripts')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+{{-- Issue #167: pinned + SRI like the sibling leaflet@1.9.4 tag and the map
+     view; the bare geocoder URL auto-followed upstream latest. --}}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@4.0.0/dist/Control.Geocoder.css" integrity="sha384-dtZhMVplthx1XPTPFEKMM5M6e369Paz7gy0QTqvuQKB42lq4FIPsrqe125Ho6bfO" crossorigin="anonymous" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder@4.0.0/dist/Control.Geocoder.js" integrity="sha384-GwOxBPYQUJoAtZlP9zcDGxDFHdgRasiwmwj4JQoxhWpOBaETX1aOU/qm8fsP4Hf5" crossorigin="anonymous"></script>
 <link rel="stylesheet" href="{{ asset('css/alerts_create.css') }}">
 <script src="{{ asset('js/alerts_create.js') }}"></script>
 @endsection
