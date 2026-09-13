@@ -62,12 +62,18 @@ class LikeController extends Controller
         // Issue #129: likes notify the post/comment author, so they carry the
         // same email-verification gate as the alert/experience/comment stores.
         // The real callers send Accept: application/json and branch on a
-        // redirect key (see destroy's 401 shape below and the fetch handlers
-        // in public/js/alerts_show.js), so the JSON branch matches the
-        // endpoint's own auth-state contract.
+        // redirect key (public/js/alerts_show.js and siblings), and they are
+        // signed-in users here — Authenticate's 401 (see bootstrap/app.php,
+        // issue #207) handles guests — so the useful destination for THIS
+        // failure is the verification notice, not /login: the client bounces
+        // them to the page where they can actually fix it.
         if (! $user->hasVerifiedEmail()) {
             if ($request->expectsJson() || $request->isJson() || $request->wantsJson()) {
-                return response()->json(['success' => false, 'message' => 'Bạn cần xác thực email để thích bài viết.'], 403);
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Bạn cần xác thực email để thích bài viết.',
+                    'redirect' => route('verification.notice'),
+                ], 403);
             }
 
             return back()->with('error', 'Bạn cần xác thực email để thích bài viết.');
@@ -171,9 +177,12 @@ class LikeController extends Controller
             'type' => 'required|in:alert,experience,comment',
             'id' => 'required|integer',
         ]);
-        if (! auth()->check()) {
-            return response()->json(['success' => false, 'redirect' => route('login')], 401);
-        }
+        // Issue #207: a `! auth()->check()` 401-with-redirect branch used to
+        // sit here, but both like routes live in the `auth` middleware group
+        // (routes/web.php), so Authenticate stops a guest before this method
+        // ever runs — the branch was unreachable dead code. The real contract
+        // the fetch clients consume (data.redirect) is now produced centrally
+        // by bootstrap/app.php's AuthenticationException renderer.
         $user = auth()->user();
         try {
             $model = $this->resolveLikeable($request->type, $request->id);
