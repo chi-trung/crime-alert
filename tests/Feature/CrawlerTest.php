@@ -97,6 +97,31 @@ class CrawlerTest extends TestCase
         $this->assertSame(0, WantedPerson::count());
     }
 
+    public function test_news_crawl_truncates_overlong_scraped_strings(): void
+    {
+        // Issue #100: title/link/image_url are VARCHAR(255) but scraped off
+        // an untrusted DOM — one over-length value 500s every scheduled run
+        // on MySQL. Bound asserted on the stored row so the test holds on
+        // both CI dialects (SQLite would swallow the overflow silently).
+        $longTitle = str_repeat('T', 400);
+        $longPath = '/phap-luat/'.str_repeat('a', 400).'.html';
+        $longImg = 'https://cdn.example/'.str_repeat('i', 400).'.jpg';
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response('<div class="item-news">
+                <h3 class="title-news"><a href="'.$longPath.'">'.$longTitle.'</a></h3>
+                <p class="description">Mo ta</p>
+                <img src="'.$longImg.'">
+            </div>', 200),
+        ]);
+
+        $this->artisan('crawl:news')->assertSuccessful();
+
+        $news = News::sole();
+        $this->assertSame(255, mb_strlen($news->title));
+        $this->assertSame(255, mb_strlen($news->link));
+        $this->assertSame(255, mb_strlen($news->image_url));
+    }
+
     public function test_both_crawls_are_scheduled(): void
     {
         $events = collect(app(Schedule::class)->events())
