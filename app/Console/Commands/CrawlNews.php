@@ -71,12 +71,21 @@ class CrawlNews extends Command
             // published_at is intentionally NOT part of the update payload:
             // the listing carries no timestamp, and re-writing null here on
             // every crawl wiped values set manually/elsewhere (issue #16).
+            // Issue #100: title/link/image_url are VARCHAR(255) but come off
+            // an untrusted third-party DOM — one over-length string 500s
+            // every scheduled run on MySQL (SQLite ignores the limit, so CI
+            // never caught it; same dialect trap as #37/#39). Truncate on
+            // ingest. mb_substr counts characters while utf8mb4 measures
+            // bytes, so a pathological all-4-byte title could still exceed
+            // 255 bytes — accepted: Vietnamese text averages ~2 bytes/char
+            // and the alternative (byte-cutting mid-character) corrupts.
+            $link = mb_substr($link, 0, 255);
             News::updateOrCreate(
                 ['link' => $link],
                 [
-                    'title' => $title,
+                    'title' => mb_substr($title, 0, 255),
                     'description' => $desc,
-                    'image_url' => $img,
+                    'image_url' => $img === null ? null : mb_substr($img, 0, 255),
                     'is_video' => $isVideo,
                 ]
             );
