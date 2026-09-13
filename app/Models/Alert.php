@@ -2,8 +2,15 @@
 
 namespace App\Models;
 
+use App\Notifications\LikeCommentNotification;
+use App\Notifications\LikePostNotification;
+use App\Notifications\NewCommentOnPost;
+use App\Notifications\NewPostNotification;
+use App\Notifications\NewPostPendingApprovalNotification;
+use App\Notifications\NewReplyOnComment;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class Alert extends Model
@@ -24,6 +31,27 @@ class Alert extends Model
             $alert->likes()->delete();
             Like::where('likeable_type', Comment::class)
                 ->whereIn('likeable_id', Comment::where('alert_id', $alert->id)->pluck('id'))
+                ->delete();
+            // Issue #121: the six post notification classes point at this
+            // post only inside their JSON data payload (post_id + post_type) —
+            // the morph notifiable_* pair keys the recipient, so no FK
+            // cascades them (same structural reason as #57/#61, and the #102
+            // support-thread sweep). Without this every deleted alert leaves
+            // bell rows whose url 404s. The id match uses the closing-comma
+            // form — every payload continues past post_id — so alert 1's
+            // sweep cannot eat alert 11's rows; post_type is matched too so
+            // alert N never eats experience N's rows.
+            DB::table('notifications')
+                ->whereIn('type', [
+                    NewPostNotification::class,
+                    NewPostPendingApprovalNotification::class,
+                    LikePostNotification::class,
+                    NewCommentOnPost::class,
+                    NewReplyOnComment::class,
+                    LikeCommentNotification::class,
+                ])
+                ->where('data', 'like', '%"post_id":'.$alert->id.',%')
+                ->where('data', 'like', '%"post_type":"alert"%')
                 ->delete();
             if ($alert->image) {
                 Storage::disk('public')->delete($alert->image);
