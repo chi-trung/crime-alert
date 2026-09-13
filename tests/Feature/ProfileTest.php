@@ -381,4 +381,58 @@ class ProfileTest extends TestCase
 
         $this->assertDatabaseHas('password_reset_tokens', ['email' => $user->email]);
     }
+
+    /**
+     * Issue #209: ProfileUpdateRequest's unique rule is a SELECT and the
+     * UPDATE was unguarded — #205's exact class for the second caller of
+     * the shared rule list. A registration for the target email landing in
+     * the check-to-write window made save() collide users.email's UNIQUE
+     * index: uncaught UniqueConstraintViolationException, HTTP 500, and the
+     * WHOLE payload lost (the name change dies with the email). The repo's
+     * race idiom (GhostLikeRaceTest #139): a model hook commits the rival
+     * row inside this request's own validation-to-write window.
+     */
+    public function test_raced_duplicate_email_profile_update_returns_the_validation_error_not_a_500(): void
+    {
+        $user = User::factory()->create(['email' => 'victim@example.com']);
+
+        // Fires after the form request's unique SELECT, before the UPDATE.
+        User::saving(function (User $saving) {
+            if ($saving->email === 'poached@example.com') {
+                DB::table('users')->insert([
+                    'name' => 'Rival registrant',
+                    'email' => 'poached@example.com',
+                    'password' => bcrypt('password'),
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
+        });
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => 'Renamed', 'email' => 'poached@example.com'])
+            ->assertSessionHasErrors('email');
+
+        // Identical to the serial duplicate's outcome: nothing was written.
+        $user->refresh();
+        $this->assertSame('victim@example.com', $user->email);
+        $this->assertNotSame('Renamed', $user->name);
+    }
+
+    public function test_serial_duplicate_email_profile_update_shows_the_same_validation_error(): void
+    {
+        // Baseline pinning the contract the race branch must mirror — and
+        // that the fix's message matches byte-for-byte.
+        User::factory()->create(['email' => 'taken@example.com']);
+        $user = User::factory()->create();
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => $user->name, 'email' => 'taken@example.com'])
+            ->assertSessionHasErrors('email');
+
+        $this->assertSame(
+            'Trường email đã có trong cơ sở dữ liệu.',
+            session('errors')->get('email')[0]
+        );
+    }
 }

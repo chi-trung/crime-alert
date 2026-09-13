@@ -2,20 +2,25 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\GuardsUniqueRaces;
 use App\Http\Requests\ProfileUpdateRequest;
 use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Experience;
 use App\Models\SupportRequest;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Redirect;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    use GuardsUniqueRaces;
+
     /**
      * Display the user's profile form.
      */
@@ -37,7 +42,28 @@ class ProfileController extends Controller
             $request->user()->email_verified_at = null;
         }
 
-        $request->user()->save();
+        // Issue #209: the unique rule in ProfileUpdateRequest is a SELECT,
+        // and the UPDATE below was unguarded — the same check-then-act class
+        // #205 closed for POST /register (the comment at ProfileUpdateRequest
+        // already flagged both callers of the shared rule list). A
+        // registration for the target email committing between the check and
+        // the write made save() collide users.email's UNIQUE index and the
+        // user got a 500 — losing the entire payload, name change included.
+        // Convert the raced violation into the validation error the serial
+        // duplicate already produces (#43's predicate via the shared trait);
+        // the default error bag is what the form's $errors->get('email')
+        // renders, so the outcome is byte-identical to the serial path.
+        try {
+            $request->user()->save();
+        } catch (QueryException $e) {
+            if (! $this->isDuplicateKey($e)) {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages([
+                'email' => __('validation.unique', ['attribute' => 'email']),
+            ]);
+        }
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');
     }
