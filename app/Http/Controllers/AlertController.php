@@ -118,13 +118,25 @@ class AlertController extends Controller
         }
         // Lọc theo bán kính (radius)
         if ($request->filled('radius') && $request->filled('lat') && $request->filled('lng')) {
-            $lat = (float) $request->input('lat');
-            $lng = (float) $request->input('lng');
+            // Issue #127: all three params reach the same sprintf -> SQL-
+            // literal path below; a bare (float) lets 1e999 parse to INF and
+            // cos(deg2rad(INF)) = NAN interpolates the bare word NaN into the
+            // raw SQL (MySQL 1054 / SQLite "no such column" — a 500 on both
+            // engines). #59 clamped radius' value but not its finiteness and
+            // never touched lat/lng; is_finite() catches INF, -INF and NAN
+            // regardless of whether the C library parses "nan" to NAN or 0.0.
+            // Outside the geographic domain there is no sensible circle to
+            // answer with, so fall back to 0 like the old clamp did.
+            $rawLat = (float) $request->input('lat');
+            $rawLng = (float) $request->input('lng');
+            $rawRadius = (float) $request->input('radius');
+            $lat = is_finite($rawLat) ? min(max($rawLat, -90.0), 90.0) : 0.0;
+            $lng = is_finite($rawLng) ? min(max($rawLng, -180.0), 180.0) : 0.0;
             // Clamped before it becomes a SQL literal below: radius=1e400
             // parses to INF and sprintf would interpolate the bare word.
             // 20015 km is half the earth's circumference — nothing further
             // can sit inside the circle anyway.
-            $radius = min(max((float) $request->input('radius'), 0.0), 20015.0);
+            $radius = is_finite($rawRadius) ? min(max($rawRadius, 0.0), 20015.0) : 0.0;
             $query->whereNotNull('latitude')->whereNotNull('longitude');
             // Issue #59: the old query used acos/cos/sin — PHP's SQLite build
             // has no math functions, so this hard-500'd on SQLite, and it
