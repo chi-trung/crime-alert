@@ -6,6 +6,7 @@ use App\Models\SupportMessage;
 use App\Models\SupportRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 class SupportTest extends TestCase
@@ -66,6 +67,40 @@ class SupportTest extends TestCase
             ->assertForbidden();
 
         $this->assertDatabaseCount('support_messages', 0);
+    }
+
+    public function test_closing_an_already_closed_thread_is_a_noop_with_info(): void
+    {
+        // Issue #98: close() rewrote the same status and flashed success on
+        // repeat clicks. An already-closed thread must not be updated and
+        // must report info, not success.
+        [, $admin, , $thread] = $this->makeThread();
+        $thread->update(['status' => 'closed']);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($admin)
+            ->post(route('admin.support.close', $thread))
+            ->assertSessionHas('info')
+            ->assertSessionMissing('success');
+        $log = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        $updates = array_filter($log, fn (array $q) => str_starts_with(strtolower($q['query']), 'update'));
+        $this->assertCount(0, $updates, 'close on a closed thread issued an UPDATE');
+        $this->assertSame('closed', $thread->fresh()->status);
+    }
+
+    public function test_closing_an_open_thread_still_flips_status_with_success(): void
+    {
+        // Positive control for #98: the live transition is untouched.
+        [, $admin, , $thread] = $this->makeThread();
+
+        $this->actingAs($admin)
+            ->post(route('admin.support.close', $thread))
+            ->assertSessionHas('success');
+
+        $this->assertSame('closed', $thread->fresh()->status);
     }
 
     public function test_closed_thread_rejects_new_messages(): void

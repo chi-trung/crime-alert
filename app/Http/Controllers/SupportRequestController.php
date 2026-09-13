@@ -129,6 +129,14 @@ class SupportRequestController extends Controller
     // Đóng yêu cầu (admin)
     public function close(SupportRequest $supportRequest)
     {
+        // Issue #98: closing an already-closed thread rewrote the same
+        // status and reported success — a misleading no-op on every repeat
+        // click. The sibling sendMessage() already treats closed as a
+        // distinct state; close() now does too. The info bag is live
+        // (layouts/app renders session('info')).
+        if ($supportRequest->status === 'closed') {
+            return back()->with('info', 'Yêu cầu này đã được đóng trước đó.');
+        }
         $supportRequest->update(['status' => 'closed']);
 
         return back()->with('success', 'Đã đóng yêu cầu!');
