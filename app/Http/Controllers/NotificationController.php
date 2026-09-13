@@ -18,9 +18,32 @@ class NotificationController extends Controller
     {
         $notification = auth()->user()->notifications()->findOrFail($id);
         $notification->markAsRead();
-        $url = $notification->data['url'] ?? route('notifications.index');
+        // Issue #110: data['url'] rode straight into redirect() unvalidated —
+        // any row with an external url turned a bell click into an open
+        // redirect. Only same-app targets pass through; anything else (and a
+        // missing url, as before) falls back to the notification list. A
+        // relative path is local by construction; an absolute URL must match
+        // the app host, and protocol-relative //evil forms fail the host
+        // comparison instead of inheriting the request scheme.
+        $url = $notification->data['url'] ?? null;
+        if (! is_string($url) || ! $this->isLocalUrl($url)) {
+            $url = route('notifications.index');
+        }
 
         return redirect($url);
+    }
+
+    private function isLocalUrl(string $url): bool
+    {
+        if (str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
+            return true;
+        }
+        $host = parse_url($url, PHP_URL_HOST);
+        if (! is_string($host) || $host === '') {
+            return false;
+        }
+
+        return mb_strtolower($host) === mb_strtolower((string) parse_url(config('app.url'), PHP_URL_HOST));
     }
 
     public function readAll()

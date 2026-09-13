@@ -71,4 +71,70 @@ class NotificationTest extends TestCase
         $this->assertStringContainsString('content.textContent = noti.message', $html);
         $this->assertStringContainsString('time.textContent = noti.created_at', $html);
     }
+
+    public function test_read_redirects_to_internal_url(): void
+    {
+        // Positive control for #110: a same-app url still redirects there.
+        $user = User::factory()->create();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $id,
+            'type' => 'App\\Notifications\\NewPostNotification',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $user->id,
+            'data' => json_encode(['message' => 'm', 'url' => '/alerts/1']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get(route('notifications.read', $id))
+            ->assertRedirect('/alerts/1');
+
+        $this->assertNotNull(DB::table('notifications')->where('id', $id)->whereNotNull('read_at')->first());
+    }
+
+    public function test_read_does_not_redirect_to_external_url(): void
+    {
+        // Issue #110: read() redirected to data['url'] unvalidated — any row
+        // with an external url turned a bell click into an open redirect.
+        $user = User::factory()->create();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $id,
+            'type' => 'App\\Notifications\\NewPostNotification',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $user->id,
+            'data' => json_encode(['message' => 'm', 'url' => 'https://evil.example/phish']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($user)->get(route('notifications.read', $id))
+            ->assertRedirect(route('notifications.index'));
+
+        // The read itself still lands — only the redirect target is tamed.
+        $this->assertNotNull(DB::table('notifications')->where('id', $id)->whereNotNull('read_at')->first());
+    }
+
+    public function test_read_of_another_users_notification_is_404(): void
+    {
+        // Scope guard this fix must not loosen: ids are scoped to the actor.
+        $owner = User::factory()->create();
+        $stranger = User::factory()->create();
+        $id = (string) Str::uuid();
+        DB::table('notifications')->insert([
+            'id' => $id,
+            'type' => 'App\\Notifications\\NewPostNotification',
+            'notifiable_type' => User::class,
+            'notifiable_id' => $owner->id,
+            'data' => json_encode(['message' => 'm', 'url' => '/alerts/1']),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->actingAs($stranger)->get(route('notifications.read', $id))
+            ->assertNotFound();
+
+        $this->assertNull(DB::table('notifications')->where('id', $id)->whereNotNull('read_at')->first());
+    }
 }
