@@ -248,4 +248,82 @@ class ChatbotTest extends TestCase
         $this->assertLessThan($throw, $parse, 'the body must be parsed before the throw');
         $this->assertStringContainsString("this.addMessage(data.message, 'bot', true)", $html);
     }
+
+    /**
+     * Issue #223: the provider side of the #154 TypeError class. OpenRouter's
+     * OpenAPI spec types message.content as string | ChatContentItems[] |
+     * null, so a legitimate 200 can carry the multimodal parts-array; the old
+     * `?? fallback` only caught null and the `: string` return type turned the
+     * array into an uncaught TypeError -> HTTP 500 into the widget. Both
+     * providers must take the fallback path instead — the #135/#190/#208
+     * guarantee that /chatbot/ask always answers with a usable string.
+     */
+    public function test_openai_compatible_content_parts_array_takes_the_fallback_not_a_500(): void
+    {
+        $this->configuredOpenRouter();
+
+        Http::fake([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => [['type' => 'text', 'text' => 'Chao']]]]],
+            ], 200),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Xin chao'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.']);
+    }
+
+    public function test_openai_compatible_object_content_takes_the_fallback(): void
+    {
+        $this->configuredOpenRouter();
+
+        Http::fake([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => ['type' => 'text', 'text' => 'Chao']]]],
+            ], 200),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Xin chao'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.']);
+    }
+
+    public function test_gemini_non_string_part_text_takes_the_fallback(): void
+    {
+        config([
+            'services.ai.provider' => 'gemini',
+            'services.ai.providers.gemini.key' => 'gm-test-key',
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => ['nested' => 'value']]]]]],
+            ], 200),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.']);
+    }
+
+    public function test_string_content_still_flows_through_unchanged(): void
+    {
+        // Control: the guard must only intercept non-strings — the plain
+        // string path is the normal contract and stays byte-identical.
+        $this->configuredOpenRouter();
+
+        Http::fake([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => 'Tra loi that']]],
+            ], 200),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Xin chao'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Tra loi that']);
+    }
 }
