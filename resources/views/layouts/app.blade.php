@@ -71,7 +71,12 @@
         <!-- Bootstrap 5 JS bundle (for dropdown, modal, v.v.) -->
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
         <!-- SweetAlert2 CDN -->
-        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+        {{-- Issue #221: was sweetalert2@11 — jsdelivr resolves the bare major
+             to the newest v11.x on every render (26.x today), so the whole
+             layout silently executed upstream code churn with no SRI defense.
+             Pinned to the exact build verified byte-identical to what the @11
+             URL served at fix time; #167's geocoder tags are the precedent. --}}
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
         <script src="{{ asset('js/app.js') }}"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {

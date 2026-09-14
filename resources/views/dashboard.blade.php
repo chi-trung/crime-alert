@@ -817,7 +817,14 @@
 </div>
 
 <!-- Chart.js Script -->
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{{-- Issue #221: bare jsdelivr/npm/chart.js floats to upstream "latest"
+     (x-jsd-version: 4.5.1 at fix time, cache 604800s), so every /dashboard
+     render — auth+verified, tag outside the @if(admin) block — executed
+     silently-changed third-party code with no SRI. Same defect class #167
+     fixed for the geocoder tags, which were named-but-not-shipped here.
+     Pinned to the exact 4.5.1 UMD build, hash-verified identical to the
+     bytes the floating URL served. --}}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js" integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ" crossorigin="anonymous"></script>
 @if(auth()->user()->isAdmin)
     <script>
         window.createdData = @json($createdData);
