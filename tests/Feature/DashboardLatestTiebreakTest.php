@@ -8,6 +8,7 @@ use App\Models\Experience;
 use App\Models\SupportRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /**
@@ -20,7 +21,10 @@ use Tests\TestCase;
  *
  * Membership, not ORDER BY strings, is asserted: the views consume these
  * keys directly, so page content is the real contract, and it holds on
- * both CI dialects without matching engine-specific SQL.
+ * both CI dialects without matching engine-specific SQL. (#246's modal
+ * read is the exception — an unbounded collection whose bare-tie output
+ * order is an engine accident, so its tiebreak leg is pinned from the
+ * query log with a dialect-agnostic regex, per #234's precedent.)
  */
 class DashboardLatestTiebreakTest extends TestCase
 {
@@ -151,5 +155,38 @@ class DashboardLatestTiebreakTest extends TestCase
         $this->actingAs($admin)->get('/dashboard')
             ->assertViewHas('topAlerts', fn ($list) => [$ids[3], $ids[2], $ids[1]] === $list->pluck('id')->all());
         unset($hot);
+    }
+
+    public function test_month_modal_lists_tied_experiences_newest_first(): void
+    {
+        // Issue #246: the modal's collection is the last created_at-only sort
+        // in the file, and it renders row-by-row, so the old shape silently
+        // reshuffled same-second rows between loads. Membership can't pin an
+        // unbounded read, and bare-tie OUTPUT order is an engine accident
+        // (sqlite's sorter happened to emit id DESC), so the deterministic
+        // leg is pinned from the query log like #234's window: a regex
+        // accepts both dialects' identifier quoting. Rendered order is
+        // asserted alongside as the UX contract.
+        $user = User::factory()->create();
+        $expIds = $this->seedExperiences($user, 4);
+
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+        $this->actingAs($user)->get('/dashboard')
+            ->assertViewHas('myExperiencesThisMonth',
+                fn ($list) => array_reverse($expIds) === $list->pluck('id')->all());
+        $queries = DB::getQueryLog();
+        DB::disableQueryLog();
+
+        // The only experiences SELECT without the LIMIT 1 of the two
+        // single-row picks — the modal's month read, on both dialects.
+        $month = collect($queries)->first(fn ($q) => str_contains($q['query'], 'experiences')
+            && ! preg_match('/limit\s+1\b/i', $q['query']));
+        $this->assertNotNull($month, 'month read never queried');
+        $this->assertMatchesRegularExpression(
+            '/created_at["`\' ]+\s*desc\s*,\s*["`\' ]?id["`\' ]+\s*desc/i',
+            $month['query'],
+            'the created_at DESC leg must be followed by an id DESC tiebreak'
+        );
     }
 }
