@@ -18,10 +18,22 @@ class LocalUrl
 {
     public static function isLocal(string $url): bool
     {
-        if (str_starts_with($url, '/') && ! str_starts_with($url, '//')) {
+        // Issue #254: WHATWG URL parsing treats a backslash as a slash for
+        // special schemes (http/https), so forms like /\evil.example — which
+        // the naive one-slash test below used to wave through as "a relative
+        // path" — actually enter the authority state in browsers and resolve
+        // to https://evil.example. Normalize first, then demand that the
+        // ORIGINAL string led with a real '/': that pairing rejects '/\' and
+        // '//' alike (both normalize to a double separator) without letting
+        // a bare '\evil.example' steal the path branch's trust after
+        // normalization. Ordinary single-slash paths are untouched; the host
+        // comparison then runs on the normalized form, matching what a
+        // browser would actually fetch (http:\\localhost is the same host).
+        $normalized = str_replace('\\', '/', $url);
+        if ($url !== '' && $url[0] === '/' && ! str_starts_with($normalized, '//')) {
             return true;
         }
-        $host = parse_url($url, PHP_URL_HOST);
+        $host = parse_url($normalized, PHP_URL_HOST);
         if (! is_string($host) || $host === '') {
             return false;
         }

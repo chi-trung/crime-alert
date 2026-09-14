@@ -94,6 +94,26 @@ class CreatePageRefererSpoofTest extends TestCase
         $this->assertStringContainsString('href="'.route('alerts.index').'"', $html);
     }
 
+    public function test_backslash_protocol_relative_referer_is_not_rendered_into_the_back_link(): void
+    {
+        // Issue #254: WHATWG URL parsing treats a backslash following the
+        // leading slash as equivalent to a second slash on special-scheme
+        // pages, so /\evil.example enters the authority state and the
+        // browser resolves it protocol-relatively to https://evil.example —
+        // the exact protocol-relative class #245's comment claims to cover.
+        $user = User::factory()->create();
+
+        $html = $this->actingAs($user)
+            ->withHeaders(['Referer' => '/\evil.example/phish'])
+            ->get(route('alerts.create'))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringNotContainsString('evil.example', $html);
+        $this->assertStringNotContainsString('href="/\\evil.example/phish"', $html);
+        $this->assertStringContainsString('href="'.route('alerts.index').'"', $html);
+    }
+
     public function test_localurl_rule_matches_the_110_semantics(): void
     {
         // The shared rule now serves BOTH faces (notification 302s and
@@ -101,8 +121,15 @@ class CreatePageRefererSpoofTest extends TestCase
         // unnoticed. config('app.url') here is http://localhost.
         $this->assertTrue(LocalUrl::isLocal('/relative/path'));
         $this->assertTrue(LocalUrl::isLocal('/'));
+        $this->assertTrue(LocalUrl::isLocal('/alerts'), 'an ordinary single-slash path stays local');
         $this->assertTrue(LocalUrl::isLocal(config('app.url').'/alerts/create'));
         $this->assertFalse(LocalUrl::isLocal('//evil.example/x'));
+        // Issue #254: the two leading-slash forms that only LOOK like
+        // paths — backslash after one slash, and slash after a backslash —
+        // resolve off-site in browsers and must fall to the host check.
+        $this->assertFalse(LocalUrl::isLocal('/\evil.example'), 'issue #254: backslash-authority form');
+        $this->assertFalse(LocalUrl::isLocal('/\/evil.example'), 'issue #254: mixed prefix form');
+        $this->assertFalse(LocalUrl::isLocal('\\evil.example/x'), 'issue #254: leading backslash form');
         $this->assertFalse(LocalUrl::isLocal('https://evil.example/phish'));
         $this->assertFalse(LocalUrl::isLocal('http://EVIL.example/x'), 'host compare is case-insensitive, both ways');
         $this->assertFalse(LocalUrl::isLocal('javascript:alert(1)'));
