@@ -8,6 +8,7 @@ use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class ExperienceController extends Controller
 {
@@ -140,10 +141,34 @@ class ExperienceController extends Controller
         // does. The rule (issue #23) is about owners rewriting content that
         // already passed moderation; a reviewer editing is not that. Admin
         // edits now keep the post's status, mirroring alerts.
+        //
+        // Issue #225: capture the transition before mutating $data — store()
+        // guarantees every new 'pending' experience rings NewPostPending-
+        // ApprovalNotification for every admin, but this second entry into
+        // the queue was silent. Gating on approved->pending keeps
+        // already-pending edits from re-belling.
+        $demotesFromApproved = ! Auth::user()->isAdmin && $experience->status === 'approved';
         if (! Auth::user()->isAdmin) {
             $data['status'] = 'pending';
         }
-        $experience->update($data);
+        // Issue #225: demote-write and admin fan-out in one transaction with
+        // a re-read before ringing — see AlertController::update() for the
+        // full rationale and the documented double-submit residual.
+        $demoted = DB::transaction(function () use ($experience, $data, $demotesFromApproved) {
+            $experience->update($data);
+            if (! $demotesFromApproved) {
+                return false;
+            }
+
+            return Experience::whereKey($experience->id)->where('status', 'pending')->exists();
+        });
+
+        if ($demoted) {
+            $admins = User::where('isAdmin', true)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new NewPostPendingApprovalNotification($experience, Auth::user(), 'experience'));
+            }
+        }
 
         return redirect()->route('experiences.show', $experience)->with('success', 'Cập nhật bài chia sẻ thành công!');
     }

@@ -9,6 +9,7 @@ use App\Notifications\NewPostPendingApprovalNotification;
 use App\Services\DashboardStatsService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class AlertController extends Controller
 {
@@ -285,6 +286,14 @@ class AlertController extends Controller
         // moderation must not be silently rewritable by its owner afterwards.
         // Any edit by a non-admin demotes the alert to pending so a reviewer
         // sees the new text. Admin edits keep whatever status they had.
+        //
+        // Issue #225: capture the transition before mutating $data — store()
+        // guarantees every new 'pending' alert rings NewPostPendingApproval-
+        // Notification for every admin, but this second entry into the queue
+        // was silent: a re-queued rewrite appeared on no bell, so the reviewer
+        // #23 promises never learns WHICH post just came back. Gating on
+        // approved->pending keeps already-pending edits from re-belling.
+        $demotesFromApproved = ! auth()->user()->isAdmin && $alert->status === 'approved';
         if (! auth()->user()->isAdmin) {
             $data['status'] = 'pending';
         }
@@ -316,7 +325,30 @@ class AlertController extends Controller
             // Issue #55: see store() above.
             $data['image'] = $request->file('image')->store('alerts', 'public');
         }
-        $alert->update($data);
+        // Issue #225: the demote-write and its admin fan-out used to be two
+        // autocommitted statements, so a crash between them left a pending
+        // rewrite with no bell at all. Same transaction-plus-re-read shape
+        // #139 uses for like notifications: the re-read confirms the row is
+        // actually sitting in the queue (a concurrent reject from a stale
+        // moderation page can land the row on 'rejected' instead, and
+        // #189's approve guard then clears it) before we ring. Documented
+        // residual, identical to #139's: two same-content submits can each
+        // see 'pending' and bell twice — never zero, never orphaned.
+        $demoted = DB::transaction(function () use ($alert, $data, $demotesFromApproved) {
+            $alert->update($data);
+            if (! $demotesFromApproved) {
+                return false;
+            }
+
+            return Alert::whereKey($alert->id)->where('status', 'pending')->exists();
+        });
+
+        if ($demoted) {
+            $admins = User::where('isAdmin', true)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new NewPostPendingApprovalNotification($alert, auth()->user(), 'alert'));
+            }
+        }
 
         // Sau khi cập nhật, redirect về dashboard
         return redirect()->route('dashboard')->with('success', 'Cập nhật cảnh báo thành công!');
