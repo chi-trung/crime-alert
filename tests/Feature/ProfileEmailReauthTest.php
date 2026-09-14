@@ -202,6 +202,44 @@ class ProfileEmailReauthTest extends TestCase
         $this->assertSame('victim@example.com', $victim->fresh()->email);
     }
 
+    public function test_a_case_only_retype_fails_the_lowercase_rule_without_a_password_demand(): void
+    {
+        // The #160 chain REJECTS a non-lowercase email rather than
+        // normalizing it, so this payload never reaches fill() — the point of
+        // lowercasing the rules()-time comparison is that the user gets ONE
+        // honest error ('email' must be lowercase) instead of that plus a
+        // baffling current_password demand for a retype of their own address.
+        $this->useDatabaseSessions();
+        $user = User::factory()->create(['email' => 'owner@example.com']);
+        DB::table('sessions')->insert([
+            'id' => 'valid-session',
+            'user_id' => $user->id,
+            'ip_address' => '127.0.0.1',
+            'user_agent' => 'phpunit',
+            'payload' => 'x',
+            'last_activity' => time(),
+        ]);
+        $user->forceFill(['remember_token' => 'DEVICE_REMEMBER_COOKIE'])->save();
+
+        $this->actingAs($user)
+            ->patch('/profile', ['name' => 'Renamed', 'email' => 'OWNER@example.com'])
+            ->assertSessionHasErrors('email');
+
+        // The failed FormRequest aborts the whole request — name included —
+        // and the ONLY complaint is the #160 lowercase rule. current_password
+        // must not be dragged in for a retype of one's own address.
+        $bag = session('errors')->getBag('default');
+        $this->assertSame([], $bag->get('current_password'),
+            'no password demand without an actual move');
+
+        $fresh = $user->fresh();
+        $this->assertSame('owner@example.com', $fresh->email);
+        $this->assertNotSame('Renamed', $fresh->name, 'a rejected email voids the entire payload, name included');
+        $this->assertSame('DEVICE_REMEMBER_COOKIE', $fresh->remember_token,
+            'no move means no rotation');
+        $this->assertSame(1, DB::table('sessions')->where('id', 'valid-session')->count());
+    }
+
     public function test_array_email_still_rejects_without_a_500_under_the_new_gate(): void
     {
         // #160's crafted input must not trip the rules()-time comparison:
