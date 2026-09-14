@@ -154,7 +154,12 @@ class ExperienceController extends Controller
         // ApprovalNotification for every admin, but this second entry into
         // the queue was silent. Gating on approved->pending keeps
         // already-pending edits from re-belling.
-        $demotesFromApproved = ! Auth::user()->isAdmin && $experience->status === 'approved';
+        //
+        // Issue #257: 'approved' alone missed the queue's other front door —
+        // the force below moves EVERY non-admin edit to 'pending', so a
+        // rejected post rewritten by its owner silently undid the reject
+        // decision with zero bells. Both out-of-review transitions now ring.
+        $demotesIntoQueue = ! Auth::user()->isAdmin && in_array($experience->status, ['approved', 'rejected'], true);
         if (! Auth::user()->isAdmin) {
             $data['status'] = 'pending';
         }
@@ -168,12 +173,12 @@ class ExperienceController extends Controller
         // claiming "Cập nhật bài chia sẻ thành công!". The exists() check
         // inside the same transaction catches the no-op; experiences carry no
         // image field, so unlike alerts there is no stored file to purge.
-        $outcome = DB::transaction(function () use ($experience, $data, $demotesFromApproved) {
+        $outcome = DB::transaction(function () use ($experience, $data, $demotesIntoQueue) {
             $experience->update($data);
             if (! Experience::whereKey($experience->id)->exists()) {
                 return null;
             }
-            if (! $demotesFromApproved) {
+            if (! $demotesIntoQueue) {
                 return false;
             }
 

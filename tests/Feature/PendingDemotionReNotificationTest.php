@@ -127,6 +127,38 @@ class PendingDemotionReNotificationTest extends TestCase
         $this->assertSame(0, $this->bells());
     }
 
+    public function test_owner_edit_resubmitting_a_rejected_alert_bells_every_admin(): void
+    {
+        // Issue #257: the gate read `=== 'approved'`, so the OTHER
+        // into-pending transition — a rejected post rewritten by its owner —
+        // flipped status silently. The reject decision was undone with zero
+        // bells: no reviewer learned the post they personally rejected had
+        // just come back to the queue, violating #225's stated invariant
+        // that every arrival in the queue must name itself.
+        [$owner] = $this->ownersAndAdmins();
+        $alert = Alert::create([
+            'user_id' => $owner->id,
+            'title' => 'Canh bao bi tu choi',
+            'description' => 'Noi dung cu',
+            'status' => 'rejected',
+        ]);
+        $this->assertSame(0, $this->bells());
+
+        $this->actingAs($owner)
+            ->put("/alerts/{$alert->id}", [
+                'title' => 'Canh bao da sua lai',
+                'description' => 'Noi dung moi',
+            ])
+            ->assertRedirect(route('dashboard'));
+
+        $this->assertSame('pending', $alert->fresh()->status);
+        // ownersAndAdmins() seeds exactly three admins; the count is the
+        // fan-out, the payload below is the naming #225 demands.
+        $this->assertSame(3, $this->bells(), 'a rejected->pending rewrite re-enters the queue and must ring');
+        $row = (array) json_decode(\DB::table('notifications')->value('data'), true);
+        $this->assertSame('Canh bao da sua lai', $row['post_title'], 'the bell names the NEW content');
+    }
+
     public function test_owner_edit_demoting_an_approved_experience_bells_every_admin(): void
     {
         [$owner, $admins] = $this->ownersAndAdmins();
@@ -182,5 +214,35 @@ class PendingDemotionReNotificationTest extends TestCase
 
         $this->assertSame('pending', $experience->fresh()->status);
         $this->assertSame($before, $this->bells());
+    }
+
+    public function test_owner_edit_resubmitting_a_rejected_experience_bells_every_admin(): void
+    {
+        // Issue #257: ExperienceController::update() gates the same way as
+        // the alerts one (=== 'approved'), so the rejected->pending rewrite
+        // was silent there too. Same invariant, same fix.
+        [$owner] = $this->ownersAndAdmins();
+        $experience = Experience::create([
+            'user_id' => $owner->id,
+            'name' => 'Nguoi chia se',
+            'title' => 'Bai bi tu choi',
+            'content' => 'Noi dung cu',
+            'status' => 'rejected',
+        ]);
+        $this->assertSame(0, $this->bells());
+
+        $this->actingAs($owner)
+            ->put("/experiences/{$experience->id}", [
+                'name' => 'Nguoi chia se',
+                'title' => 'Bai da sua lai',
+                'content' => 'Noi dung moi',
+            ])
+            ->assertRedirect(route('experiences.show', $experience));
+
+        $this->assertSame('pending', $experience->fresh()->status);
+        $this->assertSame(3, $this->bells(), 'a rejected->pending rewrite re-enters the queue and must ring');
+        $row = (array) json_decode(\DB::table('notifications')->value('data'), true);
+        $this->assertSame('Bai da sua lai', $row['post_title']);
+        $this->assertSame('experience', $row['post_type']);
     }
 }
