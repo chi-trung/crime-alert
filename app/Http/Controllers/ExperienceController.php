@@ -69,23 +69,39 @@ class ExperienceController extends Controller
         $data = $request->only(['title', 'content', 'name']);
         $data['user_id'] = Auth::id();
         $data['status'] = Auth::user() && Auth::user()->isAdmin ? 'approved' : 'pending';
+        // Issue #267: mirror of the AlertController::store() sweep — the
+        // avatar write cannot roll back, so a create() that throws
+        // (deadlock, connection drop, #266's FK window) orphaned the file
+        // in avatars/ permanently; no row, no hook, no prune command.
+        // Insert and fan-out now commit together, and any throw frees
+        // exactly the path this request stored before rethrowing.
+        $storedAvatar = null;
         if ($request->hasFile('avatar')) {
-            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            $storedAvatar = $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
         }
-        $exp = Experience::create($data);
-        // Gửi notification
-        if (Auth::user() && Auth::user()->isAdmin) {
-            // Admin đăng bài: gửi cho tất cả user thường
-            $users = User::where('isAdmin', false)->get();
-            foreach ($users as $user) {
-                $user->notify(new NewPostNotification($exp, Auth::user(), 'experience'));
+        try {
+            DB::transaction(function () use ($data) {
+                $exp = Experience::create($data);
+                // Gửi notification
+                if (Auth::user() && Auth::user()->isAdmin) {
+                    // Admin đăng bài: gửi cho tất cả user thường
+                    $users = User::where('isAdmin', false)->get();
+                    foreach ($users as $user) {
+                        $user->notify(new NewPostNotification($exp, Auth::user(), 'experience'));
+                    }
+                } else {
+                    // User thường đăng bài: gửi cho tất cả admin
+                    $admins = User::where('isAdmin', true)->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new NewPostPendingApprovalNotification($exp, Auth::user(), 'experience'));
+                    }
+                }
+            });
+        } catch (\Throwable $e) {
+            if ($storedAvatar !== null) {
+                \Storage::disk('public')->delete($storedAvatar);
             }
-        } else {
-            // User thường đăng bài: gửi cho tất cả admin
-            $admins = User::where('isAdmin', true)->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new NewPostPendingApprovalNotification($exp, Auth::user(), 'experience'));
-            }
+            throw $e;
         }
         $msg = Auth::user() && Auth::user()->isAdmin ? 'Bài chia sẻ của bạn đã được duyệt!' : 'Bài chia sẻ của bạn đã gửi và chờ duyệt!';
 

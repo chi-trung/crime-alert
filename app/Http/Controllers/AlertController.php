@@ -57,28 +57,54 @@ class AlertController extends Controller
         $data['latitude'] = $request->input('latitude');
         $data['longitude'] = $request->input('longitude');
 
+        $storedImage = null;
         if ($request->hasFile('image')) {
             // Issue #55: store() through the public disk instead of a raw
             // move() into storage_path() — same hashName() filename and the
             // same alerts/ layout, but it honors the disk configuration and
             // is visible to Storage::fake() in tests.
-            $data['image'] = $request->file('image')->store('alerts', 'public');
+            $storedImage = $data['image'] = $request->file('image')->store('alerts', 'public');
         }
 
-        $alert = Alert::create($data);
-        // Gửi notification
-        if (Auth::user()->isAdmin) {
-            // Admin đăng bài: gửi cho tất cả user thường
-            $users = User::where('isAdmin', false)->get();
-            foreach ($users as $user) {
-                $user->notify(new NewPostNotification($alert, Auth::user(), 'alert'));
+        // Issue #267: the disk write above cannot roll back, so until the
+        // INSERT lands the stored file is THIS request's burden alone — no
+        // row references it yet, so Alert::deleting can never free it and
+        // no prune command covers storage/. Pre-fix, a create() that threw
+        // (InnoDB deadlock against a concurrent moderation sweep, a
+        // connection drop, or the FK violation when #266's transactional
+        // destroy() commits the user delete under this still-live session)
+        // 500ed and orphaned the upload permanently; a flapping user
+        // retrying the form multiplies orphans. The insert and its fan-out
+        // also become one transaction — update() learned this in #225 (a
+        // crash between row-write and bells publishes a pending post
+        // nobody will ever look at); store() had the same two-statement
+        // shape and the same fix applies. On any throw: free exactly the
+        // path this request stored, then rethrow the honest error.
+        try {
+            $alert = DB::transaction(function () use ($data) {
+                $alert = Alert::create($data);
+                // Gửi notification
+                if (Auth::user()->isAdmin) {
+                    // Admin đăng bài: gửi cho tất cả user thường
+                    $users = User::where('isAdmin', false)->get();
+                    foreach ($users as $user) {
+                        $user->notify(new NewPostNotification($alert, Auth::user(), 'alert'));
+                    }
+                } else {
+                    // User thường đăng bài: gửi cho tất cả admin
+                    $admins = User::where('isAdmin', true)->get();
+                    foreach ($admins as $admin) {
+                        $admin->notify(new NewPostPendingApprovalNotification($alert, Auth::user(), 'alert'));
+                    }
+                }
+
+                return $alert;
+            });
+        } catch (\Throwable $e) {
+            if ($storedImage !== null) {
+                \Storage::disk('public')->delete($storedImage);
             }
-        } else {
-            // User thường đăng bài: gửi cho tất cả admin
-            $admins = User::where('isAdmin', true)->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new NewPostPendingApprovalNotification($alert, Auth::user(), 'alert'));
-            }
+            throw $e;
         }
 
         return redirect()->route('alerts.create')->with('success', 'Đăng cảnh báo thành công!');
