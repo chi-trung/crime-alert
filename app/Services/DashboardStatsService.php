@@ -119,13 +119,30 @@ class DashboardStatsService
         $currentYear = now()->year;
         $currentMonth = now()->month;
 
-        // User's alerts this month (approved only) and experiences this month.
-        $myAlertsThisMonth = Alert::where('user_id', $user->id)
+        // Issue #238: one status rule for both content types. The tile used
+        // to pre-filter $myAlertsThisMonth to status='approved' while
+        // $myExperiencesThisMonth carried every status, so
+        // "X/Y được duyệt" was built from two definitions of "my post": a
+        // pending alert was invisible to BOTH numbers while a pending
+        // experience inflated both — and the same page displayed that
+        // pending alert with its "Chờ duyệt" badge. Now both types count
+        // total and approved under the same rule, mirroring forAdmin()'s
+        // separate total/approved reads (countAlertsInMonth). The alerts are
+        // COUNT aggregates, not a collection: nothing renders them (the view
+        // reads only the numbers; the modal lists $myExperiencesThisMonth),
+        // and #71's dead-queue guard exists to ban exactly the old shape —
+        // a LIMIT-less select * over the user's alerts that the fix made a
+        // status-free scan. Experiences stay a collection because the modal
+        // renders each row's status.
+        $myAlertsTotalThisMonth = Alert::where('user_id', $user->id)
+            ->whereYear('created_at', $currentYear)
+            ->whereMonth('created_at', $currentMonth)
+            ->count();
+        $myAlertsApprovedThisMonth = Alert::where('user_id', $user->id)
             ->where('status', 'approved')
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
-            ->orderByDesc('created_at')
-            ->get();
+            ->count();
         $myExperiencesThisMonth = Experience::where('user_id', $user->id)
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
@@ -156,8 +173,8 @@ class DashboardStatsService
             'monthLabel' => now()->format('m/Y'),
             'myExperience' => $myExperience,
             'myExperiencesThisMonth' => $myExperiencesThisMonth,
-            'totalPosts' => $myAlertsThisMonth->count() + $myExperiencesThisMonth->count(),
-            'totalApprovedPosts' => $myAlertsThisMonth->count() + $myExperiencesThisMonth->where('status', 'approved')->count(),
+            'totalPosts' => $myAlertsTotalThisMonth + $myExperiencesThisMonth->count(),
+            'totalApprovedPosts' => $myAlertsApprovedThisMonth + $myExperiencesThisMonth->where('status', 'approved')->count(),
             'latestSupportRequest' => SupportRequest::where('user_id', $user->id)->latest()->orderByDesc('id')->first(),
         ]);
     }
