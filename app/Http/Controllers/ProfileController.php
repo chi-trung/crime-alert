@@ -36,10 +36,32 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
+        // Issue #253: capture BEFORE fill() — by then the model already holds
+        // the new address and the request's comparison would be self-referential.
+        $emailChanging = $request->emailIsChanging();
+
+        // Issue #253: validated() now carries current_password for an email
+        // change. fill() ignores it because it is not fillable, but drop it
+        // explicitly: the profile write must never grow a key the password
+        // column could be confused for, whatever $fillable says later.
+        $data = $request->validated();
+        unset($data['current_password']);
+        $request->user()->fill($data);
 
         if ($request->user()->isDirty('email')) {
             $request->user()->email_verified_at = null;
+        }
+
+        // Issue #253: moving the recovery email is a credential event, so it
+        // gets the #27/#123 rotation changePassword() already applies: a
+        // stolen device holding a "remember me" cookie would silently
+        // re-authenticate after the session sweep and undo the lockout, and
+        // every OTHER live session of the account stays valid against an
+        // address its owner no longer controls. Set before the save below so
+        // one write persists name+email+null token together; on the #209
+        // duplicate-key path the assignment never reaches the database.
+        if ($emailChanging) {
+            $request->user()->remember_token = null;
         }
 
         // Issue #209: the unique rule in ProfileUpdateRequest is a SELECT,
@@ -63,6 +85,26 @@ class ProfileController extends Controller
             throw ValidationException::withMessages([
                 'email' => __('validation.unique', ['attribute' => 'email']),
             ]);
+        }
+
+        if ($emailChanging) {
+            // Issue #253: the rest of the rotation, after the write is
+            // durable (a #209 raced failure must not evict anyone). Other
+            // sessions die (#27's NIST rule, same delete as changePassword()
+            // — a no-op on non-database drivers where the table is unused),
+            // and the NEW address's token residue dies with them: #191's
+            // recycle doctrine in the opposite direction — a reset link
+            // minted while that mailbox pointed elsewhere, or in the window
+            // before this change, must not land on the account that just
+            // moved in. #203's saving hook already swept the OLD address.
+            DB::table('sessions')
+                ->where('user_id', $request->user()->id)
+                ->where('id', '!=', $request->session()->getId())
+                ->delete();
+
+            DB::table('password_reset_tokens')
+                ->where('email', $request->user()->email)
+                ->delete();
         }
 
         return Redirect::route('profile.edit')->with('status', 'profile-updated');

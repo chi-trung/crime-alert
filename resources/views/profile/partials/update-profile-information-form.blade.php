@@ -28,6 +28,30 @@
             <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email', $user->email)" required autocomplete="username" />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
 
+            {{-- Issue #253: moving the recovery email re-authenticates. The
+                 server rule is the security control; this only reveals the
+                 field when the address actually differs from the stored one
+                 (same single-entry confirm as the delete-account partial).
+                 With JS off the field stays hidden, an email change fails
+                 server-side with the Vietnamese message below, and a
+                 name-only edit still works — the gate never weakens. --}}
+            <div id="current-password-row" hidden>
+                <x-input-label for="current_password" value="Mật khẩu hiện tại" />
+                <x-text-input id="current_password" name="current_password" type="password" class="mt-1 block w-full" autocomplete="current-password" />
+                <x-input-error class="mt-2" :messages="$errors->get('current_password')" />
+                <p class="text-sm mt-1 text-gray-600">Cần xác nhận lại mật khẩu khi đổi email.</p>
+            </div>
+            <script>
+                (function () {
+                    var email = document.getElementById('email');
+                    var row = document.getElementById('current-password-row');
+                    var stored = @json((string) $user->email);
+                    var sync = function () { row.hidden = email.value.trim() === stored; };
+                    email.addEventListener('input', sync);
+                    sync();
+                })();
+            </script>
+
             @if ($user instanceof \Illuminate\Contracts\Auth\MustVerifyEmail && ! $user->hasVerifiedEmail())
                 <div>
                     <p class="text-sm mt-2 text-gray-800">
