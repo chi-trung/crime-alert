@@ -379,10 +379,52 @@ class SupportRequestController extends Controller
         // click. The sibling sendMessage() already treats closed as a
         // distinct state; close() now does too. The info bag is live
         // (layouts/app renders session('info')).
-        if ($supportRequest->status === 'closed') {
+        //
+        // Issue #256: the #98 guard read `status` off the in-memory route
+        // binding, then wrote blindly — the last admin transition still
+        // built on a snapshot check-then-act. A rival destroy() committed
+        // inside the binding->UPDATE window touched 0 rows and still
+        // flashed "Đã đóng yêu cầu!" for a thread that no longer exists,
+        // and a second close racing the first was flashed success too.
+        // The act is now the #189 conditional UPDATE keyed on
+        // status='open' that approve()/reject() use, but each outcome is
+        // confirmed against the authoritative row inside one transaction,
+        // never off the affected-rows count alone (#233's doctrine): a
+        // zero-match UPDATE needs the re-read anyway to say WHY it matched
+        // nothing — a vanished thread gets the #247 honest 404, an
+        // alive-closed one keeps the #98 info flash. The initial status
+        // read is a SELECT, so the closed-thread path issues no UPDATE at
+        // all — #98's literal query-log acceptance criterion survives the
+        // rewrite; only the genuine open->closed transition writes.
+        $outcome = DB::transaction(function () use ($supportRequest) {
+            $live = SupportRequest::whereKey($supportRequest->id)->value('status');
+            if ($live === null) {
+                return null;
+            }
+            if ($live !== 'open') {
+                return false;
+            }
+            // 'open'->'closed' always CHANGES the row, so on this transition
+            // MySQL's CHANGED and SQLite's MATCHED agree: a non-zero count
+            // proves THIS write closed the thread. A zero count means a
+            // rival won (or deleted) inside the window — resolved next.
+            $closed = SupportRequest::whereKey($supportRequest->id)
+                ->where('status', 'open')
+                ->update(['status' => 'closed', 'updated_at' => now()]);
+            if ($closed) {
+                return true;
+            }
+
+            return SupportRequest::whereKey($supportRequest->id)->exists() ? false : null;
+        });
+
+        if ($outcome === null) {
+            abort(404);
+        }
+
+        if (! $outcome) {
             return back()->with('info', 'Yêu cầu này đã được đóng trước đó.');
         }
-        $supportRequest->update(['status' => 'closed']);
 
         return back()->with('success', 'Đã đóng yêu cầu!');
     }
