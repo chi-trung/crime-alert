@@ -265,6 +265,15 @@ class AlertController extends Controller
 
     public function update(Request $request, Alert $alert)
     {
+        // Issue #237: #129's verified-email invariant was enforced only in
+        // store(), so an owner could PATCH /profile (which nulls
+        // email_verified_at while the session stays authenticated) and keep
+        // full write rights over published content — including this method's
+        // #225 demote-and-re-bell fan-out, the very notification store()
+        // gates. The same first-statement idiom as store() above.
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để chỉnh sửa cảnh báo.');
+        }
         if (! auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }
@@ -401,6 +410,12 @@ class AlertController extends Controller
 
     public function destroy(Alert $alert)
     {
+        // Issue #237: same gate as update() — lower impact (self-deletion)
+        // but the invariant is per-endpoint-class, and store() already
+        // refuses writes from unverified accounts.
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để xóa cảnh báo.');
+        }
         if (! auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }

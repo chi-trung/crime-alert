@@ -210,6 +210,12 @@ class CommentController extends Controller
 
     public function update(Request $request, Comment $comment)
     {
+        // Issue #237: same verified-email invariant as store() above — an
+        // account that un-verified itself via PATCH /profile must not keep
+        // write rights over published content.
+        if (! auth()->user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để chỉnh sửa bình luận.');
+        }
         if (auth()->id() !== $comment->user_id && ! auth()->user()->isAdmin) {
             abort(403);
         }
@@ -224,6 +230,10 @@ class CommentController extends Controller
 
     public function destroy(Comment $comment)
     {
+        // Issue #237: same gate as update().
+        if (! auth()->user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để xóa bình luận.');
+        }
         if (auth()->id() !== $comment->user_id && ! auth()->user()->isAdmin) {
             abort(403);
         }

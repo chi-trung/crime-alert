@@ -121,6 +121,13 @@ class ExperienceController extends Controller
      */
     public function update(Request $request, Experience $experience)
     {
+        // Issue #237: #129's gate lived only in store(); an unverified
+        // account (e.g. after a PATCH /profile email change) could still
+        // rewrite its published post and fire this method's #225 admin
+        // re-bell fan-out. Same first-statement idiom as store() above.
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để chỉnh sửa bài chia sẻ.');
+        }
         if (Auth::id() !== $experience->user_id && ! Auth::user()->isAdmin) {
             abort(403);
         }
@@ -178,6 +185,10 @@ class ExperienceController extends Controller
      */
     public function destroy(Experience $experience)
     {
+        // Issue #237: same gate as update().
+        if (! Auth::user()->hasVerifiedEmail()) {
+            return redirect()->back()->with('error', 'Bạn cần xác thực email để xóa bài chia sẻ.');
+        }
         if (Auth::id() !== $experience->user_id && ! Auth::user()->isAdmin) {
             abort(403);
         }
