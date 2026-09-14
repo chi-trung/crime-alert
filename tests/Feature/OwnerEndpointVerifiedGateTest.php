@@ -68,8 +68,11 @@ class OwnerEndpointVerifiedGateTest extends TestCase
      */
     private function unverifyViaProfileChange(User $user): void
     {
+        // Issue #253: an email move now re-authenticates, so the vector
+        // carries the right password — the point of THIS test is the
+        // un-verified state after a legitimate change, not the gate.
         $this->actingAs($user)
-            ->patch('/profile', ['name' => $user->name, 'email' => 'moved-'.substr(md5((string) $user->id), 0, 8).'@example.test'])
+            ->patch('/profile', ['name' => $user->name, 'email' => 'moved-'.substr(md5((string) $user->id), 0, 8).'@example.test', 'current_password' => 'password'])
             ->assertRedirect();
 
         $this->assertFalse($user->fresh()->hasVerifiedEmail(), 'PATCH /profile must still un-verify the account (the vector this gate closes)');

@@ -28,11 +28,16 @@ class ProfileTest extends TestCase
     {
         $user = User::factory()->create();
 
+        // Issue #253: this patch MOVES the email, and an email move now
+        // re-authenticates (the recovery-door gate) — so the stock-Breeze
+        // name+email payload is no longer sufficient. The password-only
+        // shape is pinned separately below.
         $response = $this
             ->actingAs($user)
             ->patch('/profile', [
                 'name' => 'Test User',
                 'email' => 'test@example.com',
+                'current_password' => 'password',
             ]);
 
         $response
@@ -249,7 +254,7 @@ class ProfileTest extends TestCase
         $this->assertDatabaseHas('password_reset_tokens', ['email' => 'moving@example.com']);
 
         $this->actingAs($user)
-            ->patch('/profile', ['name' => $user->name, 'email' => 'moved@example.com'])
+            ->patch('/profile', ['name' => $user->name, 'email' => 'moved@example.com', 'current_password' => 'password'])
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'moving@example.com']);
@@ -261,7 +266,7 @@ class ProfileTest extends TestCase
         $token = Password::broker()->createToken($alice);
 
         $this->actingAs($alice)
-            ->patch('/profile', ['name' => $alice->name, 'email' => 'alice-new@example.com'])
+            ->patch('/profile', ['name' => $alice->name, 'email' => 'alice-new@example.com', 'current_password' => 'password'])
             ->assertSessionHasNoErrors();
 
         // actingAs persists across test requests; /register is a guest route,
@@ -304,7 +309,7 @@ class ProfileTest extends TestCase
         ]);
 
         $this->actingAs($user)
-            ->patch('/profile', ['name' => $user->name, 'email' => 'pair-c@example.com'])
+            ->patch('/profile', ['name' => $user->name, 'email' => 'pair-c@example.com', 'current_password' => 'password'])
             ->assertSessionHasNoErrors();
 
         $this->assertDatabaseHas('password_reset_tokens', ['email' => 'pair-b@example.com']);
@@ -410,7 +415,7 @@ class ProfileTest extends TestCase
         });
 
         $this->actingAs($user)
-            ->patch('/profile', ['name' => 'Renamed', 'email' => 'poached@example.com'])
+            ->patch('/profile', ['name' => 'Renamed', 'email' => 'poached@example.com', 'current_password' => 'password'])
             ->assertSessionHasErrors('email');
 
         // Identical to the serial duplicate's outcome: nothing was written.
@@ -427,7 +432,7 @@ class ProfileTest extends TestCase
         $user = User::factory()->create();
 
         $this->actingAs($user)
-            ->patch('/profile', ['name' => $user->name, 'email' => 'taken@example.com'])
+            ->patch('/profile', ['name' => $user->name, 'email' => 'taken@example.com', 'current_password' => 'password'])
             ->assertSessionHasErrors('email');
 
         $this->assertSame(
