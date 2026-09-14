@@ -115,7 +115,14 @@ class SupportRequestController extends Controller
                     throw new \RuntimeException('support-request-vanished');
                 }
                 // Gửi notification cho admin
-                $admins = User::where('isAdmin', true)->get();
+                // Issue #248: support routes are bare auth — an admin can
+                // open a thread too — so this fan-out used to ring the
+                // actor's own bell ("Người dùng <chính mình> đã mở yêu cầu
+                // hỗ trợ"). The codebase's actor-exclusion contract, spelled
+                // out at CommentController's reply fan-out ("chỉ gửi cho chủ
+                // comment cha (nếu khác người gửi)"), applies: exclude the
+                // opener from the recipient set.
+                $admins = User::where('isAdmin', true)->where('id', '!=', Auth::id())->get();
                 foreach ($admins as $admin) {
                     $admin->notify(new NewSupportRequest($supportRequest, Auth::user()));
                 }
@@ -302,7 +309,14 @@ class SupportRequestController extends Controller
             $sender = Auth::user();
             if ($sender->isAdmin) {
                 // Admin gửi, notify cho user
-                $after->user?->notify(new NewSupportMessage($after, $msg, $sender));
+                // Issue #248: authorizeViewer lets an admin view and answer
+                // his OWN thread, so $after->user can be the sender — the
+                // bell then announced the sender's own message back to him.
+                // Same actor-exclusion as the store() fan-out above (and
+                // CommentController's reply rule).
+                if ($after->user_id !== $sender->id) {
+                    $after->user?->notify(new NewSupportMessage($after, $msg, $sender));
+                }
             } else {
                 // User gửi, notify cho admin (nếu có admin nào, hoặc notify cho tất cả admin)
                 $admins = User::where('isAdmin', true)->get();
