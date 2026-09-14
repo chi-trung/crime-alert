@@ -138,10 +138,15 @@ class ThreadOrderTiebreakTest extends TestCase
             ]);
         }
 
-        $this->startLog();
-        $this->actingAs($user)->get("/support/{$request->id}")->assertOk();
-        $this->assertQueryOrdersBy('support_messages', ['created_at', 'id'], 'asc');
-        DB::disableQueryLog();
+        // Issue #234 re-anchor: the initial render is now the latest-100
+        // window read DESC and reversed, so the query log no longer contains
+        // a literal "created_at asc, id asc". What #89 actually protects is
+        // the OUTPUT order — tied rows must never swap between renders — so
+        // pin the rendered sequence instead of one SQL spelling. The id
+        // tiebreak itself is re-pinned below via the AJAX response.
+        $ids = $this->actingAs($user)->get("/support/{$request->id}")->assertOk()
+            ->viewData('messages')->pluck('id')->all();
+        $this->assertSame([1, 2, 3], $ids);
     }
 
     public function test_support_messages_ajax_orders_tied_messages_by_id_asc(): void
@@ -156,10 +161,12 @@ class ThreadOrderTiebreakTest extends TestCase
             ]);
         }
 
-        $this->startLog();
-        $this->actingAs($user)->getJson("/support/{$request->id}/messages")->assertOk();
-        $this->assertQueryOrdersBy('support_messages', ['created_at', 'id'], 'asc');
-        DB::disableQueryLog();
+        // Issue #234 re-anchor (see the page test): the polled feed keeps
+        // #89's promise at the observable boundary — same-second rows come
+        // back id-ascending, oldest-first, deterministically.
+        $ids = $this->actingAs($user)->getJson("/support/{$request->id}/messages")->assertOk()
+            ->json('messages');
+        $this->assertSame([1, 2, 3], collect($ids)->pluck('id')->all());
     }
 
     public function test_unread_dropdown_preview_orders_by_id_desc(): void

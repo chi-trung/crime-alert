@@ -96,7 +96,13 @@ Route::middleware('auth')->group(function () {
     // Issue #147: 'support' lane — see comments.store for why every limiter
     // needs its own prefix.
     Route::post('/support/{supportRequest}/message', [SupportRequestController::class, 'sendMessage'])->middleware('throttle:30,1,support')->name('support.sendMessage');
-    Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->name('support.messages');
+    // Issue #234: the live-chat poll. Every open tab hits this GET every 3
+    // seconds; the feed itself is now bounded (delta via after_id + a
+    // latest-100 initial window), but the lane still needs a brake — it was
+    // the only support endpoint without one. Own named lane per #147: the
+    // third throttle arg is mandatory or the counter is shared with every
+    // other inline limiter.
+    Route::get('/support/{supportRequest}/messages', [SupportRequestController::class, 'messagesAjax'])->middleware('throttle:30,1,support-poll')->name('support.messages');
 });
 
 // Hỗ trợ trực tuyến - admin
