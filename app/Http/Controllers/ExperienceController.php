@@ -54,7 +54,15 @@ class ExperienceController extends Controller
             'title' => 'required|string|max:255',
             // Issue #37: TEXT column needs a bound (see AlertController).
             'content' => 'required|string|max:10000',
-            'name' => 'required|string|max:100',
+            // Issue #224: 'name' is supplied by the form itself (the auth
+            // branch posts a hidden input with Auth::user()->name) and both
+            // registration and PATCH /profile accept up to max:255 — the
+            // varchar(255) column's own width — so the legacy 100 cap made
+            // a legal 101-255-char name unpublishable, invisibly (the
+            // rejection error rendered nowhere for authed users). Aligned
+            // to 255; the display branches in create/edit now surface
+            // @error('name') so a future rejection can never be silent.
+            'name' => 'required|string|max:255',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ]);
         $data = $request->only(['title', 'content', 'name']);
@@ -118,7 +126,11 @@ class ExperienceController extends Controller
         $request->validate([
             'title' => 'required|string|max:255',
             'content' => 'required|string|max:10000',
-            'name' => 'required|string|max:100',
+            // Issue #224: same cap alignment as store() above — the edit
+            // form re-posts the stored name, which may legally be up to 255
+            // chars, so the 100 bound silently blocked every edit by
+            // long-named owners.
+            'name' => 'required|string|max:255',
         ]);
         $data = $request->only(['title', 'content', 'name']);
         // Issue #73: this used to demote unconditionally, so an admin fixing a
