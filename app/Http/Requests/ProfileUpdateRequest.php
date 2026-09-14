@@ -64,10 +64,6 @@ class ProfileUpdateRequest extends FormRequest
             // The 'confirmed' variant is deliberately NOT used: the delete
             // partial proves the app accepts a single-entry confirm, and
             // double-typing a password on every rename-adjacent save is UX
-            // drag the takeover risk does not justify.
-            // The 'confirmed' variant is deliberately NOT used: the delete
-            // partial proves the app accepts a single-entry confirm, and
-            // double-typing a password on every rename-adjacent save is UX
             // drag the takeover risk does not justify. When the address is
             // NOT moving, the leg stays nullable without the credential rule:
             // a stray (wrong) value alongside a name-only edit must not
