@@ -108,7 +108,17 @@ class ChatbotController extends Controller
             return $this->fallbackMessage();
         }
 
-        return $response->json('candidates.0.content.parts.0.text') ?? $this->fallbackMessage();
+        // Issue #223: ?? only guards null. OpenRouter's own OpenAPI spec
+        // types message.content as string | ChatContentItems[] | null, so a
+        // LEGITIMATE 200 can carry the multimodal parts-array here; the
+        // array passed ?? and killed this `: string` method with an
+        // uncaught TypeError -> HTTP 500 into the widget, breaking the
+        // #135/#190/#208 guarantee that /chatbot/ask always answers with a
+        // usable string. Objects crash identically; numbers are coerced
+        // harmlessly (no strict_types), and the null paths still hit ??.
+        $text = $response->json('candidates.0.content.parts.0.text');
+
+        return is_string($text) ? $text : $this->fallbackMessage();
     }
 
     /**
@@ -161,7 +171,13 @@ class ChatbotController extends Controller
             return $this->fallbackMessage();
         }
 
-        return $response->json('choices.0.message.content') ?? $this->fallbackMessage();
+        // Issue #223: the OpenAI-compatible twin of the Gemini guard above —
+        // documented OpenRouter content-parts arrays (and any provider
+        // returning an object where a string is expected) must take the
+        // fallback path, not a TypeError 500.
+        $text = $response->json('choices.0.message.content');
+
+        return is_string($text) ? $text : $this->fallbackMessage();
     }
 
     private function systemPrompt(): string
