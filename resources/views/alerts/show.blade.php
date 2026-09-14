@@ -230,17 +230,27 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                     
                     <div class="comments-section">
                         @php
-                            // Eager-load everything the thread renders: authors and
-                            // likes for top-level comments and their replies (issue #25).
-                            // Issue #89: created_at is second-resolution, so
-                            // the id tiebreak keeps tied top-level comments in
-                            // a stable order across refreshes (#81's idiom).
-                            $comments = $alert->comments()->whereNull('parent_id')->latest()->orderByDesc('id')
-                                ->with(['user', 'likes', 'replies.user', 'replies.likes'])
-                                ->get();
+                            // Issue #258: #25's eager-loading only covered a FIXED
+                            // depth-2 chain while _item.blade.php recurses to
+                            // unbounded depth, so every depth-3+ comment paid 3
+                            // lazy SELECTs (probe: 16/24/48 grandchildren =
+                            // 23/95/167 queries). The whole thread now loads in
+                            // one flat query with ['user','likes'] eager and the
+                            // tree is assembled in PHP by parent_id; 0 is the
+                            // roots bucket because comment ids start at 1.
+                            // Issue #89: created_at is second-resolution, so the
+                            // id tiebreak keeps tied siblings in a stable order
+                            // across refreshes (#81's idiom); the flat fetch is
+                            // ASC (the reply order of #25/#89), so children come
+                            // out of the map already oldest-first and only the
+                            // top level is reversed to latest-first/id-DESC.
+                            $children = $alert->comments()->with(['user', 'likes'])
+                                ->orderBy('created_at')->orderBy('id')->get()
+                                ->groupBy(fn ($comment) => $comment->parent_id ?? 0);
+                            $comments = ($children[0] ?? collect())->reverse();
                         @endphp
                         @forelse($comments as $comment)
-                            @include('comments._item', ['comment' => $comment, 'parentType' => 'alert', 'parentId' => $alert->id])
+                            @include('comments._item', ['comment' => $comment, 'children' => $children, 'parentType' => 'alert', 'parentId' => $alert->id])
                         @empty
                             <div class="text-center py-4">
                                 <i class="far fa-comment-dots text-muted fa-2x mb-2"></i>

@@ -56,9 +56,12 @@
             <button type="button" class="btn btn-link btn-sm text-secondary cancel-reply-btn" data-comment-id="{{ $comment->id }}">Hủy</button>
         </form>
     </div>
-    <!-- Hiển thị replies lồng nhau (đã eager-load, không truy vấn lại) -->
-    @foreach($comment->replies as $reply)
-        @include('comments._item', ['comment' => $reply, 'parentType' => $parentType, 'parentId' => $parentId, 'level' => (isset($level) ? $level + 1 : 1)])
+    <!-- Hiển thị replies lồng nhau: issue #28's fixed chain ended here at
+         depth 2; #258 hands the partial a flat parent_id map of the whole
+         thread, so recursion costs zero extra queries at any depth. The
+         map's buckets are already oldest-first (#25/#89 tiebreak). -->
+    @foreach(($children[$comment->id] ?? collect()) as $reply)
+        @include('comments._item', ['comment' => $reply, 'children' => $children, 'parentType' => $parentType, 'parentId' => $parentId, 'level' => (isset($level) ? $level + 1 : 1)])
     @endforeach
 </div>
 <style>

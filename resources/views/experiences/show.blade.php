@@ -174,15 +174,18 @@
                     @endif
                     <div class="comments-section">
                         @php
-                            // Eager-load everything the thread renders (issue #25).
-                            // Issue #89: id tiebreak on same-second comments
-                            // (see alerts/show.blade.php).
-                            $comments = $experience->comments()->whereNull('parent_id')->latest()->orderByDesc('id')
-                                ->with(['user', 'likes', 'replies.user', 'replies.likes'])
-                                ->get();
+                            // Issue #258: flat whole-thread fetch + PHP parent_id
+                            // map, replacing #25's fixed depth-2 eager chain (the
+                            // N+1 had returned one level down). Ordering idiom
+                            // as in alerts/show.blade.php: ASC fetch, reversed
+                            // roots for the #89 latest/id-DESC top level.
+                            $children = $experience->comments()->with(['user', 'likes'])
+                                ->orderBy('created_at')->orderBy('id')->get()
+                                ->groupBy(fn ($comment) => $comment->parent_id ?? 0);
+                            $comments = ($children[0] ?? collect())->reverse();
                         @endphp
                         @forelse($comments as $comment)
-                            @include('comments._item', ['comment' => $comment, 'parentType' => 'experience', 'parentId' => $experience->id])
+                            @include('comments._item', ['comment' => $comment, 'children' => $children, 'parentType' => 'experience', 'parentId' => $experience->id])
                         @empty
                             <div class="text-center py-4">
                                 <i class="far fa-comment-dots text-muted fa-2x mb-2"></i>
