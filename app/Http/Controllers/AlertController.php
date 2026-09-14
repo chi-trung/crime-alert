@@ -333,6 +333,18 @@ class AlertController extends Controller
         // write — see the transaction comment — so a losing racer never
         // destroys a file the surviving row still references.
         $oldImage = $alert->image;
+        // Issue #265: the same "exact value this request read" discipline for
+        // every remaining column update() contends on. Captured HERE, once,
+        // before anything below can mutate the in-memory model; the guarded
+        // UPDATE keys on it and the staleness re-read compares against it.
+        $contentSnapshot = [
+            'title' => $alert->title,
+            'description' => $alert->description,
+            'location' => $alert->location,
+            'type' => $alert->type,
+            'latitude' => $alert->latitude,
+            'longitude' => $alert->longitude,
+        ];
         if ($request->boolean('remove_image') && $alert->image) {
             $data['image'] = null;
         } elseif (! $request->hasFile('image')) {
@@ -394,16 +406,54 @@ class AlertController extends Controller
         // and the user is told to reload rather than being flashed a
         // success that persisted nothing. A true winner unlinks $oldImage
         // only after the durable write.
-        $outcome = DB::transaction(function () use ($alert, $data, $demotesIntoQueue, $oldImage) {
-            Alert::whereKey($alert->id)->where('image', $oldImage)->update($data + ['updated_at' => now()]);
+        //
+        // Issue #265: image alone was only half the predicate. An ordinary
+        // content edit never touches the column — the keep-branch copies the
+        // UNCHANGED snapshot value into $data['image'] — so two content
+        // edits racing each other both satisfied where('image', $oldImage),
+        // both survived the image re-read, and the later committer
+        // destroyed the earlier payload under two success flashes and two
+        // admin fan-outs (#255's stale path can never fire for
+        // content-vs-content because those writers don't contend on image
+        // at all). The guard now keys on EVERY column this request
+        // contends on — #255's "guard on the exact value this request read"
+        // doctrine applied to its full scope. Deliberately NOT updated_at:
+        // second-resolution timestamps make an updated_at predicate blind
+        // inside the one-second window where two-tab races actually live
+        // (#89's same-second family), while a rival's content write always
+        // changes a content value. The staleness re-read compares the same
+        // columns against what this request wrote, so a zero-matched guard
+        // is still caught without trusting any affected-rows count
+        // (#233's CHANGED-vs-MATCHED dialect split doctrine holds).
+        // Residuals, each out of scope here as before: a rival that changed
+        // only coordinates on an otherwise byte-identical edit is covered
+        // too (coords are guarded), but a mid-flight moderation transition
+        // (status-only write by approve()/reject()) still reads as success
+        // — that race is #189's conditional-transition shape on the other
+        // side, and its own guards already answer it.
+        $outcome = DB::transaction(function () use ($alert, $data, $demotesIntoQueue, $oldImage, $contentSnapshot) {
+            Alert::whereKey($alert->id)
+                ->where('image', $oldImage)
+                ->where($contentSnapshot)
+                ->update($data + ['updated_at' => now()]);
             if (! Alert::whereKey($alert->id)->exists()) {
                 return null;
             }
+            // Raw fetch, not ->first(): hydrating an Alert would fire the
+            // retrieved event the race probes arm on (#163 idiom) a second
+            // time; the builder reads used above already sidestep it.
+            $live = DB::table('alerts')->where('id', $alert->id)->first();
             // ?? $oldImage: an edit that touches no image leaves the column
             // out of $data entirely, so the value we expect to read back is
             // whatever the guarded write started from.
-            if (Alert::whereKey($alert->id)->value('image') !== (array_key_exists('image', $data) ? $data['image'] : $oldImage)) {
+            if (! $this->sameColumnValue($live->image, array_key_exists('image', $data) ? $data['image'] : $oldImage)) {
                 return 'stale';
+            }
+            foreach ($contentSnapshot as $col => $startValue) {
+                $expected = array_key_exists($col, $data) ? $data[$col] : $startValue;
+                if (! $this->sameColumnValue($live->$col, $expected)) {
+                    return 'stale';
+                }
             }
             // The guarded builder update skips model events and the
             // in-memory sync $alert->update() used to give; the demote re-read
@@ -455,6 +505,27 @@ class AlertController extends Controller
 
         // Sau khi cập nhật, redirect về dashboard
         return redirect()->route('dashboard')->with('success', 'Cập nhật cảnh báo thành công!');
+    }
+
+    /**
+     * Issue #265: dialect-tolerant column equality for the staleness
+     * re-read. A DECIMAL coordinate comes back as '10.5000000' on MySQL
+     * where the form sent '10.5' (and sqlite may hand back a float where
+     * the snapshot holds a string), so a naive !== would false-'stale'
+     * every honest edit that round-trips coordinates. Two numerics
+     * therefore compare as floats; everything else settles null-vs-non-null
+     * first, then compares as strings.
+     */
+    private function sameColumnValue(mixed $live, mixed $expected): bool
+    {
+        if ($live === null || $expected === null) {
+            return $live === null && $expected === null;
+        }
+        if (is_numeric($live) && is_numeric($expected)) {
+            return (float) $live === (float) $expected;
+        }
+
+        return (string) $live === (string) $expected;
     }
 
     public function destroy(Alert $alert)
