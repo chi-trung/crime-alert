@@ -161,8 +161,18 @@ class ExperienceController extends Controller
         // Issue #225: demote-write and admin fan-out in one transaction with
         // a re-read before ringing — see AlertController::update() for the
         // full rationale and the documented double-submit residual.
-        $demoted = DB::transaction(function () use ($experience, $data, $demotesFromApproved) {
+        // Issue #247: mirrors #233's vanish arm. A concurrent delete (owner
+        // or admin in another tab) between authorization and this write made
+        // $experience->update() a silent no-op and the request then redirected
+        // to experiences.show for a row that no longer exists — a 404 page
+        // claiming "Cập nhật bài chia sẻ thành công!". The exists() check
+        // inside the same transaction catches the no-op; experiences carry no
+        // image field, so unlike alerts there is no stored file to purge.
+        $outcome = DB::transaction(function () use ($experience, $data, $demotesFromApproved) {
             $experience->update($data);
+            if (! Experience::whereKey($experience->id)->exists()) {
+                return null;
+            }
             if (! $demotesFromApproved) {
                 return false;
             }
@@ -170,7 +180,11 @@ class ExperienceController extends Controller
             return Experience::whereKey($experience->id)->where('status', 'pending')->exists();
         });
 
-        if ($demoted) {
+        if ($outcome === null) {
+            abort(404);
+        }
+
+        if ($outcome) {
             $admins = User::where('isAdmin', true)->get();
             foreach ($admins as $admin) {
                 $admin->notify(new NewPostPendingApprovalNotification($experience, Auth::user(), 'experience'));
