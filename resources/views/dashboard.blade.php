@@ -502,9 +502,10 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <span class="badge bg-success bg-opacity-10 text-success">
-                                <i class="fas fa-arrow-up me-1"></i> {{ $totalAlertsPercent }}%
-                            </span>
+                            {{-- Issue #226: growth in reported alerts is the
+                                 platform working — up reads good — but the
+                                 badge must now actually flip with the sign. --}}
+                            @include('partials.stat-badge', ['delta' => $totalAlertsPercent, 'goodWhenUp' => true])
                             <span class="text-muted small ms-1">so tháng trước</span>
                         </div>
                     </div>
@@ -526,9 +527,10 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <span class="badge bg-danger bg-opacity-10 text-danger">
-                                <i class="fas fa-arrow-down me-1"></i> {{ $pendingPercent }}%
-                            </span>
+                            {{-- Issue #226: a growing moderation queue is the
+                                 bad-news tile — the old markup got this one
+                                 backwards by hardcoding down+red. --}}
+                            @include('partials.stat-badge', ['delta' => $pendingPercent, 'goodWhenUp' => false])
                             <span class="text-muted small ms-1">so tháng trước</span>
                         </div>
                     </div>
@@ -550,9 +552,8 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <span class="badge bg-success bg-opacity-10 text-success">
-                                <i class="fas fa-arrow-up me-1"></i> {{ $approvedPercent }}%
-                            </span>
+                            {{-- Issue #226: sign-derived badge (see partial). --}}
+                            @include('partials.stat-badge', ['delta' => $approvedPercent, 'goodWhenUp' => true])
                             <span class="text-muted small ms-1">so tháng trước</span>
                         </div>
                     </div>
@@ -574,9 +575,9 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <span class="badge bg-success bg-opacity-10 text-success">
-                                <i class="fas fa-arrow-up me-1"></i> {{ $rejectedPercent }}%
-                            </span>
+                            {{-- Issue #226: rising rejections is bad news for
+                                 the queue's quality — up reads red now. --}}
+                            @include('partials.stat-badge', ['delta' => $rejectedPercent, 'goodWhenUp' => false])
                             <span class="text-muted small ms-1">so tháng trước</span>
                         </div>
                     </div>
@@ -598,9 +599,8 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <span class="badge bg-success bg-opacity-10 text-success">
-                                <i class="fas fa-arrow-up me-1"></i> {{ $totalUsersPercent }}%
-                            </span>
+                            {{-- Issue #226: community growth is good news. --}}
+                            @include('partials.stat-badge', ['delta' => $totalUsersPercent, 'goodWhenUp' => true])
                             <span class="text-muted small ms-1">so tháng trước</span>
                         </div>
                     </div>
@@ -622,9 +622,11 @@
                             </div>
                         </div>
                         <div class="mt-3">
-                            <span class="badge bg-success bg-opacity-10 text-success">
-                                <i class="fas fa-arrow-up me-1"></i> 3%
-                            </span>
+                            {{-- Issue #226: the headline rate above is real,
+                                 but this footnote was a hardcoded '3%' string
+                                 no data could move. It now carries the actual
+                                 month-over-month rate change from the service. --}}
+                            @include('partials.stat-badge', ['delta' => $approvalRateChange, 'goodWhenUp' => true])
                             <span class="text-muted small ms-1">so tháng trước</span>
                         </div>
                     </div>

@@ -89,6 +89,18 @@ class DashboardStatsService
             'approvedPercent' => $this->percentChange(...$totals['approved']),
             'rejectedPercent' => $this->percentChange(...$totals['rejected']),
             'totalUsersPercent' => $this->percentChange(...$totals['users']),
+            // Issue #226: the 'Tỷ lệ duyệt' tile used to print a static '3%'
+            // for its month-over-month delta. This is the real one: the
+            // approval RATE of each month (approved/total), differenced, not
+            // the approved COUNT's percentChange — the tile's headline number
+            // is a rate, so its footnote must move with the rate. A month
+            // with no alerts has no rate, which rateChange reports as 0.
+            'approvalRateChange' => $this->rateChange(
+                $totals['approved'][0],
+                $totals['total'][0],
+                $totals['approved'][1],
+                $totals['total'][1],
+            ),
             'myExperience' => null,
             'latestExperience' => Experience::orderByDesc('created_at')->orderByDesc('id')->first(),
             'typePercents' => $typePercents,
@@ -223,6 +235,28 @@ class DashboardStatsService
         }
 
         return (int) round((($current - $last) / $last) * 100);
+    }
+
+    /**
+     * Issue #226: change in a ratio (approved share of alerts) between two
+     * months, in percentage points — last month is (approvedLast/totalLast),
+     * this month is (approvedNow/totalNow), and the delta is the difference
+     * between them. Percentage points, not percent-of-percent: a rate moving
+     * 50% -> 60% reads +10, which is what a tile that prints '60%' needs to
+     * explain its own month-over-month movement. A month with no alerts has
+     * no defined rate (0/0), so the tile's footnote honestly reports no
+     * change rather than inventing one.
+     */
+    public function rateChange(int $approvedNow, int $totalNow, int $approvedLast, int $totalLast): int
+    {
+        if ($totalNow === 0 || $totalLast === 0) {
+            return 0;
+        }
+
+        $rateNow = $approvedNow * 100 / $totalNow;
+        $rateLast = $approvedLast * 100 / $totalLast;
+
+        return (int) round($rateNow - $rateLast);
     }
 
     /**
