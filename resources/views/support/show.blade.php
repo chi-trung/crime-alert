@@ -48,8 +48,18 @@
             @endif
         </div>
         <div class="support-chat-messages" id="chat-messages">
+            {{-- Issue #234: $messages is the latest-100 window, oldest-first.
+                 Each bubble carries its row id (data-msg-id, escaped by {{ }}
+                 so nothing raw reaches the DOM) — the poll script keys its
+                 delta cursor off these ids. --}}
+            @if($hasMoreOlder)
+                <div class="text-center mb-2">
+                    <button type="button" class="btn btn-sm btn-link" id="load-older"
+                        data-oldest="{{ $oldestShown }}">Xem tin cũ hơn</button>
+                </div>
+            @endif
             @foreach($messages as $msg)
-                <div class="support-chat-msg {{ ($msg->user->isAdmin ?? false) ? 'admin' : 'user' }}">
+                <div class="support-chat-msg {{ ($msg->user->isAdmin ?? false) ? 'admin' : 'user' }}" data-msg-id="{{ $msg->id }}">
                     <div class="support-chat-bubble">
                         <div class="small fw-bold mb-1">
                             {{ $msg->user->name ?? 'Admin' }}
@@ -119,9 +129,52 @@ function showChatError(message) {
     clearTimeout(showChatError.timer);
     showChatError.timer = setTimeout(() => { box.hidden = true; }, 6000);
 }
-let lastMessageCount = {{ count($messages) }};
+// Issue #234: the poll used to fetch the WHOLE thread every 3 seconds and
+// discard the response when the COUNT was unchanged (if length matched, the
+// bytes were still read, hydrated, serialized and transferred every time; if
+// it differed, the entire chat was torn down and rebuilt). Now the client
+// tracks the newest message id it has rendered (lastMessageId, seeded from
+// the server-rendered data-msg-id bubbles) and polls only
+// ?after_id=<lastMessageId> — an idle tab pays one indexed, bounded, empty
+// delta read. Rendering is append-only: existing DOM nodes are never touched
+// (no innerHTML='' rebuild, so the scroll position and any text the user is
+// selecting survive new messages). The textContent-only builders are kept
+// verbatim — stored-XSS doctrine from #149, mirroring the server markup.
+let lastMessageId = {{ $messages->max('id') ?? 0 }};
+function buildBubble(msg) {
+    const wrapper = document.createElement('div');
+    wrapper.className = 'support-chat-msg ' + (msg.is_admin ? 'admin' : 'user');
+    wrapper.dataset.msgId = msg.id;
+
+    const bubble = document.createElement('div');
+    bubble.className = 'support-chat-bubble';
+
+    const nameRow = document.createElement('div');
+    nameRow.className = 'small fw-bold mb-1';
+    nameRow.textContent = msg.user;
+    if (msg.is_admin) {
+        const badge = document.createElement('span');
+        badge.className = 'badge bg-warning text-dark ms-2';
+        badge.style.cssText = 'font-size:0.85em;vertical-align:middle;';
+        badge.textContent = 'Quản trị viên';
+        nameRow.appendChild(badge);
+    }
+
+    const body = document.createElement('div');
+    body.textContent = msg.content;
+
+    const time = document.createElement('div');
+    time.className = 'small text-muted mt-1';
+    time.textContent = msg.created_at;
+
+    bubble.append(nameRow, body, time);
+    wrapper.appendChild(bubble);
+    return wrapper;
+}
 function fetchMessages() {
-    fetch(window.location.pathname + '/messages', {
+    const chatBox = document.getElementById('chat-messages');
+    if (!chatBox) return;
+    fetch(window.location.pathname + '/messages?after_id=' + lastMessageId, {
         headers: {
             'X-Requested-With': 'XMLHttpRequest',
             'Accept': 'application/json'
@@ -130,48 +183,55 @@ function fetchMessages() {
     })
     .then(response => response.json())
     .then(data => {
-        const chatBox = document.getElementById('chat-messages');
-        if (!chatBox) return;
-        // Nếu số lượng tin nhắn không đổi thì không cần render lại
-        if (data.messages.length === lastMessageCount) return;
-        lastMessageCount = data.messages.length;
-        chatBox.innerHTML = '';
+        if (!data.messages || data.messages.length === 0) {
+            // Advance the cursor even on an empty delta so a re-render of the
+            // page mid-thread doesn't re-request history we already hold.
+            if (data.latest_id) lastMessageId = data.latest_id;
+            return;
+        }
+        // Append-only: render each delta row, keep everything already shown.
+        const nearBottom = chatBox.scrollHeight - chatBox.scrollTop - chatBox.clientHeight < 80;
         data.messages.forEach(msg => {
-            // Build DOM with textContent only — never interpolate user content
-            // into innerHTML (stored XSS). Mirrors the server-rendered markup.
-            const wrapper = document.createElement('div');
-            wrapper.className = 'support-chat-msg ' + (msg.is_admin ? 'admin' : 'user');
-
-            const bubble = document.createElement('div');
-            bubble.className = 'support-chat-bubble';
-
-            const nameRow = document.createElement('div');
-            nameRow.className = 'small fw-bold mb-1';
-            nameRow.textContent = msg.user;
-            if (msg.is_admin) {
-                const badge = document.createElement('span');
-                badge.className = 'badge bg-warning text-dark ms-2';
-                badge.style.cssText = 'font-size:0.85em;vertical-align:middle;';
-                badge.textContent = 'Quản trị viên';
-                nameRow.appendChild(badge);
-            }
-
-            const body = document.createElement('div');
-            body.textContent = msg.content;
-
-            const time = document.createElement('div');
-            time.className = 'small text-muted mt-1';
-            time.textContent = msg.created_at;
-
-            bubble.append(nameRow, body, time);
-            wrapper.appendChild(bubble);
-            chatBox.appendChild(wrapper);
+            chatBox.appendChild(buildBubble(msg));
         });
-        chatBox.scrollTop = chatBox.scrollHeight;
-    });
+        if (data.latest_id > lastMessageId) lastMessageId = data.latest_id;
+        // Only yank the view down when the user was already at the bottom —
+        // reading history shouldn't be interrupted by a new message.
+        if (nearBottom) chatBox.scrollTop = chatBox.scrollHeight;
+    })
+    .catch(() => { /* transient poll failure: next tick retries */ });
 }
 setInterval(fetchMessages, 3000);
-document.addEventListener('DOMContentLoaded', fetchMessages);
+
+// Issue #234: "load older" walks the thread backwards through the same
+// bounded endpoint (?before_id=oldest), PREPENDING the window. After the
+// first click the button's data-oldest advances to the new oldest_id so
+// repeated clicks keep paging until has_more_older is false.
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('#load-older');
+    if (!btn) return;
+    const chatBox = document.getElementById('chat-messages');
+    if (!chatBox) return;
+    fetch(window.location.pathname + '/messages?before_id=' + btn.dataset.oldest, {
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'Accept': 'application/json' },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        const prevHeight = chatBox.scrollHeight;
+        (data.messages || []).slice().reverse().forEach(msg => {
+            chatBox.insertBefore(buildBubble(msg), chatBox.firstChild);
+        });
+        if (data.has_more_older && data.oldest_id) {
+            btn.dataset.oldest = data.oldest_id;
+        } else {
+            btn.hidden = true;
+        }
+        // Keep the message the user was looking at on screen after prepend.
+        chatBox.scrollTop += chatBox.scrollHeight - prevHeight;
+    })
+    .catch(() => { });
+});
 
 document.addEventListener('DOMContentLoaded', function() {
     // URL thật là /support/{id}/message — selector cũ ("support/sendMessage") không bao giờ khớp

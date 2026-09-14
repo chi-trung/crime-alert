@@ -164,9 +164,34 @@ class SupportRequestController extends Controller
         // Issue #89: id ASC tiebreak — chat order is oldest-first, and two
         // messages in the same second must not swap between renders (the
         // AJAX feed on this list is polled, so the flicker was live).
-        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->orderBy('id')->get();
+        // Issue #234: the thread can grow without bound and every row used
+        // to be hydrated into the initial page (and re-sent on every 3s
+        // poll) — read-unbounded class #67/#75 on the app's most frequent
+        // background request. The view is now a latest-100 window; the rest
+        // pages in through messagesAjax's before_id branch ("load older").
+        $messages = $this->latestMessageWindow($supportRequest);
+        $oldestShown = $messages->first()?->id;
+        $hasMoreOlder = $oldestShown !== null
+            && $supportRequest->messages()->where('id', '<', $oldestShown)->exists();
 
-        return view('support.show', compact('supportRequest', 'messages'));
+        return view('support.show', compact('supportRequest', 'messages', 'oldestShown', 'hasMoreOlder'));
+    }
+
+    /**
+     * Issue #234: the newest $limit messages, oldest-first. The DESC twin of
+     * show()'s #89 created_at+id tiebreak, so the window boundary is stable
+     * across renders within the same-second ties the tiebreak exists for.
+     */
+    private function latestMessageWindow(SupportRequest $supportRequest, int $limit = 100)
+    {
+        return $supportRequest->messages()
+            ->with('user')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit($limit)
+            ->get()
+            ->reverse()
+            ->values();
     }
 
     // Gửi tin nhắn mới
@@ -359,11 +384,39 @@ class SupportRequestController extends Controller
     }
 
     // API trả về danh sách tin nhắn dạng JSON
-    public function messagesAjax(SupportRequest $supportRequest)
+    public function messagesAjax(Request $request, SupportRequest $supportRequest)
     {
         $this->authorizeViewer($supportRequest);
         // Issue #89: id ASC tiebreak (see show()) — this is the polled feed.
-        $messages = $supportRequest->messages()->with('user')->orderBy('created_at')->orderBy('id')->get();
+        // Issue #234: this endpoint was GET by every open chat tab every 3
+        // seconds with an uncapped ->get() and no throttle — 20 full-history
+        // reads + payloads per minute per idle tab, forever. The feed is now
+        // three bounded shapes:
+        //   ?after_id=N  delta poll — only rows newer than N, LIMIT window.
+        //                An idle tab pays one indexed
+        //                WHERE support_request_id = ? AND id > ? ORDER BY id
+        //                LIMIT 100 read that returns nothing.
+        //   ?before_id=N "load older" — the $limit rows older than N, so the
+        //                latest-100 window in show()/the no-param response
+        //                doesn't silently truncate long threads.
+        //   (no param) latest-100 window, same shape show() renders.
+        // Route also got its own throttle lane (throttle:30,1,support-poll).
+        $afterId = $request->integer('after_id');
+        $beforeId = $request->integer('before_id');
+
+        $query = $supportRequest->messages()->with('user');
+        if ($afterId > 0) {
+            $messages = $query->where('id', '>', $afterId)
+                ->orderBy('created_at')->orderBy('id')
+                ->limit(100)->get();
+        } elseif ($beforeId > 0) {
+            $messages = $query->where('id', '<', $beforeId)
+                ->orderByDesc('created_at')->orderByDesc('id')
+                ->limit(100)->get()->reverse()->values();
+        } else {
+            $messages = $this->latestMessageWindow($supportRequest);
+        }
+
         $result = $messages->map(function ($msg) {
             return [
                 'id' => $msg->id,
@@ -375,6 +428,21 @@ class SupportRequestController extends Controller
             ];
         });
 
-        return response()->json(['messages' => $result]);
+        // The client tracks lastMessageId (Issue #234: it used to compare
+        // COUNTs and discard identical-length responses, which forced the
+        // full read); latest_id lets it advance even on an empty delta, and
+        // oldest_id + has_more_older drive the "load older" affordance.
+        $ids = $messages->pluck('id');
+
+        return response()->json([
+            'messages' => $result,
+            // On an empty window echo the cursor back (or 0 when there was
+            // no window), so the client never regresses its tracked id.
+            'latest_id' => $ids->max() ?? (($afterId ?: $beforeId) + 0),
+            'oldest_id' => $ids->min() ?? 0,
+            'has_more_older' => $supportRequest->messages()
+                ->where('id', '<', $ids->min() ?? ($beforeId ?: PHP_INT_MAX))
+                ->exists(),
+        ]);
     }
 }
