@@ -85,7 +85,7 @@ class DashboardTest extends TestCase
         $response->assertViewHas('approvedAlerts', 1);
     }
 
-    public function test_user_dashboard_counts_only_approved_this_month(): void
+    public function test_user_dashboard_counts_every_post_once_approved_separately(): void
     {
         $user = User::factory()->create();
         // Fixed this-month timestamps, a minute apart: totalPosts filters on
@@ -102,11 +102,13 @@ class DashboardTest extends TestCase
 
         $response = $this->actingAs($user)->get('/dashboard');
 
-        // myApproved is gone (issue #71); the same fact is now pinned through
-        // data the view renders: the pending alert must not be counted.
-        // totalPosts counts this month: 1 approved alert + 1 experience
-        $response->assertViewHas('totalPosts', 2);
-        // totalApprovedPosts: 1 alert + approved experiences = 2
+        // Issue #238: this test used to pin the asymmetry itself —
+        // totalPosts=2 excluding the pending alert while an experience of any
+        // status counted, "X/Y được duyệt" mixing two post-sets. Now one rule
+        // for both types: every post once in the denominator, approved ones
+        // in the numerator. 2 alerts + 1 experience; 1 approved alert +
+        // 1 approved experience.
+        $response->assertViewHas('totalPosts', 3);
         $response->assertViewHas('totalApprovedPosts', 2);
         // myLatest is the newest alert of any status, not the newest approved
         // one — the "pend" row was created after "ok".
