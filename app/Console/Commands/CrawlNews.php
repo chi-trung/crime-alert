@@ -44,14 +44,28 @@ class CrawlNews extends Command
         }
 
         $crawler = new Crawler($response->body());
+        $items = $crawler->filter('.item-news');
         $count = 0;
         // Issue #181: count href-less items so a silent upstream markup
         // change surfaces as one warn line per run instead of vanishing.
         $skipped = 0;
-        $crawler->filter('.item-news')->each(function ($node) use (&$count, &$skipped) {
+        // Issue #236: iterate bottom-up, mirroring CrawlWantedList's
+        // documented "Duyệt từ cuối lên đầu để đảo ngược thứ tự" convention
+        // (Symfony 7's Crawler has no reverse(), so the for/eq loop is the
+        // twin's exact shape). Both feed readers sort
+        // orderByDesc('published_at')->orderByDesc('id'), and a crawled row
+        // always has published_at NULL by #16's contract — NULL ties under
+        // DESC on both MySQL and SQLite, so the id tiebreak alone orders the
+        // whole crawled block. Forward document order (listing is newest-
+        // first) gave the OLDEST article the highest id, i.e. the newest
+        // crawled news sat last on /news and in the dashboard's latestNews
+        // tile. Reverse iteration inserts newest last, so newest gets the
+        // highest id and the feed finally reads newest-first.
+        for ($i = $items->count() - 1; $i >= 0; $i--) {
+            $node = $items->eq($i);
             $titleNode = $node->filter('.title-news a');
             if (! $titleNode->count()) {
-                return;
+                continue;
             }
             $title = trim($titleNode->text());
             $link = $titleNode->attr('href');
@@ -67,7 +81,7 @@ class CrawlNews extends Command
             if (! is_string($link) || trim($link) === '') {
                 $skipped++;
 
-                return;
+                continue;
             }
             if (strpos($link, 'http') !== 0) {
                 $link = 'https://vnexpress.net'.$link;
@@ -107,7 +121,7 @@ class CrawlNews extends Command
                 ]
             );
             $count++;
-        });
+        }
         if ($skipped > 0) {
             $this->warn("Bỏ qua {$skipped} tin không có đường dẫn (nguồn có thể đã đổi cấu trúc).");
         }

@@ -189,4 +189,49 @@ class CrawlerTest extends TestCase
         $this->assertTrue($events->contains(fn ($c) => str_contains($c, 'crawl:news')), 'crawl:news not scheduled');
         $this->assertTrue($events->contains(fn ($c) => str_contains($c, 'crawl:wanted-list')), 'crawl:wanted-list not scheduled');
     }
+
+    /**
+     * Issue #236: the listing is newest-first in document order, and every
+     * crawled row keeps published_at NULL by #16's contract. Both feed
+     * readers sort orderByDesc('published_at')->orderByDesc('id'), and NULL
+     * ties under DESC on MySQL and SQLite alike, so the id tiebreak alone
+     * orders the crawled block. Forward iteration gave the OLDEST article the
+     * highest id (newest crawled news landed last on /news, despite the page
+     * advertising "Cập nhật tin tức mới nhất"). Reverse iteration, the twin
+     * CrawlWantedList's documented convention, inserts newest last so it
+     * takes the highest id and the feed finally reads newest-first.
+     */
+    public function test_news_crawl_inserts_newest_last_so_the_id_tiebreak_orders_it_first(): void
+    {
+        // A three-article VnExpress-style listing: Newest-A first in the
+        // document, Oldest-C last — exactly the order the live page ships.
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response(
+                '<div class="item-news"><h3 class="title-news"><a href="/phap-luat/a.html">Newest-A</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a href="/phap-luat/b.html">Middle-B</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a href="/phap-luat/c.html">Oldest-C</a></h3></div>',
+                200
+            ),
+        ]);
+
+        $this->artisan('crawl:news')->assertSuccessful();
+        $this->assertSame(3, News::count());
+
+        // The writer-side contract: newest was inserted last, so it holds the
+        // highest autoincrement id. Pinned directly because the reader below
+        // depends on it.
+        $byId = News::orderBy('id')->pluck('title')->all();
+        $this->assertSame(['Oldest-C', 'Middle-B', 'Newest-A'], $byId);
+
+        // The reader-side outcome the issue is about, through the REAL feed
+        // controller (not a re-typed sort, which could drift from
+        // NewsController::index and still pass): GET /news must surface the
+        // all-NULL-published_at block newest-first via the id tiebreak.
+        $titles = $this->get('/news')
+            ->assertOk()
+            ->viewData('news')
+            ->pluck('title')
+            ->all();
+        $this->assertSame(['Newest-A', 'Middle-B', 'Oldest-C'], $titles);
+    }
 }
