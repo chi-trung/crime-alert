@@ -143,7 +143,18 @@
                             <button type="submit" class="btn btn-danger btn-lg py-3 fw-bold rounded-3 shadow">
                                 <i class="fas fa-paper-plane me-2"></i>Đăng cảnh báo
                             </button>
-                            <a href="{{ url()->previous() }}" class="btn btn-outline-secondary btn-lg py-3 rounded-3">
+                            {{-- Issue #245: url()->previous() prefers the RAW
+                                 Referer header and UrlGenerator::to() emits any
+                                 absolute //host: URL verbatim, so an
+                                 attacker-placed link to this (auth-only) page
+                                 rendered a "Quay lại" button pointing at an
+                                 external site on a trusted logged-in page —
+                                 link-spoofing, and unlike a 302 it survives
+                                 downstream navigation. Gate through the same
+                                 host check #110 applies to notification
+                                 redirects; a genuine in-app visitor keeps the
+                                 real previous URL. --}}
+                            <a href="{{ \App\Support\LocalUrl::previousOr(route('alerts.index')) }}" class="btn btn-outline-secondary btn-lg py-3 rounded-3">
                                 <i class="fas fa-arrow-left me-2"></i>Quay lại
                             </a>
                         </div>
