@@ -23,8 +23,17 @@ class ProfileUpdateRequest extends FormRequest
         // non-scalar email cannot equal a stored email, so it counts as
         // "changing" and its current_password leg simply fails with the
         // email rule's own error first.
+        //
+        // mb_strtolower on both sides: the #160 'lowercase' rule REJECTS a
+        // non-lowercase email rather than normalizing it, so a user who
+        // retypes their own address as OWNER@example.com must hear exactly
+        // one complaint (the lowercase rule), not that plus a baffling
+        // password demand for a move that cannot happen. Case-insensitive
+        // comparison also matches how the email is matched everywhere else
+        // it matters (the unique rule's collision semantics on MySQL).
         $email = $this->input('email');
-        $changingEmail = is_scalar($email) && (string) $email !== (string) $this->user()->email;
+        $changingEmail = is_scalar($email)
+            && mb_strtolower((string) $email) !== mb_strtolower((string) $this->user()->email);
 
         return [
             'name' => ['required', 'string', 'max:255'],
@@ -99,12 +108,15 @@ class ProfileUpdateRequest extends FormRequest
      * moved the address in order to apply the #27/#123/#204 rotation, and by
      * the time it asks, the model is already dirty/clean. Capturing the
      * decision here (validated(), not the raw bag) means the controller and
-     * the gate cannot disagree about what "changed" means.
+     * the gate cannot disagree about what "changed" means — so this body
+     * must stay byte-identical to the rules() computation, fold-case
+     * included.
      */
     public function emailIsChanging(): bool
     {
         $email = $this->input('email');
 
-        return is_scalar($email) && (string) $email !== (string) $this->user()->email;
+        return is_scalar($email)
+            && mb_strtolower((string) $email) !== mb_strtolower((string) $this->user()->email);
     }
 }
