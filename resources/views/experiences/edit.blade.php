@@ -7,7 +7,12 @@
         @method('PUT')
         <div class="mb-3">
             <label class="form-label fw-bold">Tên người gửi</label>
-            <input type="text" class="form-control" value="{{ $experience->name }}" disabled>
+            {{-- Issue #224: same silent-rejection hole as create — the hidden
+                 field below re-posts the stored name, so a rejection (any
+                 future bound change) must be visible under the field the user
+                 sees, not only in the add form's guest branch. --}}
+            <input type="text" class="form-control @error('name') is-invalid @enderror" value="{{ $experience->name }}" disabled>
+            @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             <input type="hidden" name="name" value="{{ $experience->name }}">
         </div>
         <div class="mb-3">

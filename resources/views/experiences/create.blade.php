@@ -8,7 +8,13 @@
             <input type="hidden" name="name" value="{{ Auth::user()->name }}">
             <div class="mb-3">
                 <label class="form-label fw-bold">Tên người gửi</label>
-                <input type="text" class="form-control" value="{{ Auth::user()->name }}" disabled>
+                {{-- Issue #224: the hidden name above is what the server
+                     validates. A rejection used to render nowhere for authed
+                     users (the only @error('name') lived in the guest @else
+                     branch), so an over-long name failed the submit silently.
+                     Surface it under the disabled input the user is looking at. --}}
+                <input type="text" class="form-control @error('name') is-invalid @enderror" value="{{ Auth::user()->name }}" disabled>
+                @error('name')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
             </div>
         @else
             <div class="mb-3">
