@@ -86,18 +86,19 @@ class ProfileUpdateRequest extends FormRequest
     /**
      * Messages for the conditional credential, in the app's language.
      *
-     * The stock 'current_password' message is English ("The password is
-     * incorrect."), and every other credential rejection in this app speaks
-     * Vietnamese to the user (the delete and change-password partials render
-     * through these same $bags). An attacker probing with a wrong password
-     * learns nothing new either way; the honest failure is a message the
-     * legitimate owner can act on.
+     * lang/vi/validation.php already answers 'Mật khẩu không đúng.' for any
+     * current_password failure, so the required key is the real addition —
+     * without it, a hijacked-session attempt on a Vietnamese UI shows the
+     * English stock text — and the credential key is contextualized to
+     * state the outcome (the email did not move). NB the key is
+     * attribute.RULENAME, and the rule's name IS current_password —
+     * 'current_password.current' (shortened) silently never matches.
      */
     public function messages(): array
     {
         return [
             'current_password.required' => 'Vui lòng nhập mật khẩu hiện tại để đổi email.',
-            'current_password.current' => 'Mật khẩu hiện tại không đúng, nên email không được đổi.',
+            'current_password.current_password' => 'Mật khẩu hiện tại không đúng, nên email không được đổi.',
         ];
     }
 

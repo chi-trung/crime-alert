@@ -56,6 +56,15 @@ class ProfileEmailReauthTest extends TestCase
             ])
             ->assertSessionHasErrors('current_password');
 
+        // The custom messages() key must actually fire (not the English
+        // stock text): 'wrong password' is the one path where the bag shows
+        // the message the owner reads.
+        $this->assertSame(
+            ['Mật khẩu hiện tại không đúng, nên email không được đổi.'],
+            session('errors')->getBag('default')->get('current_password'),
+            'the credential rejection speaks the app language'
+        );
+
         $this->assertSame('owner@example.com', $user->fresh()->email);
     }
 
