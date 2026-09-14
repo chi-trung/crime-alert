@@ -30,6 +30,14 @@ use Tests\TestCase;
  * path and nothing ever freed either orphan. update() is now an
  * image-guarded write, and the last test pins that a stale writer persists
  * nothing, rings no bell, and leaves exactly its own file swept.
+ *
+ * Issue #265 adds the case #255's guard could not see: two CONTENT-only edits
+ * never contend on the image column at all — the keep-branch copies the
+ * unchanged value through — so both writers matched the image predicate and
+ * the later committer destroyed the earlier payload under two success
+ * flashes. The guard now covers every contended column (title, description,
+ * location, type, latitude, longitude), pinned by the two tests appended
+ * below: one rival moving text, one moving only coordinates.
  */
 class AlertReplacementOrphanRaceTest extends TestCase
 {
@@ -216,6 +224,96 @@ class AlertReplacementOrphanRaceTest extends TestCase
         $this->assertSame(['alerts/old.png', 'alerts/rival.png'], Storage::disk('public')->allFiles());
 
         // The stale writer demoted nothing, so no admin bell rang either.
+        $this->assertSame(0, DB::table('notifications')->count());
+    }
+
+    public function test_a_rival_content_edit_committed_mid_flight_stales_the_text_writer(): void
+    {
+        // Issue #265: the race #255's image predicate structurally cannot
+        // see — two content edits never touch the column, so both matched
+        // the guard and the later committer silently destroyed the earlier
+        // payload. Sequence: R1 binds the row, a rival rewrite lands and
+        // moves ONLY the title, then R1 tries to commit its own title.
+        // The content-guarded UPDATE now matches zero rows and the
+        // staleness re-read reports 'stale': R1 persists nothing, rings no
+        // bell, and answers the info reload notice instead of the old
+        // double-success double-fan-out.
+        [$owner, $alert] = $this->ownerWithApprovedAlert();
+
+        $armed = true;
+        Alert::retrieved(function (Alert $model) use (&$armed): void {
+            if (! $armed || ! $model->exists) {
+                return;
+            }
+            $armed = false;
+            // Rival write is deliberately RAW (no model events, no sweeps)
+            // — exactly an ordinary concurrent PUT that won first.
+            DB::table('alerts')->where('id', $model->id)->update([
+                'title' => 'Tiêu đề của kẻ đến trước',
+                'updated_at' => now(),
+            ]);
+        });
+
+        $response = $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Tiêu đề của kẻ đến sau',
+            'description' => 'd',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Cảnh báo vừa được cập nhật ở nơi khác; thay đổi của bạn chưa được lưu.');
+
+        // The rival's title stands — R1's payload destroyed nothing.
+        $this->assertDatabaseHas('alerts', [
+            'id' => $alert->id,
+            'title' => 'Tiêu đề của kẻ đến trước',
+            'image' => 'alerts/old.png',
+        ]);
+
+        // The losing writer demoted nothing, so no admin bell rang either.
+        $this->assertSame(0, DB::table('notifications')->count());
+    }
+
+    public function test_a_rival_coordinate_edit_stales_an_identical_text_writer(): void
+    {
+        // The latitude/longitude legs of the #265 guard, pinned in
+        // isolation: the loser's payload is byte-identical to the current
+        // text so every other column reads back equal — only the
+        // coordinates differ. Delete latitude/longitude from the guard and
+        // this request wins again, destroying the rival's move under a
+        // success flash, so only this test can notice the regression.
+        [$owner, $alert] = $this->ownerWithApprovedAlert();
+        $alert->update(['latitude' => 10.5, 'longitude' => 20.25]);
+        // Read the attributes back through a FRESH model: on MySQL a DECIMAL
+        // round-trips as '10.5000000', and the payload below mirrors what
+        // the edit form would re-submit on this dialect — the guard must
+        // match that spelling, which is the same dialect trap #31 flagged.
+        $live = Alert::find($alert->id);
+
+        $armed = true;
+        Alert::retrieved(function (Alert $model) use (&$armed): void {
+            if (! $armed || ! $model->exists) {
+                return;
+            }
+            $armed = false;
+            DB::table('alerts')->where('id', $model->id)->update([
+                'latitude' => '11.5000000',
+                'updated_at' => now(),
+            ]);
+        });
+
+        $response = $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => $live->title,
+            'description' => $live->description,
+            'latitude' => (string) $live->latitude,
+            'longitude' => (string) $live->longitude,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Cảnh báo vừa được cập nhật ở nơi khác; thay đổi của bạn chưa được lưu.');
+
+        // The rival's coordinate move stands untouched.
+        $this->assertSame('11.5', (string) round((float) DB::table('alerts')->where('id', $alert->id)->value('latitude'), 7));
+
         $this->assertSame(0, DB::table('notifications')->count());
     }
 }
