@@ -317,13 +317,23 @@ class AlertController extends Controller
             // (issue #29). The server already knows the truth.
             $data['image'] = $alert->image;
         }
+        // Issue #233: remember what THIS request wrote to the public disk.
+        // The store() below is not transactional and cannot roll back, so if
+        // the conditional persistence at the bottom finds the row gone, this
+        // is the exact path to remove before answering. The old file deleted
+        // here needs no tracking: it is being replaced or nulled either way,
+        // and on the vanished-row path the deleting() hook's own sweep (which
+        // reads the row's still-current OLD path) covers it when the DELETE
+        // itself lands — the asymmetry is that no row ever points at the NEW
+        // file, so nothing but this variable can free it.
+        $storedImage = null;
         if ($request->hasFile('image')) {
             // Nếu upload ảnh mới, xóa ảnh cũ trước (nếu có)
             if ($alert->image) {
                 \Storage::disk('public')->delete($alert->image);
             }
             // Issue #55: see store() above.
-            $data['image'] = $request->file('image')->store('alerts', 'public');
+            $storedImage = $data['image'] = $request->file('image')->store('alerts', 'public');
         }
         // Issue #225: the demote-write and its admin fan-out used to be two
         // autocommitted statements, so a crash between them left a pending
@@ -334,8 +344,36 @@ class AlertController extends Controller
         // #189's approve guard then clears it) before we ring. Documented
         // residual, identical to #139's: two same-content submits can each
         // see 'pending' and bell twice — never zero, never orphaned.
-        $demoted = DB::transaction(function () use ($alert, $data, $demotesFromApproved) {
+        //
+        // Issue #233: the file store() above already landed on the public
+        // disk BEFORE and OUTSIDE this transaction — a disk write cannot
+        // roll back. If a concurrent DELETE (admin moderation, the owner's
+        // own destroy, or ProfileController::destroy's account sweep)
+        // removed the row between route binding and here, Eloquent's
+        // $alert->update() matched zero rows without erroring, the
+        // transaction committed, and the user got a success redirect for
+        // an edit that persisted nothing — while the freshly stored file was
+        // referenced by no row: Alert's deleting() hook only unlinks the OLD
+        // path read from the row, which this method already deleted, so the
+        // new file was orphaned on disk permanently. The transaction now
+        // re-reads the row after the write: a missing row answers null, the
+        // caller frees the file this request stored, and the response is an
+        // honest 404 — success would flash over an edit that persisted
+        // nothing onto a row that no longer exists. Liveness is that re-read,
+        // deliberately not an affected-rows count: MySQL reports CHANGED rows
+        // (Laravel sets no MYSQLI_CLIENT_FOUND_ROWS), so a legitimate
+        // double-submit of byte-identical content UPDATEs 0 rows, while
+        // SQLite's driver counts MATCHED rows — the dialects disagree on the
+        // number, never on the re-read. $alert->update() stays the write
+        // itself (#225's semantics, model sync included): on a vanished row
+        // Eloquent documents it as a silent no-op, and the exists() right
+        // after is what catches exactly that case, inside the transaction so
+        // the re-read sees this connection's own write.
+        $outcome = DB::transaction(function () use ($alert, $data, $demotesFromApproved) {
             $alert->update($data);
+            if (! Alert::whereKey($alert->id)->exists()) {
+                return null;
+            }
             if (! $demotesFromApproved) {
                 return false;
             }
@@ -343,7 +381,14 @@ class AlertController extends Controller
             return Alert::whereKey($alert->id)->where('status', 'pending')->exists();
         });
 
-        if ($demoted) {
+        if ($outcome === null) {
+            if ($storedImage !== null) {
+                \Storage::disk('public')->delete($storedImage);
+            }
+            abort(404);
+        }
+
+        if ($outcome) {
             $admins = User::where('isAdmin', true)->get();
             foreach ($admins as $admin) {
                 $admin->notify(new NewPostPendingApprovalNotification($alert, auth()->user(), 'alert'));
