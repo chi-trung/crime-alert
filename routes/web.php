@@ -38,7 +38,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/alerts/map', [AlertController::class, 'mapView'])->name('alerts.map');
     Route::get('/alerts/{alert}', [AlertController::class, 'show'])->name('alerts.show');
     Route::get('/alerts/{alert}/edit', [AlertController::class, 'edit'])->name('alerts.edit');
-    Route::put('/alerts/{alert}', [AlertController::class, 'update'])->name('alerts.update');
+    // Issue #237: update() is #225's demote-and-re-bell fan-out endpoint, so
+    // it gets the same bound store() received in #165 — its own named lane.
+    Route::put('/alerts/{alert}', [AlertController::class, 'update'])->middleware('throttle:5,1,alert-update')->name('alerts.update');
     Route::delete('/alerts/{alert}', [AlertController::class, 'destroy'])->name('alerts.destroy');
     Route::middleware('admin')->group(function () {
         Route::get('/admin/alerts', [AlertController::class, 'adminIndex'])->name('admin.alerts');
@@ -68,7 +70,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
     Route::get('/comments/{comment}/edit', [CommentController::class, 'edit'])->name('comments.edit');
     Route::get('/experiences/{experience}/edit', [ExperienceController::class, 'edit'])->name('experiences.edit');
-    Route::put('/experiences/{experience}', [ExperienceController::class, 'update'])->name('experiences.update');
+    // Issue #237: same reasoning as alerts.update above — ExperienceController
+    // ::update carries the #225 approved->pending re-bell fan-out.
+    Route::put('/experiences/{experience}', [ExperienceController::class, 'update'])->middleware('throttle:5,1,experience-update')->name('experiences.update');
     Route::delete('/experiences/{experience}', [ExperienceController::class, 'destroy'])->name('experiences.destroy');
     // Issue #147: unlike #141's deferral of this pair, likes are NOT a
     // bounded primitive: store() fires a fresh LikePostNotification on every
