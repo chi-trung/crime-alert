@@ -8,6 +8,7 @@ use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Experience;
 use App\Models\SupportRequest;
+use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -147,14 +148,67 @@ class ProfileController extends Controller
         // firing SupportRequest::deleting, so the #102 notification sweep
         // never runs and the admin's copy survives as a 404 link. Eloquent
         // first, cascade stays as the safety net.
-        Alert::where('user_id', $user->id)->get()->each->delete();
-        Experience::where('user_id', $user->id)->get()->each->delete();
-        Comment::where('user_id', $user->id)->get()->each->delete();
-        SupportRequest::where('user_id', $user->id)->get()->each->delete();
+        // Issue #266: the four sweeps and the user delete above were five
+        // independently autocommitted statements, and each sweep's snapshot
+        // SELECT stayed open long after it. Two shapes died here:
+        // (1) atomicity — a throw in a late loop (the #102 notification
+        // sweep blowing max_allowed_packet on a per-subtree fan-out is the
+        // real-world trigger) left the earlier loops' destruction COMMITTED:
+        // account alive, its posts, replies and threads permanently gone,
+        // images unlinked, owner still logged in to the husk.
+        // (2) the window — this request authenticates from the still-live
+        // session for its whole duration, and a second tab's POST /alerts
+        // could commit after a sweep's snapshot SELECT but before
+        // $user->delete(); the FK cascade then destroyed that row WITHOUT
+        // firing its model hooks — orphaning its just-stored image,
+        // skipping the #57/#115/#121 sweeps, leaving bells on a dead post.
+        // One transaction closes (1) — any throw rolls the whole teardown
+        // back — and its first statement takes the users row with
+        // lockForUpdate() to close (2) as far as a dialect allows: on MySQL
+        // the parent-row X lock makes a rival child INSERT wait on its FK
+        // check until after the delete, where it dies as an honest FK
+        // error instead of cascading event-lessly. On sqlite the lock
+        // compiles to a no-op, so each class is additionally swept to a
+        // FIXED POINT — the re-query catches any late commit the snapshot
+        // missed and destroys it through its own hooks, the outcome the
+        // race pins in AccountDeletionRaceTest exercise.
+        // Auth::logout() moves after the commit: a torn-down-but-not-yet
+        // committed account must not log its owner out of a session whose
+        // rows the rollback just restored. Honest residuals, both better
+        // than the old half-destroy: disk unlinks already executed inside
+        // hooks cannot roll back (rows come back with broken image links —
+        // the recoverable half), and a rival INSERT the MySQL lock blocks
+        // surfaces in the rival tab as an FK error, not a silent cascade.
+        DB::transaction(function () use ($user): void {
+            // Lock point: SELECT ... FOR UPDATE on the parent row, BEFORE
+            // anything else in the transaction can be observed. pluck() so
+            // no model is hydrated and no retrieved event can fire.
+            User::whereKey($user->id)->lockForUpdate()->pluck('id');
+
+            foreach ([Alert::class, Experience::class, Comment::class, SupportRequest::class] as $class) {
+                do {
+                    $rows = $class::where('user_id', $user->id)->get();
+                    $rows->each->delete();
+                } while ($rows->isNotEmpty());
+            }
+
+            $user->delete();
+
+            // The logout below still holds THIS model instance in the
+            // guard, and SessionGuard::logout() cycles the remember token
+            // via EloquentUserProvider::updateRememberToken() -> save().
+            // After delete() the instance reads exists=false with its key
+            // still set, so that save() goes through performInsert() and
+            // RESURRECTED the just-deleted user row (verified by trace:
+            // the exact regression that pinned this line). Restoring the
+            // update-side semantics makes the cycle a 0-row UPDATE against
+            // the dead id — correct anyway: the account is gone, there is
+            // no token row left to rotate, and any stale cookie now finds
+            // no user to authenticate.
+            $user->exists = true;
+        });
 
         Auth::logout();
-
-        $user->delete();
 
         $request->session()->invalidate();
         $request->session()->regenerateToken();
