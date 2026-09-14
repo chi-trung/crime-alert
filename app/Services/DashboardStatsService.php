@@ -146,7 +146,13 @@ class DashboardStatsService
         $myExperiencesThisMonth = Experience::where('user_id', $user->id)
             ->whereYear('created_at', $currentYear)
             ->whereMonth('created_at', $currentMonth)
+            // Issue #246: the last legs missing from #87's sweep. The modal
+            // renders this collection row-by-row (dashboard.blade.php
+            // @foreach), so tied same-second rows from one burst reorder
+            // silently between loads; id tiebreak makes the newest-first
+            // intent deterministic, like every other read in this file.
             ->orderByDesc('created_at')
+            ->orderByDesc('id')
             ->get();
 
         // Issue #71: the user's own typeBreakdown call and its $myTotal were
