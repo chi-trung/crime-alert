@@ -64,10 +64,21 @@
             @endforeach
         </div>
         @if($supportRequest->status == 'open')
-        <form action="{{ route('support.sendMessage', $supportRequest) }}" method="POST" class="d-flex gap-2 mt-2">
+        {{-- Issue #235: sendMessage() validates message max:5000, and this
+             form is also the no-JS POST target the chat script falls back to.
+             A rejected over-length message used to land back here with no
+             visible error (layouts/app.blade.php flashes only
+             success/error/info, never $errors). Rendered in its own block
+             BELOW the d-flex row — inside it the div would become a third
+             flex column next to the Send button. maxlength matches the
+             server cap exactly, as on the create form. --}}
+        <form action="{{ route('support.sendMessage', $supportRequest) }}" method="POST">
             @csrf
-            <textarea name="message" class="form-control" rows="2" required placeholder="Nhập tin nhắn..." id="chat-input"></textarea>
-            <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane me-1"></i> Gửi</button>
+            <div class="d-flex gap-2 mt-2">
+                <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="2" maxlength="5000" required placeholder="Nhập tin nhắn..." id="chat-input">{{ old('message') }}</textarea>
+                <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane me-1"></i> Gửi</button>
+            </div>
+            @error('message')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </form>
         @else
         <div class="alert alert-info mt-2">Yêu cầu đã đóng, bạn không thể gửi thêm tin nhắn.</div>
