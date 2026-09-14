@@ -23,6 +23,13 @@ use Tests\TestCase;
  * on the public disk forever. update() now re-reads the row inside the
  * transaction; a vanished row means the stored file is removed and the answer
  * is an honest 404.
+ *
+ * Issue #255 extends the file with the sibling race: two REPLACEMENT uploads
+ * around each other (double-click, two tabs). The row survives there, so
+ * #233's sweep never ran: the loser's blind write overwrote the winner's
+ * path and nothing ever freed either orphan. update() is now an
+ * image-guarded write, and the last test pins that a stale writer persists
+ * nothing, rings no bell, and leaves exactly its own file swept.
  */
 class AlertReplacementOrphanRaceTest extends TestCase
 {
@@ -155,5 +162,60 @@ class AlertReplacementOrphanRaceTest extends TestCase
             'title' => 'Giống hệt nhau',
             'status' => 'pending',
         ]);
+    }
+
+    public function test_a_rival_replacement_committed_mid_flight_makes_the_stale_writer_persist_nothing(): void
+    {
+        // Issue #255: the sibling of the vanish race — here the row SURVIVES,
+        // so #233's sweep never applies. Sequence: R1 hydrates the row
+        // (image=alerts/old.png), a rival replacement lands and moves the
+        // column to alerts/rival.png, then R1 tries to commit its own new
+        // file. Before #255 R1's write was blind: it overwrote the rival's
+        // path (two orphans, one destroyed live file) and flashed success.
+        // Now the UPDATE is guarded on the exact image value R1 read, the
+        // in-transaction re-read spots the mismatch, and R1 must: free its
+        // own stored file, touch neither the column nor the rival's file,
+        // ring no demote bell, and answer an info reload notice.
+        [$owner, $alert] = $this->ownerWithApprovedAlert();
+
+        $armed = true;
+        Alert::retrieved(function (Alert $model) use (&$armed): void {
+            if (! $armed || ! $model->exists) {
+                return;
+            }
+            $armed = false;
+            $live = Alert::find($model->id);
+            if ($live !== null) {
+                Storage::disk('public')->put('alerts/rival.png', 'RIVAL');
+                $live->image = 'alerts/rival.png';
+                $live->save();
+            }
+        });
+
+        $response = $this->actingAs($owner)->put("/alerts/{$alert->id}", [
+            'title' => 'Ghi đè của kẻ đến sau',
+            'description' => 'd',
+            'image' => UploadedFile::fake()->image('mine.png'),
+        ]);
+
+        // Not a 404 (the row lives) and not a false success: an honest
+        // "somebody else wrote first, reload" redirect.
+        $response->assertRedirect();
+        $response->assertSessionHas('info', 'Cảnh báo vừa được cập nhật ở nơi khác; thay đổi của bạn chưa được lưu.');
+
+        // The rival's write stands untouched — column AND title both.
+        $this->assertDatabaseHas('alerts', [
+            'id' => $alert->id,
+            'image' => 'alerts/rival.png',
+            'title' => 'Cảnh báo cũ',
+        ]);
+
+        // The disk holds exactly what it held before R1 arrived: R1's own
+        // fresh upload is swept, and neither the old nor the rival file was
+        // destroyed by a write that persisted nothing.
+        $this->assertSame(['alerts/old.png', 'alerts/rival.png'], Storage::disk('public')->allFiles());
+
+        // The stale writer demoted nothing, so no admin bell rang either.
+        $this->assertSame(0, DB::table('notifications')->count());
     }
 }

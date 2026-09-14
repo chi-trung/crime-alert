@@ -316,8 +316,16 @@ class AlertController extends Controller
         // destroyed the stored image. boolean() maps '1' -> true, '0'/absent ->
         // false, so only an explicit removal reaches the delete. This restores
         // the #29 keep-branch below for normal submissions.
+        //
+        // Issue #255: $oldImage is the value this request READ from the row,
+        // captured here once because three things below need the same value:
+        // the write guard, the post-commit unlink, and (before the fix,
+        // fatally) it was deleted from the stale in-memory model before the
+        // write even happened. The unlink is now DEFERRED to after a durable
+        // write — see the transaction comment — so a losing racer never
+        // destroys a file the surviving row still references.
+        $oldImage = $alert->image;
         if ($request->boolean('remove_image') && $alert->image) {
-            \Storage::disk('public')->delete($alert->image);
             $data['image'] = null;
         } elseif (! $request->hasFile('image')) {
             // No upload and no removal: keep the stored image. The old code
@@ -329,19 +337,17 @@ class AlertController extends Controller
         // Issue #233: remember what THIS request wrote to the public disk.
         // The store() below is not transactional and cannot roll back, so if
         // the conditional persistence at the bottom finds the row gone, this
-        // is the exact path to remove before answering. The old file deleted
-        // here needs no tracking: it is being replaced or nulled either way,
-        // and on the vanished-row path the deleting() hook's own sweep (which
-        // reads the row's still-current OLD path) covers it when the DELETE
-        // itself lands — the asymmetry is that no row ever points at the NEW
-        // file, so nothing but this variable can free it.
+        // is the exact path to remove before answering. The asymmetry is that
+        // no row ever points at the NEW file, so nothing but this variable
+        // can free it.
         $storedImage = null;
         if ($request->hasFile('image')) {
-            // Nếu upload ảnh mới, xóa ảnh cũ trước (nếu có)
-            if ($alert->image) {
-                \Storage::disk('public')->delete($alert->image);
-            }
             // Issue #55: see store() above.
+            // Issue #255: the old image is NOT deleted here anymore. A disk
+            // unlink cannot roll back, and until the guarded write below
+            // lands, this request does not yet know whether the row still
+            // sits on $oldImage — the early delete destroyed the live file
+            // underneath a concurrent winner whose path it could not see.
             $storedImage = $data['image'] = $request->file('image')->store('alerts', 'public');
         }
         // Issue #225: the demote-write and its admin fan-out used to be two
@@ -358,31 +364,44 @@ class AlertController extends Controller
         // disk BEFORE and OUTSIDE this transaction — a disk write cannot
         // roll back. If a concurrent DELETE (admin moderation, the owner's
         // own destroy, or ProfileController::destroy's account sweep)
-        // removed the row between route binding and here, Eloquent's
-        // $alert->update() matched zero rows without erroring, the
-        // transaction committed, and the user got a success redirect for
-        // an edit that persisted nothing — while the freshly stored file was
-        // referenced by no row: Alert's deleting() hook only unlinks the OLD
-        // path read from the row, which this method already deleted, so the
-        // new file was orphaned on disk permanently. The transaction now
-        // re-reads the row after the write: a missing row answers null, the
-        // caller frees the file this request stored, and the response is an
-        // honest 404 — success would flash over an edit that persisted
-        // nothing onto a row that no longer exists. Liveness is that re-read,
-        // deliberately not an affected-rows count: MySQL reports CHANGED rows
-        // (Laravel sets no MYSQLI_CLIENT_FOUND_ROWS), so a legitimate
-        // double-submit of byte-identical content UPDATEs 0 rows, while
-        // SQLite's driver counts MATCHED rows — the dialects disagree on the
-        // number, never on the re-read. $alert->update() stays the write
-        // itself (#225's semantics, model sync included): on a vanished row
-        // Eloquent documents it as a silent no-op, and the exists() right
-        // after is what catches exactly that case, inside the transaction so
-        // the re-read sees this connection's own write.
-        $outcome = DB::transaction(function () use ($alert, $data, $demotesFromApproved) {
-            $alert->update($data);
+        // removed the row between route binding and here, the transaction
+        // re-read finds it: the caller frees the file this request stored
+        // and the response is an honest 404.
+        //
+        // Issue #255: the sibling race — two replacement uploads landing
+        // around each other (double-click, two tabs; throttle 5/min lets
+        // two through easily). Old shape: both requests read image=A, R2
+        // commits image=F2, then R1's blind write commits image=F1 — F2
+        // referenced by no row, and #233's sweep only ran for a VANISHED
+        // row, so neither request freed it: a permanent orphan, because
+        // deleting() later unlinks only the current path. The write is now
+        // an image-guarded UPDATE keyed on the exact value this request
+        // read: a stale writer matches zero rows, and the in-transaction
+        // re-read of the image column decides the outcome instead of any
+        // affected-rows count — MySQL reports CHANGED (a keep-branch or
+        // byte-identical write legitimately changes nothing) while SQLite
+        // counts MATCHED; #233's doctrine holds, the re-read is the only
+        // signal both dialects agree on. Zero-matched-but-alive answers
+        // 'stale': this request frees its own stored file, rings no bell,
+        // and the user is told to reload rather than being flashed a
+        // success that persisted nothing. A true winner unlinks $oldImage
+        // only after the durable write.
+        $outcome = DB::transaction(function () use ($alert, $data, $demotesFromApproved, $oldImage) {
+            Alert::whereKey($alert->id)->where('image', $oldImage)->update($data + ['updated_at' => now()]);
             if (! Alert::whereKey($alert->id)->exists()) {
                 return null;
             }
+            // ?? $oldImage: an edit that touches no image leaves the column
+            // out of $data entirely, so the value we expect to read back is
+            // whatever the guarded write started from.
+            if (Alert::whereKey($alert->id)->value('image') !== (array_key_exists('image', $data) ? $data['image'] : $oldImage)) {
+                return 'stale';
+            }
+            // The guarded builder update skips model events and the
+            // in-memory sync $alert->update() used to give; the demote re-read
+            // below and the notification payload both still expect the model
+            // to carry the just-written row.
+            $alert->refresh();
             if (! $demotesFromApproved) {
                 return false;
             }
@@ -397,11 +416,33 @@ class AlertController extends Controller
             abort(404);
         }
 
+        if ($outcome === 'stale') {
+            if ($storedImage !== null) {
+                // Issue #255: the mirror of #233's vanish sweep — the row is
+                // alive, it just belongs to a newer write now, and no row
+                // will ever point at this request's file.
+                \Storage::disk('public')->delete($storedImage);
+            }
+
+            return redirect()->back()->with('info', 'Cảnh báo vừa được cập nhật ở nơi khác; thay đổi của bạn chưa được lưu.');
+        }
+
         if ($outcome) {
             $admins = User::where('isAdmin', true)->get();
             foreach ($admins as $admin) {
                 $admin->notify(new NewPostPendingApprovalNotification($alert, auth()->user(), 'alert'));
             }
+        }
+
+        // Issue #255: the old file had no row pointing at it the MOMENT this
+        // request's guarded write landed — it is only safe to free now, and
+        // only now that it is proven safe. remove_image reaches here with
+        // $data['image'] null, replacement with the new path; a keep-branch
+        // edit sees its own value back and deletes nothing. The winner's
+        // unlink and a rival's (identical) unlink are both no-ops on the
+        // second arrival, so the surviving request always frees the file.
+        if ($oldImage !== null && (array_key_exists('image', $data) ? $data['image'] : $oldImage) !== $oldImage) {
+            \Storage::disk('public')->delete($oldImage);
         }
 
         // Sau khi cập nhật, redirect về dashboard
