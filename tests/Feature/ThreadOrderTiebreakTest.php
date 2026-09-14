@@ -27,6 +27,11 @@ use Tests\TestCase;
  * cannot: without the orderByDesc/Asc('id') leg the logged query simply
  * lacks the second column. ORDER BY carries no bindings, so matching the
  * logged SQL is safe across both dialects (sqlite "" / mysql ``).
+ *
+ * Two of the seven (support page/ajax, #234) were later re-anchored to the
+ * rendered sequence, and #258 moves the comment threads there too: once the
+ * read itself stops spelling the order in SQL, the SQL string is no longer
+ * an instrument for the invariant — the deterministic output is.
  */
 class ThreadOrderTiebreakTest extends TestCase
 {
@@ -78,10 +83,16 @@ class ThreadOrderTiebreakTest extends TestCase
             ]);
         }
 
-        $this->startLog();
-        $this->actingAs($user)->get("/alerts/{$alert->id}")->assertOk();
-        $this->assertQueryOrdersBy('comments', ['created_at', 'id'], 'desc');
-        DB::disableQueryLog();
+        // Issue #258 re-anchor (same move as the support tests below): the
+        // top-level DESC is no longer an SQL leg — the thread is fetched flat
+        // ASC and the roots bucket is reversed in PHP — so what #89 protects,
+        // tied comments rendering in one deterministic latest-first order,
+        // is pinned at the rendered sequence instead of one SQL spelling.
+        $html = $this->actingAs($user)->get("/alerts/{$alert->id}")->assertOk()->getContent();
+        $positions = array_map(fn ($m) => strpos($html, $m), ['c-CCC', 'c-BBB', 'c-AAA']);
+        $this->assertSame([true, true, true], array_map(fn ($p) => $p !== false, $positions));
+        $this->assertTrue($positions[0] < $positions[1] && $positions[1] < $positions[2],
+            'tied top-level comments must render newest-first (id DESC), deterministically');
     }
 
     public function test_experiences_thread_orders_tied_comments_by_id_desc(): void
@@ -96,10 +107,12 @@ class ThreadOrderTiebreakTest extends TestCase
             ]);
         }
 
-        $this->startLog();
-        $this->actingAs($user)->get("/experiences/{$exp->id}")->assertOk();
-        $this->assertQueryOrdersBy('comments', ['created_at', 'id'], 'desc');
-        DB::disableQueryLog();
+        // Issue #258 re-anchor — see the alerts twin above.
+        $html = $this->actingAs($user)->get("/experiences/{$exp->id}")->assertOk()->getContent();
+        $positions = array_map(fn ($m) => strpos($html, $m), ['x-3', 'x-2', 'x-1']);
+        $this->assertSame([true, true, true], array_map(fn ($p) => $p !== false, $positions));
+        $this->assertTrue($positions[0] < $positions[1] && $positions[1] < $positions[2],
+            'tied top-level comments must render newest-first (id DESC), deterministically');
     }
 
     public function test_replies_relation_orders_tied_replies_by_id_asc(): void
