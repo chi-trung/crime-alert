@@ -302,7 +302,15 @@ class AlertController extends Controller
         // was silent: a re-queued rewrite appeared on no bell, so the reviewer
         // #23 promises never learns WHICH post just came back. Gating on
         // approved->pending keeps already-pending edits from re-belling.
-        $demotesFromApproved = ! auth()->user()->isAdmin && $alert->status === 'approved';
+        //
+        // Issue #257: 'approved' was only HALF the queue's front door. The
+        // force below moves EVERY non-admin edit to 'pending', including a
+        // REJECTED post — so an owner's rewrite silently undid the reject
+        // decision with zero bells, violating the invariant #225 states in
+        // so many words (every arrival in the queue must name itself). The
+        // gate now covers both out-of-review transitions, while a still
+        // 'pending' edit stays silent: it was already belling.
+        $demotesIntoQueue = ! auth()->user()->isAdmin && in_array($alert->status, ['approved', 'rejected'], true);
         if (! auth()->user()->isAdmin) {
             $data['status'] = 'pending';
         }
@@ -386,7 +394,7 @@ class AlertController extends Controller
         // and the user is told to reload rather than being flashed a
         // success that persisted nothing. A true winner unlinks $oldImage
         // only after the durable write.
-        $outcome = DB::transaction(function () use ($alert, $data, $demotesFromApproved, $oldImage) {
+        $outcome = DB::transaction(function () use ($alert, $data, $demotesIntoQueue, $oldImage) {
             Alert::whereKey($alert->id)->where('image', $oldImage)->update($data + ['updated_at' => now()]);
             if (! Alert::whereKey($alert->id)->exists()) {
                 return null;
@@ -402,7 +410,7 @@ class AlertController extends Controller
             // below and the notification payload both still expect the model
             // to carry the just-written row.
             $alert->refresh();
-            if (! $demotesFromApproved) {
+            if (! $demotesIntoQueue) {
                 return false;
             }
 
