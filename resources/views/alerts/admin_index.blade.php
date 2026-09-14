@@ -111,16 +111,23 @@
                 </div>
             @endif
         </div>
-        <div class="d-flex justify-content-between align-items-center card-footer bg-white border-0 py-4 px-5">
-            <div class="text-muted">
-                Hiển thị <span class="fw-semibold">{{ $alerts->firstItem() }}</span> đến 
-                <span class="fw-semibold">{{ $alerts->lastItem() }}</span> trong 
-                <span class="fw-semibold">{{ $alerts->total() }}</span> kết quả
+        {{-- Issue #227: on an empty result set firstItem()/lastItem() return
+             null, so this footer rendered "Hiển thị  đến  trong  0 kết quả"
+             with two blank spans while links() emitted nothing. The summary
+             row only describes page content that exists — the @if(count()===0)
+             CTA block above already carries the empty state. --}}
+        @if($alerts->total() > 0)
+            <div class="d-flex justify-content-between align-items-center card-footer bg-white border-0 py-4 px-5">
+                <div class="text-muted">
+                    Hiển thị <span class="fw-semibold">{{ $alerts->firstItem() }}</span> đến
+                    <span class="fw-semibold">{{ $alerts->lastItem() }}</span> trong
+                    <span class="fw-semibold">{{ $alerts->total() }}</span> kết quả
+                </div>
+                <div>
+                    {{ $alerts->links() }}
+                </div>
             </div>
-            <div>
-                {{ $alerts->links() }}
-            </div>
-        </div>
+        @endif
     </div>
 </div>
 @endsection
