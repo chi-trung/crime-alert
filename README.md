@@ -86,7 +86,7 @@ sau đó `php artisan migrate:fresh --seed`.
 ```bash
 php artisan migrate:fresh --seed
 ```
-`AdminUserSeeder` tạo tài khoản admin (email/mật khẩu đọc từ `ADMIN_EMAIL` / `ADMIN_PASSWORD` trong `.env`, mặc định `admin@crime-alert.local` / `ChangeMe!123`). **Đổi mật khẩu ngay sau lần đăng nhập đầu.**
+`AdminUserSeeder` tạo tài khoản admin (email/mật khẩu đọc từ `ADMIN_EMAIL` / `ADMIN_PASSWORD` trong `.env`, mặc định `admin@crime-alert.local` / `ChangeMe!123`). **Đổi mật khẩu ngay sau lần đăng nhập đầu.** Từ issue #273, seeder từ chối (throw) nếu email cấu hình đã thuộc về tài khoản **không phải admin** — ai đó đăng ký trước email default thì deploy sẽ fail loudly, không âm thầm thăng cấp họ; hãy đặt `ADMIN_EMAIL` khác trước khi seed.
 
 ### 5️⃣ Chạy
 ```bash
