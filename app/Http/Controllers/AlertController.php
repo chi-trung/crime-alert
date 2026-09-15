@@ -63,7 +63,23 @@ class AlertController extends Controller
             // move() into storage_path() — same hashName() filename and the
             // same alerts/ layout, but it honors the disk configuration and
             // is visible to Storage::fake() in tests.
-            $storedImage = $data['image'] = $request->file('image')->store('alerts', 'public');
+            //
+            // Issue #281: store()'s documented contract is 'string|false',
+            // and with these disks' 'throw' => false (config/filesystems.php
+            // :37,46) a failed write takes the false branch — FilesystemAdapter
+            // ::put() catches UnableToWriteFile and putFileAs() returns false.
+            // A full or read-only production disk hits this on EVERY upload.
+            // Chained straight into $data['image'], PHP casts the false to the
+            // string '0': the row persists image='0', the blades build a
+            // /storage/0 src that 404s, and the success flash below fires — a
+            // silent broken image the user never learns about. Return a form
+            // error here, before $data is touched: nothing was written to the
+            // disk (that is the whole premise), so there is no file to sweep.
+            $stored = $request->file('image')->store('alerts', 'public');
+            if ($stored === false) {
+                return back()->withInput()->withErrors(['image' => 'Không thể lưu ảnh lên server. Vui lòng thử lại.']);
+            }
+            $storedImage = $data['image'] = $stored;
         }
 
         // Issue #267: the disk write above cannot roll back, so until the
@@ -394,7 +410,23 @@ class AlertController extends Controller
             // lands, this request does not yet know whether the row still
             // sits on $oldImage — the early delete destroyed the live file
             // underneath a concurrent winner whose path it could not see.
-            $storedImage = $data['image'] = $request->file('image')->store('alerts', 'public');
+            //
+            // Issue #281: same false contract as store() above, and worse
+            // here — the write lands via the #265 guard, which cannot tell
+            // '0' from the false it expects to read back, so the guarded
+            // UPDATE commits title + image='0' over a perfectly good
+            // $oldImage (orphaning that file: the column no longer points at
+            // it, and destroy() later unlinks '0', which matches nothing),
+            // and the staleness re-read's '0'-vs-(string)false mismatch then
+            // answers "your changes were not saved" for an edit that DID
+            // save. Bailing out before $data['image'] is assigned keeps the
+            // old path in the guard's expected value — the row, the file and
+            // the next request's $oldImage all survive intact.
+            $stored = $request->file('image')->store('alerts', 'public');
+            if ($stored === false) {
+                return back()->withInput()->withErrors(['image' => 'Không thể lưu ảnh lên server. Vui lòng thử lại.']);
+            }
+            $storedImage = $data['image'] = $stored;
         }
         // Issue #225: the demote-write and its admin fan-out used to be two
         // autocommitted statements, so a crash between them left a pending
