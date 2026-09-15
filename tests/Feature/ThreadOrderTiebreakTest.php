@@ -145,10 +145,12 @@ class ThreadOrderTiebreakTest extends TestCase
         $request = SupportRequest::forceCreate([
             'user_id' => $user->id, 'subject' => 'S', 'status' => 'open',
         ]);
+        $ids = [];
         foreach (range(1, 3) as $i) {
-            SupportMessage::forceCreate([
+            $msg = SupportMessage::forceCreate([
                 'support_request_id' => $request->id, 'user_id' => $user->id, 'message' => "m{$i}",
             ]);
+            $ids[] = $msg->id;
         }
 
         // Issue #234 re-anchor: the initial render is now the latest-100
@@ -157,9 +159,14 @@ class ThreadOrderTiebreakTest extends TestCase
         // the OUTPUT order — tied rows must never swap between renders — so
         // pin the rendered sequence instead of one SQL spelling. The id
         // tiebreak itself is re-pinned below via the AJAX response.
-        $ids = $this->actingAs($user)->get("/support/{$request->id}")->assertOk()
+        // Issue #283: the expected sequence is the real inserted ids (the
+        // invariant is their ASC order, not their values — assuming ids
+        // start at 1 was sqlite-only; MySQL's counter does not rewind).
+        $rendered = $this->actingAs($user)->get("/support/{$request->id}")->assertOk()
             ->viewData('messages')->pluck('id')->all();
-        $this->assertSame([1, 2, 3], $ids);
+        $this->assertSame($ids, $rendered);
+        $this->assertSame(collect($ids)->sort()->values()->all(), $rendered,
+            'the rendered sequence must be id-ascending');
     }
 
     public function test_support_messages_ajax_orders_tied_messages_by_id_asc(): void
@@ -168,18 +175,26 @@ class ThreadOrderTiebreakTest extends TestCase
         $request = SupportRequest::forceCreate([
             'user_id' => $user->id, 'subject' => 'S', 'status' => 'open',
         ]);
+        $inserted = [];
         foreach (range(1, 3) as $i) {
-            SupportMessage::forceCreate([
+            $msg = SupportMessage::forceCreate([
                 'support_request_id' => $request->id, 'user_id' => $user->id, 'message' => "m{$i}",
             ]);
+            $inserted[] = $msg->id;
         }
 
         // Issue #234 re-anchor (see the page test): the polled feed keeps
         // #89's promise at the observable boundary — same-second rows come
-        // back id-ascending, oldest-first, deterministically.
+        // back id-ascending, oldest-first, deterministically. Issue #283:
+        // expectation is the real inserted ids in ascending order (the old
+        // literal [1,2,3] assumed the allocator starts at 1 — sqlite-only;
+        // the MySQL probe returned [617,618,619]).
         $ids = $this->actingAs($user)->getJson("/support/{$request->id}/messages")->assertOk()
             ->json('messages');
-        $this->assertSame([1, 2, 3], collect($ids)->pluck('id')->all());
+        $returned = collect($ids)->pluck('id')->all();
+        $this->assertSame($inserted, $returned);
+        $this->assertSame(collect($inserted)->sort()->values()->all(), $returned,
+            'the feed must be id-ascending regardless of where the counter sat');
     }
 
     public function test_unread_dropdown_preview_orders_by_id_desc(): void

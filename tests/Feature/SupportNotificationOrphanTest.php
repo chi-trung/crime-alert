@@ -62,14 +62,14 @@ class SupportNotificationOrphanTest extends TestCase
         // Thread 11's payload contains `"support_request_id":11` — a naive
         // `...:1%` LIKE would prefix-match it. The sweep pattern terminates
         // the id with a non-digit class, so deleting thread 1 must not eat
-        // thread 11's rows. Ids forced apart deterministically.
+        // thread 11's rows. Issue #283: the 1-vs-11 shape is now pinned with
+        // explicit ids instead of nine padding rows + allocator luck — the
+        // sqlite AUTOINCREMENT counter rewinds with each rolled-back test,
+        // MySQL's InnoDB counter never does (probe: first thread id 87).
         $owner = User::factory()->create();
         $admin = User::factory()->admin()->create();
-        $first = SupportRequest::create(['user_id' => $owner->id, 'subject' => 'a']);
-        foreach (range(1, 9) as $i) {
-            SupportRequest::create(['user_id' => $owner->id, 'subject' => "pad-{$i}"]);
-        }
-        $eleventh = SupportRequest::create(['user_id' => $owner->id, 'subject' => 'b']);
+        $first = SupportRequest::forceCreate(['id' => 1, 'user_id' => $owner->id, 'subject' => 'a']);
+        $eleventh = SupportRequest::forceCreate(['id' => 11, 'user_id' => $owner->id, 'subject' => 'b']);
         $this->assertSame(1, $first->id);
         $this->assertSame(11, $eleventh->id);
 

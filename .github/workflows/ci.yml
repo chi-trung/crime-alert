@@ -48,13 +48,27 @@ jobs:
           cp .env.example .env
           php artisan key:generate --ansi
           if [ "${{ matrix.database }}" = "mysql" ]; then
-            sed -i 's/^DB_CONNECTION=.*/DB_CONNECTION=mysql/' .env
-            echo 'DB_HOST=127.0.0.1' >> .env
-            echo 'DB_PORT=3306' >> .env
-            echo 'DB_DATABASE=crime_alert_test' >> .env
-            echo 'DB_USERNAME=root' >> .env
-            echo 'DB_PASSWORD=root' >> .env
+            # Issue #283: phpunit.xml's <env> DB_CONNECTION=sqlite/DB_DATABASE=
+            # :memory: cannot be beaten from .env — Laravel never exports .env
+            # into the process environment, and PHPUnit only skips its own
+            # putenv() when getenv($name) !== false (PhpHandler.php:112). The
+            # mysql leg must therefore carry DB_* as PROCESS env, which
+            # $GITHUB_ENV provides. The old sed -i .env here silently kept
+            # this job running sqlite for the repo's entire history.
+            {
+              echo 'DB_CONNECTION=mysql'
+              echo 'DB_HOST=127.0.0.1'
+              echo 'DB_PORT=3306'
+              echo 'DB_DATABASE=crime_alert_test'
+              echo 'DB_USERNAME=root'
+              echo 'DB_PASSWORD=root'
+            } >> "$GITHUB_ENV"
           fi
+
+      - name: Tripwire - the connection under test matches the matrix leg
+        # Fails the job here rather than letting it go green on the wrong
+        # dialect again if the precedence mechanism ever shifts (#283).
+        run: php artisan db:show --json | grep -q '"driver":"${{ matrix.database }}"'
 
       - name: Verify migrations run on a fresh database
         run: php artisan migrate:fresh --force --seed

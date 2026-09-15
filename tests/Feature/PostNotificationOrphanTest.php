@@ -71,13 +71,17 @@ class PostNotificationOrphanTest extends TestCase
 
     public function test_alert_sweep_does_not_eat_same_id_experience_rows(): void
     {
-        // post_type scopes the sweep: alert id 1 and experience id 1 collide
-        // across the two tables, so the alert delete must not touch rows
-        // naming the experience.
+        // post_type scopes the sweep: an alert and an experience sharing one
+        // numeric id collide across the two tables, so the alert delete must
+        // not touch rows naming the experience. Issue #283: the collision is
+        // now FORCED (same explicit id on both rows) — the old version read
+        // it off the allocators coinciding, which held on sqlite (fresh
+        // AUTOINCREMENT per rolled-back test) but not on MySQL, where the
+        // InnoDB counter never rewinds (probe: alert 175 vs experience 312).
         $owner = User::factory()->create();
         $other = User::factory()->create();
-        $alert = Alert::create(['user_id' => $owner->id, 'title' => 'A', 'description' => 'd', 'status' => 'approved']);
-        $exp = Experience::create(['user_id' => $owner->id, 'title' => 'E', 'content' => 'c', 'name' => 'N', 'status' => 'approved']);
+        $alert = Alert::forceCreate(['id' => 4242, 'user_id' => $owner->id, 'title' => 'A', 'description' => 'd', 'status' => 'approved']);
+        $exp = Experience::forceCreate(['id' => 4242, 'user_id' => $owner->id, 'title' => 'E', 'content' => 'c', 'name' => 'N', 'status' => 'approved']);
         $this->assertSame($alert->id, $exp->id);
         $owner->notify(new LikePostNotification($other, $alert, 'alert'));
         $owner->notify(new LikePostNotification($other, $exp, 'experience'));
@@ -134,16 +138,16 @@ class PostNotificationOrphanTest extends TestCase
     public function test_sweep_matches_ids_exactly_not_by_prefix(): void
     {
         // Comment 11's payload contains `"comment_id":11,` — a naive
-        // `...:1%` LIKE would prefix-match it. Ids forced apart
-        // deterministically, mirroring #102's second test.
+        // `...:1%` LIKE would prefix-match it. Issue #283: the 1-vs-11 SHAPE
+        // is the subject, so both ids are pinned explicitly instead of being
+        // counted off the allocator (sqlite-only determinism; MySQL gave the
+        // first comment id 205 in the probe run). Any one-digit id and a
+        // two-digit id whose first digit equals it exercise the same bug.
         $owner = User::factory()->create();
         $other = User::factory()->create();
         $alert = Alert::create(['user_id' => $owner->id, 'title' => 'T', 'description' => 'd', 'status' => 'approved']);
-        $first = Comment::create(['alert_id' => $alert->id, 'user_id' => $owner->id, 'content' => 'a']);
-        foreach (range(1, 9) as $i) {
-            Comment::create(['alert_id' => $alert->id, 'user_id' => $owner->id, 'content' => "pad-{$i}"]);
-        }
-        $eleventh = Comment::create(['alert_id' => $alert->id, 'user_id' => $owner->id, 'content' => 'b']);
+        $first = Comment::forceCreate(['id' => 1, 'alert_id' => $alert->id, 'user_id' => $owner->id, 'content' => 'a']);
+        $eleventh = Comment::forceCreate(['id' => 11, 'alert_id' => $alert->id, 'user_id' => $owner->id, 'content' => 'b']);
         $this->assertSame(1, $first->id);
         $this->assertSame(11, $eleventh->id);
 
