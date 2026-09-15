@@ -200,14 +200,19 @@ class ProfileEmailReauthTest extends TestCase
         $this->post('/logout');
 
         // The attacker, now a guest, requests recovery on the address they
-        // TRIED to install — it belongs to nobody, so the broker says so.
+        // TRIED to install — it belongs to nobody. Post-#180-collapse the
+        // page gives its uniform "sent" answer (the enumeration branch is
+        // gone), so the real proof is what did NOT happen: no reset token
+        // was minted for that mailbox.
         // (The victim side of the door — recovery still reaching the real
         // mailbox after a landed move — is pinned by ProfileTest's #204
         // controls; a second forgot POST here would only trip the route
         // throttle's per-IP bucket.)
         $this->post('/forgot-password', ['email' => 'evil@example.com'])
-            ->assertSessionHasErrors('email');
+            ->assertSessionHas('status', __('passwords.sent'))
+            ->assertSessionHasNoErrors();
 
+        $this->assertDatabaseMissing('password_reset_tokens', ['email' => 'evil@example.com']);
         $this->assertSame('victim@example.com', $victim->fresh()->email);
     }
 

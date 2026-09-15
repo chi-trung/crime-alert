@@ -30,16 +30,21 @@ class PasswordResetLinkController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        // We will send the password reset link to this user. Once we have attempted
-        // to send the link, we will examine the response then see the message we
-        // need to show to the user. Finally, we'll send out a proper response.
-        $status = Password::sendResetLink(
+        // We will send the password reset link to this user. Whether the
+        // address exists is NOT an answer this form gives: stock Breeze
+        // branched on the broker status and flashed passwords.user
+        // ("Không tìm thấy người dùng...") for a miss, so the page was a
+        // guest-reachable account-enumeration oracle. #179's throttle:6,1
+        // caps the rate; the rate was never the defect — the distinct branch
+        // was. One uniform "sent" answer (OWASP reset-flow guidance, and
+        // this repo's own login doctrine — auth.failed is deliberately
+        // identical for unknown email and wrong password) leaves nothing to
+        // grind; a real miss costs the sender nothing and the non-existent
+        // mailbox never receives anything anyway.
+        Password::sendResetLink(
             $request->only('email')
         );
 
-        return $status == Password::RESET_LINK_SENT
-                    ? back()->with('status', __($status))
-                    : back()->withInput($request->only('email'))
-                        ->withErrors(['email' => __($status)]);
+        return back()->with('status', __(Password::RESET_LINK_SENT));
     }
 }
