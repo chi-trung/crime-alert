@@ -467,11 +467,27 @@ class SupportRequestController extends Controller
         // what actually closes the window. close() needs no twin: its
         // conditional open-only UPDATE already resolves inside the row
         // lock and bells only on a thread this path leaves alive.
-        DB::transaction(function () use ($supportRequest): void {
+        //
+        // Issue #307: the #271 lock probe was a fire-and-forget pluck() —
+        // its ANSWER was discarded. A rival destroy() committing between
+        // the route binding's (snapshot) hydration and this transaction
+        // made the current read find nothing, yet the code proceeded:
+        // $supportRequest->delete() touched 0 rows and the unconditional
+        // flash below reported 'Đã xóa yêu cầu hỗ trợ!' for a thread this
+        // request did not delete — the #256 false-success shape, which
+        // close() had already answered with the honest #247 404. The probe
+        // now DECIDES: vanished -> 404, alive -> delete and flash. The
+        // row-existence probe cannot hydrate a model, so the #271 no-
+        // retrieved-event property carries over from pluck() to exists().
+        $deleted = DB::transaction(function () use ($supportRequest): bool {
             // Lock point: SELECT ... FOR UPDATE on the thread row, BEFORE
-            // the deleting() sweep can be observed. pluck() so no model is
-            // hydrated and no retrieved event can fire.
-            SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->pluck('id');
+            // the deleting() sweep can be observed. exists() so no model is
+            // hydrated and no retrieved event can fire, AND so the answer
+            // is actually consumed (the #285 doctrine: a zero-match needs
+            // the re-read anyway to say WHY it matched nothing).
+            if (! SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->exists()) {
+                return false;
+            }
 
             $supportRequest->delete();
 
@@ -492,7 +508,13 @@ class SupportRequestController extends Controller
                     ->where('data', 'like', '%"support_request_id":'.$supportRequest->id.',%')
                     ->delete();
             } while ($swept > 0);
+
+            return true;
         });
+
+        if (! $deleted) {
+            abort(404);
+        }
 
         return back()->with('success', 'Đã xóa yêu cầu hỗ trợ!');
     }
