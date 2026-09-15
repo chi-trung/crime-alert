@@ -189,11 +189,57 @@ class ExperienceController extends Controller
         // claiming "Cập nhật bài chia sẻ thành công!". The exists() check
         // inside the same transaction catches the no-op; experiences carry no
         // image field, so unlike alerts there is no stored file to purge.
-        $outcome = DB::transaction(function () use ($experience, $data, $demotesIntoQueue) {
-            $experience->update($data);
+        //
+        // Issue #275: the OTHER half of the alerts fix — #255/#265's
+        // stale-writer guard — was never mirrored here, and #247's own
+        // comment above shows how the port got scoped to the vanish/file
+        // shape. Two content edits from the same owner (two tabs; the route's
+        // throttle:5,1 budget admits both, and edit() lets admin and owner
+        // co-edit) never contended on anything: both blind writes matched the
+        // live row, the later committer destroyed the earlier payload, BOTH
+        // flashed success, and — worse on the moderation side — because the
+        // winner's write also left 'pending', the loser's demote re-read at
+        // the bottom of this transaction PASSED and admins received a second
+        // NewPostPendingApprovalNotification for a post whose content the
+        // loser never actually wrote. The write is now an UPDATE guarded on
+        // the exact title/content/name this request read (#255's discipline
+        // over every column #265 declared contended), and a zero-matched-
+        // but-alive row is decided by the in-transaction re-read, never by
+        // affected-rows count (MySQL reports CHANGED, SQLite MATCHED — #233's
+        // dialect-split doctrine holds; byte-identical double-submits
+        // legitimately change nothing and must not false-'stale'). Residual,
+        // identical to alerts: status is deliberately NOT guarded — a
+        // mid-flight moderation transition is #189's conditional-transition
+        // shape on the other side, already answered by approve()/reject()'s
+        // own guards, and updated_at is excluded for #89's second-resolution
+        // blindness inside the one-second race window.
+        $contentSnapshot = [
+            'title' => $experience->title,
+            'content' => $experience->content,
+            'name' => $experience->name,
+        ];
+        $outcome = DB::transaction(function () use ($experience, $data, $demotesIntoQueue, $contentSnapshot) {
+            Experience::whereKey($experience->id)
+                ->where($contentSnapshot)
+                ->update($data + ['updated_at' => now()]);
             if (! Experience::whereKey($experience->id)->exists()) {
                 return null;
             }
+            // Raw fetch, not ->first(): hydrating an Experience would fire
+            // the retrieved event the race probes arm on (#163 idiom) a
+            // second time; the builder reads above already sidestep it.
+            $live = DB::table('experiences')->where('id', $experience->id)->first();
+            foreach ($contentSnapshot as $col => $startValue) {
+                $expected = array_key_exists($col, $data) ? $data[$col] : $startValue;
+                if ((string) $live->$col !== (string) $expected) {
+                    return 'stale';
+                }
+            }
+            // The guarded builder update skips model events and the
+            // in-memory sync $experience->update() used to give; the demote
+            // re-read below and the notification payload both still expect
+            // the model to carry the just-written row.
+            $experience->refresh();
             if (! $demotesIntoQueue) {
                 return false;
             }
@@ -203,6 +249,13 @@ class ExperienceController extends Controller
 
         if ($outcome === null) {
             abort(404);
+        }
+
+        if ($outcome === 'stale') {
+            // The mirror of #255's reload notice: the row lives, it just
+            // belongs to a newer write now — persist nothing, ring nothing,
+            // and never flash a success that saved nothing.
+            return redirect()->back()->with('info', 'Bài chia sẻ vừa được cập nhật ở nơi khác; thay đổi của bạn chưa được lưu.');
         }
 
         if ($outcome) {
