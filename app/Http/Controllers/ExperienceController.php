@@ -6,6 +6,8 @@ use App\Models\Experience;
 use App\Models\User;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
+use App\Support\BellSweeps;
+use App\Support\DeferredFileUnlinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -312,7 +314,48 @@ class ExperienceController extends Controller
         if (Auth::id() !== $experience->user_id && ! Auth::user()->isAdmin) {
             abort(403);
         }
-        $experience->delete();
+
+        // Issue #311: the #271 window on this route's twin — see
+        // AlertController::destroy's comment for the full mechanism (hook
+        // sweeps BEFORE the DELETE takes the row lock; a #153 fan-out
+        // holding that lock commits its bell into the gap; morph
+        // notifications have no FK, and the dead row's hook can never
+        // re-sweep). Same closing, same dialect honesty; the discriminator
+        // here is post_type experience so experience N never eats alert
+        // N's rows (#121's id-collision rule across the two tables). The
+        // route now runs the unlinking hook inside a transaction for the
+        // first time, so #309's ledger applies exactly as in
+        // AlertController::destroy: arm, drain after a real commit,
+        // discard on throw or on the vanished 404.
+        DeferredFileUnlinks::arm();
+
+        try {
+            $deleted = DB::transaction(function () use ($experience): bool {
+                if (! Experience::whereKey($experience->id)->lockForUpdate()->exists()) {
+                    return false;
+                }
+
+                $experience->delete();
+
+                do {
+                    $swept = BellSweeps::sweepPost($experience->id, 'experience');
+                } while ($swept > 0);
+
+                return true;
+            });
+        } catch (\Throwable $e) {
+            DeferredFileUnlinks::discard();
+
+            throw $e;
+        }
+
+        if (! $deleted) {
+            DeferredFileUnlinks::discard();
+
+            abort(404);
+        }
+
+        DeferredFileUnlinks::drain();
 
         return redirect()->route('experiences.index')->with('success', 'Đã xóa bài chia sẻ!');
     }

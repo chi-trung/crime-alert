@@ -7,6 +7,7 @@ use App\Models\Comment;
 use App\Models\Experience;
 use App\Notifications\NewCommentOnPost;
 use App\Notifications\NewReplyOnComment;
+use App\Support\BellSweeps;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -237,7 +238,49 @@ class CommentController extends Controller
         if (auth()->id() !== $comment->user_id && ! auth()->user()->isAdmin) {
             abort(403);
         }
-        $comment->delete();
+
+        // Issue #311: the #271 window again, comment-shaped. The #121 sweep
+        // in Comment::deleting runs BEFORE the DELETE acquires the row's X
+        // lock, and a rival reply fan-out holds the PARENT comment's lock
+        // (#153's parent current read) while writing its NewReplyOnComment
+        // inside that transaction — so the bell can commit into the gap
+        // after the sweep answered, keyed on a comment id this request just
+        // destroyed. notifications has no FK (the morph keys the recipient,
+        // #102), the row's hook can never fire again. Unlike the alert/
+        // experience twins the orphaned bell's url is NOT a 404 — the six
+        // post classes carry post_id + a #comment- fragment on the OWNING
+        // post's show() — so the reachable wrong outcome here is the
+        // unread badge counting a bell about a comment that no longer
+        // exists, permanent until the post itself is later deleted. The
+        // closing is the same shape: lock-first (the rival's fan-out then
+        // queues behind the parent's own X lock and its post-insert current
+        // read — #153's $parentStillThere/$postStillThere re-checks — backs
+        // out before writing the bell at all), exists() probe DECIDES (#307:
+        // vanished between route binding and transaction -> 404, no success
+        // flash for a rival's delete), and the subtree sweep to a FIXED
+        // POINT after the delete. The id set must be collected INSIDE the
+        // transaction BEFORE the delete: the FK cascade drops descendants
+        // without events, and subtreeIds() afterwards sees only the root.
+        // No ledger arming here — the comment hooks unlink no files.
+        $deleted = DB::transaction(function () use ($comment): bool {
+            if (! Comment::whereKey($comment->id)->lockForUpdate()->exists()) {
+                return false;
+            }
+
+            $subtree = Comment::subtreeIds($comment->id);
+
+            $comment->delete();
+
+            do {
+                $swept = BellSweeps::sweepComments($subtree);
+            } while ($swept > 0);
+
+            return true;
+        });
+
+        if (! $deleted) {
+            abort(404);
+        }
 
         return back()->with('success', 'Đã xóa bình luận!');
     }

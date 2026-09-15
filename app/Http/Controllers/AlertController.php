@@ -7,6 +7,8 @@ use App\Models\User;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use App\Services\DashboardStatsService;
+use App\Support\BellSweeps;
+use App\Support\DeferredFileUnlinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -649,7 +651,68 @@ class AlertController extends Controller
         if (! auth()->user()->isAdmin && $alert->user_id !== auth()->id()) {
             abort(403);
         }
-        $alert->delete();
+
+        // Issue #311: was a bare $alert->delete() — the #271 window, unfixed
+        // on this route. The #121 notification sweep fires on Alert::deleting
+        // BEFORE the DELETE acquires the alerts row's X lock, so a comment
+        // fan-out holding that lock (#153's lockForUpdate target read,
+        // INSIDE whose transaction NewCommentOnPost is written through the
+        // synchronous database channel) commits its bell after the sweep
+        // already answered. notifications has no FK to alerts (the morph
+        // keys the recipient — #102's whole premise), the alert row is
+        // gone so the hook can never fire for it again: a permanent orphan
+        // whose /alerts/N url 404s and which inflates the unread badge
+        // forever. Same closing as #271 for support destroy: lock the row
+        // FIRST (a rival still inside its fan-out transaction then sees the
+        // wait and its own re-reads resolve against the dead row), delete,
+        // and sweep the notifications table to a FIXED POINT after the
+        // delete — on sqlite compileLock is a no-op, so the sweep alone is
+        // what closes it there (same dialect honesty as #271/#266). The
+        // exists() probe DECIDES (#307's consumption of #285's doctrine):
+        // a rival destroy committing between this route binding's snapshot
+        // hydration and the lock read 404s instead of flashing success for
+        // a post this request did not delete. Raw exists()/pluck: hydrates
+        // no model, fires no retrieved event (#163 probes stay armable),
+        // and the file unlink keeps its #289 current read inside the hook.
+        // The transaction moves the hook's unlink inside a rollback-able
+        // scope for the first time on this route, so #309's ledger applies:
+        // arm around the extent, drain only after a real commit, discard on
+        // throw — a late rollback (e.g. the sweep deadlocking with a rival
+        // transaction on MySQL) must resurrect the row WITH its file, not
+        // over a deleted one. Same caller-owned scope as ProfileController.
+        DeferredFileUnlinks::arm();
+
+        try {
+            $deleted = DB::transaction(function () use ($alert): bool {
+                if (! Alert::whereKey($alert->id)->lockForUpdate()->exists()) {
+                    return false;
+                }
+
+                $alert->delete();
+
+                do {
+                    $swept = BellSweeps::sweepPost($alert->id, 'alert');
+                } while ($swept > 0);
+
+                return true;
+            });
+        } catch (\Throwable $e) {
+            DeferredFileUnlinks::discard();
+
+            throw $e;
+        }
+
+        if (! $deleted) {
+            // Vanished row: nothing was captured, but the gate must not stay
+            // armed past this request — an abort skips the drain below, and
+            // a static left armed would silently swallow every later unlink
+            // the process serves (long-lived workers persist).
+            DeferredFileUnlinks::discard();
+
+            abort(404);
+        }
+
+        DeferredFileUnlinks::drain();
 
         // Sau khi xoá, redirect về dashboard
         return redirect()->route('dashboard')->with('success', 'Đã xoá cảnh báo!');
