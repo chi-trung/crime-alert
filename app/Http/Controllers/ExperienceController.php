@@ -188,7 +188,12 @@ class ExperienceController extends Controller
         // the force below moves EVERY non-admin edit to 'pending', so a
         // rejected post rewritten by its owner silently undid the reject
         // decision with zero bells. Both out-of-review transitions now ring.
-        $demotesIntoQueue = ! Auth::user()->isAdmin && in_array($experience->status, ['approved', 'rejected'], true);
+        // Issue #287: the bell gate moved INTO the transaction below as a
+        // locking current read of status — see AlertController::update() for
+        // the full rationale. A binding-computed gate let a mid-flight
+        // approve()/reject() resurrect the just-decided row into the queue
+        // with zero bells, violating #225/#257. Only the forced demote stays
+        // here; whether it DEMOTES INTO the queue is re-derived live.
         if (! Auth::user()->isAdmin) {
             $data['status'] = 'pending';
         }
@@ -220,18 +225,29 @@ class ExperienceController extends Controller
         // but-alive row is decided by the in-transaction re-read, never by
         // affected-rows count (MySQL reports CHANGED, SQLite MATCHED — #233's
         // dialect-split doctrine holds; byte-identical double-submits
-        // legitimately change nothing and must not false-'stale'). Residual,
-        // identical to alerts: status is deliberately NOT guarded — a
-        // mid-flight moderation transition is #189's conditional-transition
-        // shape on the other side, already answered by approve()/reject()'s
-        // own guards, and updated_at is excluded for #89's second-resolution
-        // blindness inside the one-second race window.
+        // legitimately change nothing and must not false-'stale'). Residual
+        // updated_at stays excluded for #89's second-resolution blindness
+        // inside the one-second race window. The mid-flight moderation
+        // transition that used to be listed here as "answered by #189's own
+        // guards" is a BELL problem those guards never addressed: the gate
+        // read the binding's stale status, so approve()/reject() committing
+        // behind it let this request re-queue a decided row with zero bells
+        // (issue #287). Fixed now — this transaction OPENS with a
+        // lockForUpdate status read and the gate uses that live value.
         $contentSnapshot = [
             'title' => $experience->title,
             'content' => $experience->content,
             'name' => $experience->name,
         ];
-        $outcome = DB::transaction(function () use ($experience, $data, $demotesIntoQueue, $contentSnapshot) {
+        $outcome = DB::transaction(function () use ($experience, $data, $contentSnapshot) {
+            // Issue #287: first statement = locking current read of status
+            // (#163 doctrine), which also holds the row lock across this
+            // transaction so no approve()/reject() status-only write can slip
+            // between the gate and the guarded UPDATE. The gate reads the
+            // LIVE status; a plain pending->pending edit still stays silent
+            // per #225. Builder ->value(): no model hydration, no retrieved
+            // event — the race probes below stay armable exactly as before.
+            $liveStatus = Experience::whereKey($experience->id)->lockForUpdate()->value('status');
             Experience::whereKey($experience->id)
                 ->where($contentSnapshot)
                 ->update($data + ['updated_at' => now()]);
@@ -253,7 +269,10 @@ class ExperienceController extends Controller
             // re-read below and the notification payload both still expect
             // the model to carry the just-written row.
             $experience->refresh();
-            if (! $demotesIntoQueue) {
+            // Issue #287: gate on the locking current read taken at the top
+            // of this transaction (the status BEFORE our own forced 'pending'
+            // write), not on the binding's pre-transaction read.
+            if (Auth::user()->isAdmin || ! in_array($liveStatus, ['approved', 'rejected'], true)) {
                 return false;
             }
 

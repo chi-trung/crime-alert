@@ -352,7 +352,16 @@ class AlertController extends Controller
         // so many words (every arrival in the queue must name itself). The
         // gate now covers both out-of-review transitions, while a still
         // 'pending' edit stays silent: it was already belling.
-        $demotesIntoQueue = ! auth()->user()->isAdmin && in_array($alert->status, ['approved', 'rejected'], true);
+        // Issue #287: the bell gate itself moved INTO the transaction below,
+        // as a locking current read of status. Computing it here from the
+        // route binding's pre-transaction read let a mid-flight approve()/
+        // reject() (a status-only write the #265 guard deliberately does not
+        // exclude it from contending on) flip the row to 'approved' behind a
+        // gate that still said 'pending' -> false: this request then
+        // resurrected the just-decided row into the queue with zero bells —
+        // exactly the silent arrival #225/#257 forbid. Only the forced
+        // demote stays here; the decision of whether it DEMOTES INTO the
+        // queue (vs re-queues a stale 'pending') is re-derived live.
         if (! auth()->user()->isAdmin) {
             $data['status'] = 'pending';
         }
@@ -485,11 +494,26 @@ class AlertController extends Controller
         // (#233's CHANGED-vs-MATCHED dialect split doctrine holds).
         // Residuals, each out of scope here as before: a rival that changed
         // only coordinates on an otherwise byte-identical edit is covered
-        // too (coords are guarded), but a mid-flight moderation transition
-        // (status-only write by approve()/reject()) still reads as success
-        // — that race is #189's conditional-transition shape on the other
-        // side, and its own guards already answer it.
-        $outcome = DB::transaction(function () use ($alert, $data, $demotesIntoQueue, $oldImage, $contentSnapshot) {
+        // too (coords are guarded). A mid-flight moderation transition
+        // (status-only write by approve()/reject()) used to be listed here
+        // as "#189's shape answered by its own guards" — but those guards
+        // only stop double-clicked moderation; the BELL gate on the binding's
+        // stale status let this request silently re-queue a decided row
+        // (issue #287). Fixed now: the transaction's first statement is a
+        // lockForUpdate status read, so the gate sees the live status AND
+        // the row lock keeps approve()/reject() out of the rest of this
+        // transaction.
+        $outcome = DB::transaction(function () use ($alert, $data, $oldImage, $contentSnapshot) {
+            // Issue #287: the FIRST statement of this transaction takes the
+            // status as a locking current read (#163's doctrine), which also
+            // holds the row lock across the rest of the transaction — an
+            // approve()/reject() can no longer slip a status-only write
+            // between the gate and the guarded UPDATE below. The gate then
+            // reads the LIVE status, not the binding's pre-transaction one:
+            // a pending->approved commit that landed before this lock read
+            // counts as an arrival (bell), and a plain pending->pending edit
+            // still stays silent per #225.
+            $liveStatus = Alert::whereKey($alert->id)->lockForUpdate()->value('status');
             Alert::whereKey($alert->id)
                 ->where('image', $oldImage)
                 ->where($contentSnapshot)
@@ -518,7 +542,10 @@ class AlertController extends Controller
             // below and the notification payload both still expect the model
             // to carry the just-written row.
             $alert->refresh();
-            if (! $demotesIntoQueue) {
+            // Issue #287: gate on the locking current read taken at the top
+            // of this transaction (the status BEFORE our own write forced
+            // 'pending'), not on a pre-transaction binding read.
+            if (auth()->user()->isAdmin || ! in_array($liveStatus, ['approved', 'rejected'], true)) {
                 return false;
             }
 
