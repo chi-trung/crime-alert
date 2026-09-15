@@ -88,6 +88,8 @@ php artisan migrate:fresh --seed
 ```
 `AdminUserSeeder` tạo tài khoản admin (email/mật khẩu đọc từ `ADMIN_EMAIL` / `ADMIN_PASSWORD` trong `.env`, mặc định `admin@crime-alert.local` / `ChangeMe!123`). **Đổi mật khẩu ngay sau lần đăng nhập đầu.** Từ issue #273, seeder từ chối (throw) nếu email cấu hình đã thuộc về tài khoản **không phải admin** — ai đó đăng ký trước email default thì deploy sẽ fail loudly, không âm thầm thăng cấp họ; hãy đặt `ADMIN_EMAIL` khác trước khi seed.
 
+`DatabaseSeeder` còn tạo tài khoản demo `test@example.com` / `password` (đã xác thực email) cho môi trường dev/CI. Từ issue #277, tài khoản demo này **không** được seed trên production (`APP_ENV=production`) — credential của nó nằm công khai trong repo. Nếu database từng được seed ở môi trường khác rồi đưa lên production, hãy tự xóa row `test@example.com`.
+
 ### 5️⃣ Chạy
 ```bash
 php artisan serve
