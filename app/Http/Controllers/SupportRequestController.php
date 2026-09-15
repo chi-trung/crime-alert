@@ -259,7 +259,10 @@ class SupportRequestController extends Controller
         // (Documented residual inherited from #153: a close/commit landing
         // after the post-insert re-read but before this transaction commits
         // still slips through — closing that fully needs row locking in the
-        // thread's own delete/close paths.)
+        // thread's own delete/close paths. Issue #271 closed the DELETE half
+        // of that sentence: destroy() now takes the row lock before the #102
+        // sweep and sweeps again at a fixed point after the delete; the
+        // SQLite-only close window above remains as documented.)
         $outcome = DB::transaction(function () use ($supportRequest, $data) {
             $live = SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->first();
             if (! $live) {
