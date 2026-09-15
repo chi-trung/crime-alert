@@ -58,7 +58,16 @@ Route::middleware('auth')->group(function () {
     // Issue #237: update() is #225's demote-and-re-bell fan-out endpoint, so
     // it gets the same bound store() received in #165 — its own named lane.
     Route::put('/alerts/{alert}', [AlertController::class, 'update'])->middleware('throttle:5,1,alert-update')->name('alerts.update');
-    Route::delete('/alerts/{alert}', [AlertController::class, 'destroy'])->name('alerts.destroy');
+    // Issue #315: #165/#237 laned store/update and left destroy bare — the
+    // exact gap #297 closed on the comment side. #311 made destroy MORE
+    // expensive on this route, not less: the window now stays open for the
+    // whole delete-vs-sweep loop and, on MySQL, the acquiring DELETE blocks
+    // on a rival #153 fan-out's row lock holding the X lock — so repeated
+    // destroys queue serialized, each carrying 2+ full-table LIKE sweeps of
+    // the unindexed notifications TEXT column (hook + fixed-point round).
+    // 5/min matches the alerts.store/update lane the same route family
+    // already carries; its own bucket prefix per #147.
+    Route::delete('/alerts/{alert}', [AlertController::class, 'destroy'])->middleware('throttle:5,1,alert-destroy')->name('alerts.destroy');
     Route::middleware('admin')->group(function () {
         Route::get('/admin/alerts', [AlertController::class, 'adminIndex'])->name('admin.alerts');
         Route::post('/admin/alerts/{alert}/approve', [AlertController::class, 'approve'])->name('admin.alerts.approve');
@@ -99,7 +108,10 @@ Route::middleware('auth')->group(function () {
     // Issue #237: same reasoning as alerts.update above — ExperienceController
     // ::update carries the #225 approved->pending re-bell fan-out.
     Route::put('/experiences/{experience}', [ExperienceController::class, 'update'])->middleware('throttle:5,1,experience-update')->name('experiences.update');
-    Route::delete('/experiences/{experience}', [ExperienceController::class, 'destroy'])->name('experiences.destroy');
+    // Issue #315: same closing as alerts.destroy above (see that comment);
+    // experiences.destroy's sweep carries the same cost through the shared
+    // BellSweeps fixed point since #311. Own lane per #147.
+    Route::delete('/experiences/{experience}', [ExperienceController::class, 'destroy'])->middleware('throttle:5,1,experience-destroy')->name('experiences.destroy');
     // Issue #147: unlike #141's deferral of this pair, likes are NOT a
     // bounded primitive: store() fires a fresh LikePostNotification on every
     // *insert*, so an alternating like/unlike cycle re-bells the author
