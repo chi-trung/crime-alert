@@ -503,54 +503,71 @@ class AlertController extends Controller
         // lockForUpdate status read, so the gate sees the live status AND
         // the row lock keeps approve()/reject() out of the rest of this
         // transaction.
-        $outcome = DB::transaction(function () use ($alert, $data, $oldImage, $contentSnapshot) {
-            // Issue #287: the FIRST statement of this transaction takes the
-            // status as a locking current read (#163's doctrine), which also
-            // holds the row lock across the rest of the transaction — an
-            // approve()/reject() can no longer slip a status-only write
-            // between the gate and the guarded UPDATE below. The gate then
-            // reads the LIVE status, not the binding's pre-transaction one:
-            // a pending->approved commit that landed before this lock read
-            // counts as an arrival (bell), and a plain pending->pending edit
-            // still stays silent per #225.
-            $liveStatus = Alert::whereKey($alert->id)->lockForUpdate()->value('status');
-            Alert::whereKey($alert->id)
-                ->where('image', $oldImage)
-                ->where($contentSnapshot)
-                ->update($data + ['updated_at' => now()]);
-            if (! Alert::whereKey($alert->id)->exists()) {
-                return null;
-            }
-            // Raw fetch, not ->first(): hydrating an Alert would fire the
-            // retrieved event the race probes arm on (#163 idiom) a second
-            // time; the builder reads used above already sidestep it.
-            $live = DB::table('alerts')->where('id', $alert->id)->first();
-            // ?? $oldImage: an edit that touches no image leaves the column
-            // out of $data entirely, so the value we expect to read back is
-            // whatever the guarded write started from.
-            if (! $this->sameColumnValue($live->image, array_key_exists('image', $data) ? $data['image'] : $oldImage)) {
-                return 'stale';
-            }
-            foreach ($contentSnapshot as $col => $startValue) {
-                $expected = array_key_exists($col, $data) ? $data[$col] : $startValue;
-                if (! $this->sameColumnValue($live->$col, $expected)) {
+        // Issue #289: store() learned in #267 that a disk write cannot roll
+        // back with the transaction that persists its path — update() never
+        // mirrored the lesson. The replacement file above is THIS request's
+        // burden until the guarded write lands, so every throw inside the
+        // transaction (the 1205 the #287 row lock invites from a concurrent
+        // moderation transaction, a deadlock, a connection drop) must free
+        // exactly the path this request stored before rethrowing the honest
+        // error. The null/'stale' arms below already sweep $storedImage; the
+        // throw arm was simply missing.
+        try {
+            $outcome = DB::transaction(function () use ($alert, $data, $oldImage, $contentSnapshot) {
+                // Issue #287: the FIRST statement of this transaction takes the
+                // status as a locking current read (#163's doctrine), which also
+                // holds the row lock across the rest of the transaction — an
+                // approve()/reject() can no longer slip a status-only write
+                // between the gate and the guarded UPDATE below. The gate then
+                // reads the LIVE status, not the binding's pre-transaction one:
+                // a pending->approved commit that landed before this lock read
+                // counts as an arrival (bell), and a plain pending->pending edit
+                // still stays silent per #225.
+                $liveStatus = Alert::whereKey($alert->id)->lockForUpdate()->value('status');
+                Alert::whereKey($alert->id)
+                    ->where('image', $oldImage)
+                    ->where($contentSnapshot)
+                    ->update($data + ['updated_at' => now()]);
+                if (! Alert::whereKey($alert->id)->exists()) {
+                    return null;
+                }
+                // Raw fetch, not ->first(): hydrating an Alert would fire the
+                // retrieved event the race probes arm on (#163 idiom) a second
+                // time; the builder reads used above already sidestep it.
+                $live = DB::table('alerts')->where('id', $alert->id)->first();
+                // ?? $oldImage: an edit that touches no image leaves the column
+                // out of $data entirely, so the value we expect to read back is
+                // whatever the guarded write started from.
+                if (! $this->sameColumnValue($live->image, array_key_exists('image', $data) ? $data['image'] : $oldImage)) {
                     return 'stale';
                 }
-            }
-            // The guarded builder update skips model events and the
-            // in-memory sync $alert->update() used to give; the demote re-read
-            // below and the notification payload both still expect the model
-            // to carry the just-written row.
-            $alert->refresh();
-            // Issue #287: gate on the locking current read taken at the top
-            // of this transaction (the status BEFORE our own write forced
-            // 'pending'), not on a pre-transaction binding read.
-            if (auth()->user()->isAdmin || ! in_array($liveStatus, ['approved', 'rejected'], true)) {
-                return false;
+                foreach ($contentSnapshot as $col => $startValue) {
+                    $expected = array_key_exists($col, $data) ? $data[$col] : $startValue;
+                    if (! $this->sameColumnValue($live->$col, $expected)) {
+                        return 'stale';
+                    }
+                }
+                // The guarded builder update skips model events and the
+                // in-memory sync $alert->update() used to give; the demote re-read
+                // below and the notification payload both still expect the model
+                // to carry the just-written row.
+                $alert->refresh();
+                // Issue #287: gate on the locking current read taken at the top
+                // of this transaction (the status BEFORE our own write forced
+                // 'pending'), not on a pre-transaction binding read.
+                if (auth()->user()->isAdmin || ! in_array($liveStatus, ['approved', 'rejected'], true)) {
+                    return false;
+                }
+
+                return Alert::whereKey($alert->id)->where('status', 'pending')->exists();
+            });
+        } catch (\Throwable $e) {
+            if ($storedImage !== null) {
+                \Storage::disk('public')->delete($storedImage);
             }
 
-            return Alert::whereKey($alert->id)->where('status', 'pending')->exists();
-        });
+            throw $e;
+        }
 
         if ($outcome === null) {
             if ($storedImage !== null) {
@@ -570,13 +587,6 @@ class AlertController extends Controller
             return redirect()->back()->with('info', 'Cảnh báo vừa được cập nhật ở nơi khác; thay đổi của bạn chưa được lưu.');
         }
 
-        if ($outcome) {
-            $admins = User::where('isAdmin', true)->get();
-            foreach ($admins as $admin) {
-                $admin->notify(new NewPostPendingApprovalNotification($alert, auth()->user(), 'alert'));
-            }
-        }
-
         // Issue #255: the old file had no row pointing at it the MOMENT this
         // request's guarded write landed — it is only safe to free now, and
         // only now that it is proven safe. remove_image reaches here with
@@ -584,8 +594,23 @@ class AlertController extends Controller
         // edit sees its own value back and deletes nothing. The winner's
         // unlink and a rival's (identical) unlink are both no-ops on the
         // second arrival, so the surviving request always frees the file.
+        //
+        // Issue #289: this unlink must stay BEFORE the fan-out below. The
+        // bells are synchronous writes after an already-durable swap, so a
+        // throw from the notification path 500s WITHOUT rolling the row back
+        // — and the row now points at the new file, so deleting() will never
+        // free the displaced one either. Unlink first and the worst a broken
+        // fan-out costs is missing bells (#225's documented trade), never a
+        // permanent orphan.
         if ($oldImage !== null && (array_key_exists('image', $data) ? $data['image'] : $oldImage) !== $oldImage) {
             \Storage::disk('public')->delete($oldImage);
+        }
+
+        if ($outcome) {
+            $admins = User::where('isAdmin', true)->get();
+            foreach ($admins as $admin) {
+                $admin->notify(new NewPostPendingApprovalNotification($alert, auth()->user(), 'alert'));
+            }
         }
 
         // Sau khi cập nhật, redirect về dashboard

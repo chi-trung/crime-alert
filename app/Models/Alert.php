@@ -53,8 +53,21 @@ class Alert extends Model
                 ->where('data', 'like', '%"post_id":'.$alert->id.',%')
                 ->where('data', 'like', '%"post_type":"alert"%')
                 ->delete();
-            if ($alert->image) {
-                Storage::disk('public')->delete($alert->image);
+            // Issue #289: unlink the path the ROW actually carries at delete
+            // time, not the hydrating request's in-memory copy. The binding
+            // that routes here (destroy, or ProfileController::destroy's
+            // sweep, whose #266 lock covers only the users row) can be stale
+            // — a rival replacement committed after hydration moved the
+            // column to a fresh path, and the snapshot's unlink just deleted
+            // a file the rival had ALREADY freed while the live file kept
+            // zero referencing rows forever. A raw current read inside the
+            // delete statement is the only value both races agree on;
+            // builder reads fire no retrieved event, so #163-style probes
+            // stay armable. Row already gone (racing double-delete) reads
+            // null and frees nothing — correct, the winner unlinked it.
+            $live = DB::table('alerts')->where('id', $alert->id)->value('image');
+            if ($live) {
+                Storage::disk('public')->delete($live);
             }
         });
     }
