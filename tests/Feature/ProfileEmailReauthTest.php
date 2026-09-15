@@ -200,7 +200,7 @@ class ProfileEmailReauthTest extends TestCase
         $this->post('/logout');
 
         // The attacker, now a guest, requests recovery on the address they
-        // TRIED to install — it belongs to nobody. Post-#180-collapse the
+        // TRIED to install — it belongs to nobody. Since #291 the
         // page gives its uniform "sent" answer (the enumeration branch is
         // gone), so the real proof is what did NOT happen: no reset token
         // was minted for that mailbox.
