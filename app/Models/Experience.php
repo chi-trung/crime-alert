@@ -2,15 +2,9 @@
 
 namespace App\Models;
 
-use App\Notifications\LikeCommentNotification;
-use App\Notifications\LikePostNotification;
-use App\Notifications\NewCommentOnPost;
-use App\Notifications\NewPostNotification;
-use App\Notifications\NewPostPendingApprovalNotification;
-use App\Notifications\NewReplyOnComment;
+use App\Support\BellSweeps;
 use App\Support\DeferredFileUnlinks;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\DB;
 
 class Experience extends Model
 {
@@ -28,19 +22,9 @@ class Experience extends Model
                 ->delete();
             // Issue #121: same notification sweep as Alert::deleting, scoped
             // to post_type experience so experience N never eats alert N's
-            // rows (ids collide across the two tables).
-            DB::table('notifications')
-                ->whereIn('type', [
-                    NewPostNotification::class,
-                    NewPostPendingApprovalNotification::class,
-                    LikePostNotification::class,
-                    NewCommentOnPost::class,
-                    NewReplyOnComment::class,
-                    LikeCommentNotification::class,
-                ])
-                ->where('data', 'like', '%"post_id":'.$experience->id.',%')
-                ->where('data', 'like', '%"post_type":"experience"%')
-                ->delete();
+            // rows (ids collide across the two tables). Matcher + type list
+            // shared through BellSweeps::sweepPost since #311.
+            BellSweeps::sweepPost($experience->id, 'experience');
             // Issue #309: capture() not delete() — same #289 reasoning as
             // Alert::deleting; the unlink defers only inside
             // ProfileController::destroy()'s armed ledger, everywhere else

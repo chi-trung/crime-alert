@@ -2,14 +2,11 @@
 
 namespace App\Models;
 
-use App\Notifications\LikeCommentNotification;
-use App\Notifications\NewCommentOnPost;
-use App\Notifications\NewReplyOnComment;
+use App\Support\BellSweeps;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Facades\DB;
 
 class Comment extends Model
 {
@@ -25,28 +22,12 @@ class Comment extends Model
             // Issue #121: the three comment-bearing notification classes
             // point at comments only inside their JSON payload — same orphan
             // shape as the likes above. Sweep over the whole subtree (the FK
-            // cascade drops child replies without events): comment_id and
-            // reply_id/parent_comment_id each use the closing-comma exact-id
-            // form so comment 1 never eats comment 11's rows (#102's idiom).
-            $subtree = self::subtreeIds($comment->id);
-            $query = DB::table('notifications')
-                ->whereIn('type', [
-                    NewCommentOnPost::class,
-                    NewReplyOnComment::class,
-                    LikeCommentNotification::class,
-                ])
-                ->where(function ($q) use ($subtree) {
-                    foreach ($subtree as $id) {
-                        $q->orWhere('data', 'like', '%"comment_id":'.$id.',%')
-                            ->orWhere('data', 'like', '%"reply_id":'.$id.',%')
-                            ->orWhere('data', 'like', '%"parent_comment_id":'.$id.',%');
-                    }
-                });
-            // An empty subtree is impossible (it always contains $comment->id),
-            // but an empty orWhere group would match everything — guard anyway.
-            if ($subtree !== []) {
-                $query->delete();
-            }
+            // cascade drops child replies without events); the matcher
+            // (closing-comma exact-id per #102 across comment_id, reply_id
+            // and parent_comment_id) and the class list live in
+            // BellSweeps::sweepComments since #311, shared with the destroy
+            // route's post-delete fixed point so the two can never drift.
+            BellSweeps::sweepComments(self::subtreeIds($comment->id));
         });
     }
 

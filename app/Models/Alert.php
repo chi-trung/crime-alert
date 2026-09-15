@@ -2,12 +2,7 @@
 
 namespace App\Models;
 
-use App\Notifications\LikeCommentNotification;
-use App\Notifications\LikePostNotification;
-use App\Notifications\NewCommentOnPost;
-use App\Notifications\NewPostNotification;
-use App\Notifications\NewPostPendingApprovalNotification;
-use App\Notifications\NewReplyOnComment;
+use App\Support\BellSweeps;
 use App\Support\DeferredFileUnlinks;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -37,22 +32,13 @@ class Alert extends Model
             // the morph notifiable_* pair keys the recipient, so no FK
             // cascades them (same structural reason as #57/#61, and the #102
             // support-thread sweep). Without this every deleted alert leaves
-            // bell rows whose url 404s. The id match uses the closing-comma
-            // form — every payload continues past post_id — so alert 1's
-            // sweep cannot eat alert 11's rows; post_type is matched too so
-            // alert N never eats experience N's rows.
-            DB::table('notifications')
-                ->whereIn('type', [
-                    NewPostNotification::class,
-                    NewPostPendingApprovalNotification::class,
-                    LikePostNotification::class,
-                    NewCommentOnPost::class,
-                    NewReplyOnComment::class,
-                    LikeCommentNotification::class,
-                ])
-                ->where('data', 'like', '%"post_id":'.$alert->id.',%')
-                ->where('data', 'like', '%"post_type":"alert"%')
-                ->delete();
+            // bell rows whose url 404s. The matcher (closing-comma id form
+            // so alert 1's sweep cannot eat alert 11's rows; post_type
+            // discriminator so alert N never eats experience N's rows) lives
+            // in BellSweeps::sweepPost since #311 — the destroy route's
+            // #271-style post-delete fixed point sweeps through the SAME
+            // method, so hook and sweep can never drift apart.
+            BellSweeps::sweepPost($alert->id, 'alert');
             // Issue #289: unlink the path the ROW actually carries at delete
             // time, not the hydrating request's in-memory copy. The binding
             // that routes here (destroy, or ProfileController::destroy's
