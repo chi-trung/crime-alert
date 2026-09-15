@@ -83,8 +83,17 @@ Route::middleware('auth')->group(function () {
     // the app shares one counter (probe: 31st comment 429'd support's first
     // message), so each limiter gets its own named lane.
     Route::post('/comments', [CommentController::class, 'store'])->middleware('throttle:30,1,comments')->name('comments.store');
-    Route::put('/comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
-    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+    // Issue #297: #141 stopped at store() and left the two sibling user
+    // writes bare. destroy() is the expensive one — Comment::deleting
+    // expands the whole reply subtree (unbounded: store() accepts any
+    // parent_id, so the subtree is grown at the 30/min insert lane and
+    // spent in ONE request) and sweeps notifications with 3 unindexable
+    // LIKE predicates per subtree id against an unindexed TEXT column.
+    // update() is the same doctrine gap: every other auth'd write here
+    // carries a named bucket. Separate prefixes per #147 so grinding one
+    // lane cannot starve the others.
+    Route::put('/comments/{comment}', [CommentController::class, 'update'])->middleware('throttle:30,1,comment-update')->name('comments.update');
+    Route::delete('/comments/{comment}', [CommentController::class, 'destroy'])->middleware('throttle:30,1,comment-destroy')->name('comments.destroy');
     Route::get('/comments/{comment}/edit', [CommentController::class, 'edit'])->name('comments.edit');
     Route::get('/experiences/{experience}/edit', [ExperienceController::class, 'edit'])->name('experiences.edit');
     // Issue #237: same reasoning as alerts.update above — ExperienceController
