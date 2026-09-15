@@ -97,8 +97,34 @@ class LikeController extends Controller
         // residual: a delete committed after the re-check but before this
         // transaction's commit still slips through — closing that fully
         // needs row locking in the three models' delete sweeps too.)
+        //
+        // Issue #279: #139's current read checked only EXISTS, adopting the
+        // existence half of the CommentController::store() #153 idiom but
+        // not its status half. The approval gate sits at the top of store()
+        // (L84, a plain find outside this transaction), so an admin reject
+        // that commits between the gate and the re-check leaves the target
+        // row ALIVE — only its status moved off 'approved' — and exists()
+        // cannot see that. The like then commits as a permanent ghost on
+        // hidden content (the same #57 morph pair nothing sweeps until the
+        // post is deleted outright), the like count inflates for a post that
+        // would resurface publicly on the next pending->approved, and the
+        // notification below rings the author about engagement on content
+        // moderation just rejected. Worse, the user cannot un-like it:
+        // destroy() runs the same L84 gate and 403s. reject()/approve() are
+        // plain conditional UPDATEs that clear neither likes nor bells, so
+        // nothing else closes the window. The fix makes the current read
+        // status-aware exactly like #153: for an Alert/Experience the locked
+        // re-read's own status decides; for a Comment it is the owning post
+        // that must still be approved (the type=comment case never re-read
+        // the post in-transaction at all before #279). A demoted target backs
+        // out with the SAME 403 the pre-race gate gives — the like row is
+        // deleted and the transaction COMMITS that delete, so the abort is
+        // raised only AFTER the closure returns (aborting inside would roll
+        // the erase back and leave the ghost). The notification stays below
+        // the check, so backing out means no bell row to chase (#139).
         $vanished = false;
-        DB::transaction(function () use ($model, $user, $type, &$vanished) {
+        $demoted = false;
+        DB::transaction(function () use ($model, $user, $type, &$vanished, &$demoted) {
             $inserted = false;
             if (! $model->likes()->where('user_id', $user->id)->exists()) {
                 $inserted = true;
@@ -122,11 +148,36 @@ class LikeController extends Controller
             // where its write lock makes mid-transaction interleaving
             // impossible anyway). Covers the duplicate-key-loser row too:
             // the user's like on a dead target is erased whichever way it
-            // arrived.
-            $stillThere = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->exists();
-            if (! $stillThere) {
+            // arrived. #279: it is now a hydration (first()) not exists(), so
+            // the row's CURRENT status — not just its presence — can veto the
+            // like, mirroring #153's `$target->status !== 'approved'`.
+            $live = $model->newQuery()->whereKey($model->getKey())->lockForUpdate()->first();
+            if (! $live) {
                 $model->likes()->where('user_id', $user->id)->delete();
                 $vanished = true;
+
+                return;
+            }
+            // The post a Comment's visibility inherits from (#96's rule, read
+            // from the live comment's own pointers), lock-read alongside the
+            // comment so a mid-flight reject of the owning post also backs
+            // this out — pre-#279 the type=comment path never touched the
+            // post's status inside the transaction at all.
+            $post = null;
+            if ($live instanceof Comment) {
+                $post = $live->alert_id
+                    ? Alert::whereKey($live->alert_id)->lockForUpdate()->first()
+                    : Experience::whereKey($live->experience_id)->lockForUpdate()->first();
+                $approved = $post && $post->status === 'approved';
+            } else {
+                $approved = $live->status === 'approved';
+            }
+            if (! $approved) {
+                // The target lives but lost approval (or, for a comment, its
+                // post did): erase the like, commit the erase, and answer the
+                // same 403 the top-of-method gate gave pre-race.
+                $model->likes()->where('user_id', $user->id)->delete();
+                $demoted = true;
 
                 return;
             }
@@ -142,14 +193,15 @@ class LikeController extends Controller
             // back too — legacy posts were permanently un-likable for every
             // user. The truthy-owner guard mirrors CommentController's #153
             // `$postOwnerId &&` gate: a falsy owner records the like cleanly
-            // and attempts no notification.
-            if ($inserted && $type === 'comment' && $model->user_id && $model->user_id != $user->id) {
-                $post = $model->alert_id ? Alert::find($model->alert_id) : Experience::find($model->experience_id);
-                $postType = $model->alert_id ? 'alert' : 'experience';
-                $model->user->notify(new LikeCommentNotification($user, $model, $post, $postType));
+            // and attempts no notification. #279: notifications now use the
+            // live models both re-read and re-verified above ($live, $post)
+            // rather than a second non-locking fetch.
+            if ($inserted && $type === 'comment' && $live->user_id && $live->user_id != $user->id) {
+                $postType = $live->alert_id ? 'alert' : 'experience';
+                $live->user->notify(new LikeCommentNotification($user, $live, $post, $postType));
             }
-            if ($inserted && ($type === 'alert' || $type === 'experience') && $model->user_id && $model->user_id != $user->id) {
-                $model->user->notify(new LikePostNotification($user, $model, $type));
+            if ($inserted && ($type === 'alert' || $type === 'experience') && $live->user_id && $live->user_id != $user->id) {
+                $live->user->notify(new LikePostNotification($user, $live, $type));
             }
         });
 
@@ -159,6 +211,13 @@ class LikeController extends Controller
             }
 
             return back()->with('error', 'Bài viết không còn tồn tại.');
+        }
+
+        if ($demoted) {
+            // Raised after the transaction so the like-erase above is
+            // committed, not rolled back. Same status the pre-race gate
+            // returns: the content is (now) not likeable.
+            abort(403);
         }
 
         $count = $model->likes()->count();
