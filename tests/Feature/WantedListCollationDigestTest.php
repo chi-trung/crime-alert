@@ -140,6 +140,34 @@ class WantedListCollationDigestTest extends TestCase
         );
     }
 
+    public function test_byte_identical_duplicates_are_not_given_the_same_digest(): void
+    {
+        // Review-pass hardening for #305: the backfill must not just key
+        // distinct rows distinctly, it must also SURVIVE a table that already
+        // holds byte-identical duplicates — hand-imported data predating any
+        // UNIQUE index can. Both would hash the same, so writing the digest
+        // to both rows makes the migration's own UNIQUE index build fail
+        // (and silently keying them alike is the #305 merge again). First row
+        // of each group wins, the rest stay NULL: UNIQUE accepts many NULLs.
+        DB::table('wanted_people')->insert([
+            ['name' => 'Trần Văn Test', 'birth_year' => '1999', 'address' => 'Đà Nẵng', 'decision' => 'QD-1', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Trần Văn Test', 'birth_year' => '1999', 'address' => 'Đà Nẵng', 'decision' => 'QD-1', 'created_at' => now(), 'updated_at' => now()],
+        ]);
+
+        $this->assertSame(1, WantedPerson::backfillMissingSourceKeys());
+
+        $rows = WantedPerson::orderBy('id')->get();
+        $this->assertSame(
+            [WantedPerson::digestFor('Trần Văn Test', '1999', 'Đà Nẵng', 'QD-1'), null],
+            $rows->pluck('source_key')->all()
+        );
+
+        // And the constraint the migration adds right after still holds here.
+        $unique = collect(Schema::getIndexes('wanted_people'))
+            ->first(fn ($i) => $i['columns'] === ['source_key']);
+        $this->assertTrue((bool) $unique['unique']);
+    }
+
     public function test_existing_rows_are_backfilled_with_distinct_digests(): void
     {
         $this->mysql();

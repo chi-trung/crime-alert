@@ -38,7 +38,13 @@ class WantedPerson extends Model
      * Key existing rows that predate the digest column, chunked so a large
      * imported table cannot exhaust memory. Returns how many rows were
      * filled. Distinct stored bytes always produce distinct digests, so the
-     * UNIQUE index the migration adds right after can accept them all.
+     * UNIQUE index the migration adds right after accepts the backfill —
+     * EXCEPT genuine byte-identical duplicates (possible in hand-imported
+     * data from before any index existed): the first of each group gets the
+     * key, the rest stay NULL. UNIQUE tolerates multiple NULLs, and letting
+     * duplicates collide into one digest would fail the index build outright
+     * — silently picking one of them for the crawler instead would recreate
+     * the #305 merge behind a new name.
      */
     public static function backfillMissingSourceKeys(): int
     {
@@ -48,14 +54,16 @@ class WantedPerson extends Model
             ->select(['id', 'name', 'birth_year', 'address', 'decision'])
             ->chunkById(500, function ($people) use (&$filled) {
                 foreach ($people as $person) {
-                    DB::table('wanted_people')
-                        ->where('id', $person->id)
-                        ->update(['source_key' => static::digestFor(
-                            $person->name,
-                            $person->birth_year,
-                            $person->address,
-                            $person->decision,
-                        )]);
+                    $key = static::digestFor(
+                        $person->name,
+                        $person->birth_year,
+                        $person->address,
+                        $person->decision,
+                    );
+                    if (DB::table('wanted_people')->where('source_key', $key)->where('id', '!=', $person->id)->exists()) {
+                        continue;
+                    }
+                    DB::table('wanted_people')->where('id', $person->id)->update(['source_key' => $key]);
                     $filled++;
                 }
             });
