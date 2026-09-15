@@ -25,11 +25,11 @@ use Tests\TestCase;
  * Shape 1 (atomicity): a throw in a late sweep used to leave the earlier
  * loops' committed destruction behind — alerts, experiences, comments and
  * their images permanently gone while the account survived, still logged
- * in. Inside the transaction the rollback restores every row. (Disk
- * unlinks already executed inside model hooks cannot roll back — the
- * honest residual, documented in the controller: rows come back with
- * broken image links, which is the recoverable half, unlike the old
- * permanently destroyed content.)
+ * in. Inside the transaction the rollback restores every row. (#266 had to
+ * concede the disk half then — unlinks already executed inside hooks cannot
+ * roll back; Issue #309 closes it via the capture-and-defer ledger in
+ * ProfileDestroyDeferredUnlinkTest, so a rolled-back teardown now keeps
+ * files with rows.)
  *
  * Shape 2 (window): a second tab's POST /alerts committing after the
  * sweep's SELECT but before $user->delete() created a row that the FK
