@@ -337,4 +337,50 @@ class CrawlerTest extends TestCase
 
         $this->assertSame(0, News::count());
     }
+
+    /**
+     * Issue #299 (console-1): the #293 zero-parse guard was ported to
+     * CrawlNews only. CrawlWantedList has the same shape — its $count lives
+     * INSIDE the loop — so when truyna.bocongan.gov.vn drops or renames its
+     * table element, filter('table tr') matches nothing, the loop never
+     * runs, and the hourly run printed "Đã crawl xong , tổng cộng: 0 đối
+     * tượng." + SUCCESS: the wanted list and the dashboard hotWanted tile
+     * freeze on stale fugitives while the operator's only monitoring signal
+     * (exit code) lies.
+     */
+    public function test_wanted_list_crawl_fails_loudly_when_the_table_parses_to_zero_rows(): void
+    {
+        Http::fake([
+            'truyna.bocongan.gov.vn/*' => Http::response('<html><body><div class="new-layout">no table here</div></body></html>', 200),
+        ]);
+
+        // Pre-fix: exit SUCCESS with "0 đối tượng", indistinguishable from
+        // a healthy crawl — the exact failure mode #293 diagnosed for news.
+        $this->artisan('crawl:wanted-list')
+            ->expectsOutputToContain('Không phân tích được dòng nào')
+            ->assertFailed();
+
+        $this->assertSame(0, WantedPerson::count());
+    }
+
+    /**
+     * Issue #299: the zero-NODES check alone still misses the column-
+     * renumber case — rows are present but every one is skipped by the
+     * <8-<td> shape guard (e.g. upstream merges cells), so $count stays 0
+     * through the loop body's continue paths. A run that parsed nothing
+     * from a non-empty page is just as silent a freeze.
+     */
+    public function test_wanted_list_crawl_fails_loudly_when_every_row_is_skipped(): void
+    {
+        Http::fake([
+            'truyna.bocongan.gov.vn/*' => Http::response('<table><tr><td>a</td><td>b</td></tr><tr><td>c</td><td>d</td></tr></table>', 200),
+        ]);
+
+        // Pre-fix: rows exist, all skipped, printed "0 đối tượng" + SUCCESS.
+        $this->artisan('crawl:wanted-list')
+            ->expectsOutputToContain('Không phân tích được dòng nào')
+            ->assertFailed();
+
+        $this->assertSame(0, WantedPerson::count());
+    }
 }

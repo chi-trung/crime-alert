@@ -32,6 +32,18 @@ class CrawlWantedList extends Command
 
         $crawler = new Crawler($response->body());
         $rows = $crawler->filter('table tr');
+        // Issue #299 (console-1): the #293 zero-parse guard, ported to this
+        // twin. $count lives INSIDE the loop, so if upstream drops or
+        // renames its table element the filter matches nothing, the loop
+        // never runs, and the hourly run printed "0 đối tượng" + SUCCESS
+        // while the wanted list froze invisibly. Same for the all-skipped
+        // case (rows present but none survive the <8-<td>/regex guards, e.g.
+        // a column renumber), checked after the loop.
+        if ($rows->count() === 0) {
+            $this->warn('Không phân tích được dòng nào từ bảng truy nã — nguồn có thể đã đổi cấu trúc.');
+
+            return self::FAILURE;
+        }
         $count = 0;
         // Duyệt từ cuối lên đầu để đảo ngược thứ tự
         for ($i = $rows->count() - 1; $i >= 0; $i--) {
@@ -76,6 +88,14 @@ class CrawlWantedList extends Command
                 'agency' => mb_substr(trim($cols->eq(7)->text()), 0, 255),
             ]);
             $count++;
+        }
+        if ($count === 0) {
+            // Rows were present but every one was skipped by the shape
+            // guards — a column renumber, not an empty feed. Loud failure
+            // for the same silent-freeze reason as the zero-rows guard.
+            $this->warn('Không phân tích được dòng nào từ bảng truy nã — nguồn có thể đã đổi cấu trúc.');
+
+            return self::FAILURE;
         }
         $this->info("Đã crawl xong , tổng cộng: $count đối tượng.");
 
