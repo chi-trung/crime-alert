@@ -17,11 +17,20 @@ function initializeMap() {
         let marker;
 
         // Nếu đã có giá trị latitude/longitude thì hiển thị marker
-        const lat = document.getElementById('latitude').value;
-        const lng = document.getElementById('longitude').value;
+        // Issue #295: these hidden inputs are repopulated verbatim by
+        // old('latitude') after a failed validation, so they are untrusted
+        // bytes. The finite gate keeps garbage from reaching L.marker (whose
+        // "Invalid LatLng object: (<raw>, ...)" throw then smuggled the raw
+        // value into the innerHTML fallback below), and the encoding keeps
+        // even a valid-looking value percent-escaped in the outbound URL.
+        const lat = Number(document.getElementById('latitude').value);
+        const lng = Number(document.getElementById('longitude').value);
+        const hasPosition = Number.isFinite(lat) && Number.isFinite(lng)
+            && document.getElementById('latitude').value !== ''
+            && document.getElementById('longitude').value !== '';
 
         function reverseGeocode(lat, lng) {
-            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`)
+            fetch(`https://nominatim.openstreetmap.org/reverse?lat=${encodeURIComponent(lat)}&lon=${encodeURIComponent(lng)}&format=json`)
                 .then(response => response.json())
                 .then(data => {
                     if (data && data.display_name) {
@@ -35,7 +44,7 @@ function initializeMap() {
                 });
         }
 
-        if (lat && lng) {
+        if (hasPosition) {
             marker = L.marker([lat, lng]).addTo(map);
             map.setView([lat, lng], 15);
             reverseGeocode(lat, lng);
@@ -122,7 +131,15 @@ function initializeMap() {
         mapEl.classList.add('leaflet-loaded');
     } catch (error) {
         console.error('Lỗi khi tạo bản đồ:', error);
-        mapEl.innerHTML = `<div class="alert alert-danger p-3">Không thể tải bản đồ: ${error.message}</div>`;
+        // Issue #295 (#77's textContent idiom): error.message for an
+        // invalid-LatLng throw embeds the RAW bytes of the old('latitude')
+        // input, so interpolating it into innerHTML echoed the user's own
+        // markup — self-XSS one submit away. Build the alert from a text
+        // node: the message is displayed, never parsed.
+        const alertEl = document.createElement('div');
+        alertEl.className = 'alert alert-danger p-3';
+        alertEl.textContent = 'Không thể tải bản đồ: ' + error.message;
+        mapEl.replaceChildren(alertEl);
     }
 }
 

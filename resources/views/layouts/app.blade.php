@@ -532,12 +532,13 @@
 
             <!-- Input Area -->
             <div class="chatbot-input-area">
-                <input 
-                    type="text" 
-                    class="chatbot-input" 
-                    id="chatbotInput" 
+                <input
+                    type="text"
+                    class="chatbot-input"
+                    id="chatbotInput"
                     placeholder="Nhập câu hỏi của bạn..."
                     autocomplete="off"
+                    maxlength="2000"
                 >
                 <button class="chatbot-send" id="chatbotSend" type="button">
                     <i class="fas fa-paper-plane"></i>
@@ -643,7 +644,19 @@
                             method: 'POST',
                             headers: {
                                 'Content-Type': 'application/json',
-                                'X-CSRF-TOKEN': csrfToken
+                                'X-CSRF-TOKEN': csrfToken,
+                                // Issue #295: without an explicit Accept the
+                                // browser sends */*, expectsJson() is false,
+                                // and the central #207 renderer never fires —
+                                // a stale session got the middleware's 302 to
+                                // the HTML login page, fetch followed it
+                                // transparently, and the JSON below failed to
+                                // parse into the generic dead bubble. This
+                                // header is what makes #207's {success,
+                                // message, redirect} contract reachable from
+                                // this widget, same as the like clients
+                                // (alerts_show.js / experiences_show.js).
+                                'Accept': 'application/json'
                             },
                             body: JSON.stringify({ question: message })
                         });
@@ -663,6 +676,16 @@
                             // message when present; the generic line stays
                             // only for real transport failures.
                             const data = await response.json().catch(() => null);
+                            // Issue #295: a 401 (expired session) now carries
+                            // redirect per #207 — follow it like the sibling
+                            // clients instead of showing a bubble with no way
+                            // out. Checked before message because the 401 body
+                            // carries both keys and redirect is the action.
+                            if (data && data.redirect) {
+                                this.hideLoading();
+                                window.location.href = data.redirect;
+                                return;
+                            }
                             if (data && data.message) {
                                 this.hideLoading();
                                 this.addMessage(data.message, 'bot', true);
