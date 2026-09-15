@@ -75,13 +75,30 @@ class CrawlWantedList extends Command
             // surviving row's crime/decision described only one of them.
             // The decision number is the per-record discriminator, so it
             // belongs IN the key, alongside the #106 truncation.
+            $name = mb_substr($name, 0, 255);
+            $address = mb_substr(trim($cols->eq(3)->text()), 0, 255);
             $decision = mb_substr(trim($cols->eq(6)->text()), 0, 255);
+            // Issue #305 (r14/collation-digest): even the #293 four-field
+            // key does not survive MySQL. wanted_people compares under
+            // utf8mb4_unicode_ci, which folds accent-distinct Vietnamese to
+            // EQUAL primary weights — 'Nguyễn Văn An' = 'Nguyễn Văn Ân'
+            // probes TRUE on this repo's MySQL container (0900_ai_ci agrees),
+            // so one diacritic apart still MERGED: the second crawl UPDATEd
+            // the first person's row. SQLite (byte comparisons, the CI
+            // default) kept two rows, so green CI never caught it. Same
+            // doctrine as #294's news.link fix: a PHP-computed byte-exact
+            // digest is the sole lookup key. sha1 hex is lowercase-only
+            // ASCII, so no collation fold can equate two distinct digests,
+            // and json_encode keeps null, '' and absent distinguishable.
+            // Over the STORED (truncated) values, so a re-crawl whose raw
+            // cell differs past char 255 still finds the same row.
+            $sourceKey = WantedPerson::digestFor($name, $birthYear, $address, $decision);
             WantedPerson::updateOrCreate([
-                'name' => mb_substr($name, 0, 255),
-                'birth_year' => $birthYear,
-                'address' => mb_substr(trim($cols->eq(3)->text()), 0, 255),
-                'decision' => $decision,
+                'source_key' => $sourceKey,
             ], [
+                'name' => $name,
+                'birth_year' => $birthYear,
+                'address' => $address,
                 'parents' => mb_substr(trim($cols->eq(4)->text()), 0, 255),
                 'crime' => mb_substr(trim($cols->eq(5)->text()), 0, 255),
                 'decision' => $decision,
