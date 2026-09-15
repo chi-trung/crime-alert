@@ -23,33 +23,45 @@ class SupportPollDeltaFeedTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Issue #283: also returns the created message ids in insertion order.
+     * The window/cursor expectations below are expressed against THESE ids
+     * rather than literals — MySQL's InnoDB auto-increment counter does not
+     * rewind with RefreshDatabase's transaction rollback the way sqlite's
+     * AUTOINCREMENT (stored in the rollback-able sqlite_sequence table)
+     * does, so any test assuming "first id == 1" is sqlite-only.
+     *
+     * @return array{0: User, 1: User, 2: SupportRequest, 3: list<int>}
+     */
     private function thread(int $messages = 0): array
     {
         $owner = User::factory()->create(['email_verified_at' => now()]);
         $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
         $thread = SupportRequest::create(['user_id' => $owner->id, 'subject' => 'Thread']);
+        $ids = [];
         for ($i = 1; $i <= $messages; $i++) {
-            SupportMessage::create([
+            $msg = SupportMessage::create([
                 'support_request_id' => $thread->id,
                 'user_id' => $i % 3 === 0 ? $admin->id : $owner->id,
                 'message' => 'msg-'.str_pad((string) $i, 3, '0', STR_PAD_LEFT),
             ]);
+            $ids[] = $msg->id;
         }
 
-        return [$owner, $admin, $thread];
+        return [$owner, $admin, $thread, $ids];
     }
 
     public function test_delta_poll_returns_only_messages_newer_than_after_id(): void
     {
-        [$owner, , $thread] = $this->thread(5);
+        [$owner, , $thread, $ids] = $this->thread(5);
 
         $response = $this->actingAs($owner)
-            ->getJson(route('support.messages', ['supportRequest' => $thread, 'after_id' => 3]))
+            ->getJson(route('support.messages', ['supportRequest' => $thread, 'after_id' => $ids[2]]))
             ->assertOk();
 
-        $ids = collect($response->json('messages'))->pluck('id')->all();
-        $this->assertSame([4, 5], $ids, 'delta must ship only rows above after_id, oldest-first');
-        $this->assertSame(5, $response->json('latest_id'));
+        $returned = collect($response->json('messages'))->pluck('id')->all();
+        $this->assertSame([$ids[3], $ids[4]], $returned, 'delta must ship only rows above after_id, oldest-first');
+        $this->assertSame($ids[4], $response->json('latest_id'));
     }
 
     public function test_idle_tab_pays_one_bounded_empty_read(): void
@@ -85,17 +97,17 @@ class SupportPollDeltaFeedTest extends TestCase
 
     public function test_full_load_is_capped_at_the_latest_100_in_both_channels(): void
     {
-        [$owner, , $thread] = $this->thread(150);
+        [$owner, , $thread, $ids] = $this->thread(150);
 
         $json = $this->actingAs($owner)
             ->getJson(route('support.messages', ['supportRequest' => $thread]))
             ->assertOk()
             ->assertJsonCount(100, 'messages')
             ->json();
-        $ids = collect($json['messages'])->pluck('id')->all();
-        $this->assertSame(range(51, 150), $ids, 'window = newest 100, rendered oldest-first');
-        $this->assertSame(150, $json['latest_id']);
-        $this->assertSame(51, $json['oldest_id']);
+        $returned = collect($json['messages'])->pluck('id')->all();
+        $this->assertSame(array_slice($ids, 50), $returned, 'window = newest 100, rendered oldest-first');
+        $this->assertSame($ids[149], $json['latest_id']);
+        $this->assertSame($ids[50], $json['oldest_id']);
         $this->assertTrue($json['has_more_older']);
 
         // show() renders the same window, not the whole thread.
@@ -120,12 +132,12 @@ class SupportPollDeltaFeedTest extends TestCase
 
     public function test_short_threads_offer_no_load_older_and_render_everything(): void
     {
-        [$owner, , $thread] = $this->thread(3);
+        [$owner, , $thread, $ids] = $this->thread(3);
 
         $json = $this->actingAs($owner)
             ->getJson(route('support.messages', ['supportRequest' => $thread]))
             ->assertOk()->json();
-        $this->assertSame([1, 2, 3], collect($json['messages'])->pluck('id')->all());
+        $this->assertSame($ids, collect($json['messages'])->pluck('id')->all());
         $this->assertFalse($json['has_more_older']);
 
         $html = $this->actingAs($owner)->get(route('support.show', $thread))->assertOk()->getContent();
@@ -135,20 +147,21 @@ class SupportPollDeltaFeedTest extends TestCase
 
     public function test_before_id_pages_the_window_backwards(): void
     {
-        [$owner, , $thread] = $this->thread(150);
+        [$owner, , $thread, $ids] = $this->thread(150);
 
-        // One page older than the visible window's first row (id 51) is
-        // capped at 100 too: rows 1..50 — with nothing left below.
+        // One page older than the visible window's first row (the 51st
+        // message) is capped at 100 too: the 50 rows below it — with
+        // nothing left beneath.
         $json = $this->actingAs($owner)
-            ->getJson(route('support.messages', ['supportRequest' => $thread, 'before_id' => 51]))
+            ->getJson(route('support.messages', ['supportRequest' => $thread, 'before_id' => $ids[50]]))
             ->assertOk()->json();
-        $this->assertSame(range(1, 50), collect($json['messages'])->pluck('id')->all());
-        $this->assertSame(1, $json['oldest_id']);
+        $this->assertSame(array_slice($ids, 0, 50), collect($json['messages'])->pluck('id')->all());
+        $this->assertSame($ids[0], $json['oldest_id']);
         $this->assertFalse($json['has_more_older']);
 
-        // From the window's own oldest_id, a full 100-row page still fits.
+        // From the window's own newest row, a full 100-row page still fits.
         $json2 = $this->actingAs($owner)
-            ->getJson(route('support.messages', ['supportRequest' => $thread, 'before_id' => 151]))
+            ->getJson(route('support.messages', ['supportRequest' => $thread, 'before_id' => $ids[149] + 1]))
             ->assertOk()->json();
         $this->assertCount(100, $json2['messages']);
         $this->assertTrue($json2['has_more_older']);
