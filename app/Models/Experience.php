@@ -8,9 +8,9 @@ use App\Notifications\NewCommentOnPost;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use App\Notifications\NewReplyOnComment;
+use App\Support\DeferredFileUnlinks;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class Experience extends Model
 {
@@ -41,8 +41,15 @@ class Experience extends Model
                 ->where('data', 'like', '%"post_id":'.$experience->id.',%')
                 ->where('data', 'like', '%"post_type":"experience"%')
                 ->delete();
+            // Issue #309: capture() not delete() — same #289 reasoning as
+            // Alert::deleting; the unlink defers only inside
+            // ProfileController::destroy()'s armed ledger, everywhere else
+            // capture() unlinks immediately. Note the value here is the
+            // in-memory avatar: this hook predates #289 and no test drives a
+            // stale-binding race through it; changing WHICH path is out of
+            // scope for #309 (that would be an Experience-side #289).
             if ($experience->avatar) {
-                Storage::disk('public')->delete($experience->avatar);
+                DeferredFileUnlinks::capture($experience->avatar);
             }
         });
     }

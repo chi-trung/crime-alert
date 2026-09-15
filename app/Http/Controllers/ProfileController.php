@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\Experience;
 use App\Models\SupportRequest;
 use App\Models\User;
+use App\Support\DeferredFileUnlinks;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -174,39 +175,60 @@ class ProfileController extends Controller
         // race pins in AccountDeletionRaceTest exercise.
         // Auth::logout() moves after the commit: a torn-down-but-not-yet
         // committed account must not log its owner out of a session whose
-        // rows the rollback just restored. Honest residuals, both better
-        // than the old half-destroy: disk unlinks already executed inside
-        // hooks cannot roll back (rows come back with broken image links —
-        // the recoverable half), and a rival INSERT the MySQL lock blocks
+        // rows the rollback just restored. #266 also CONCEDED a residual
+        // there — disk unlinks already executed inside hooks cannot roll
+        // back (rows come back with broken image links, the recoverable
+        // half) — and Issue #309 closes exactly that. The ledger arms before
+        // the transaction, the #289 current reads capture instead of unlink
+        // (WHICH is unchanged), drain after a real commit, discard on throw
+        // — rolled-back rows KEEP their files. A plain try/finally cannot
+        // tell the two outcomes apart, so drain sits on the success path and
+        // discard on the catch; armed is scoped to this method's dynamic
+        // extent, which is why every other delete caller keeps unlinking
+        // in-hook. If the drain itself throws (disk full), the content is
+        // already committed and gone: the rethrow surfaces a 500, and the
+        // stale paths are the same recoverable half #309's docblock
+        // documents for a rolled-back capture — file on disk, no row.
+        // The other residual stands: a rival INSERT the MySQL lock blocks
         // surfaces in the rival tab as an FK error, not a silent cascade.
-        DB::transaction(function () use ($user): void {
-            // Lock point: SELECT ... FOR UPDATE on the parent row, BEFORE
-            // anything else in the transaction can be observed. pluck() so
-            // no model is hydrated and no retrieved event can fire.
-            User::whereKey($user->id)->lockForUpdate()->pluck('id');
+        DeferredFileUnlinks::arm();
 
-            foreach ([Alert::class, Experience::class, Comment::class, SupportRequest::class] as $class) {
-                do {
-                    $rows = $class::where('user_id', $user->id)->get();
-                    $rows->each->delete();
-                } while ($rows->isNotEmpty());
-            }
+        try {
+            DB::transaction(function () use ($user): void {
+                // Lock point: SELECT ... FOR UPDATE on the parent row, BEFORE
+                // anything else in the transaction can be observed. pluck() so
+                // no model is hydrated and no retrieved event can fire.
+                User::whereKey($user->id)->lockForUpdate()->pluck('id');
 
-            $user->delete();
+                foreach ([Alert::class, Experience::class, Comment::class, SupportRequest::class] as $class) {
+                    do {
+                        $rows = $class::where('user_id', $user->id)->get();
+                        $rows->each->delete();
+                    } while ($rows->isNotEmpty());
+                }
 
-            // The logout below still holds THIS model instance in the
-            // guard, and SessionGuard::logout() cycles the remember token
-            // via EloquentUserProvider::updateRememberToken() -> save().
-            // After delete() the instance reads exists=false with its key
-            // still set, so that save() goes through performInsert() and
-            // RESURRECTED the just-deleted user row (verified by trace:
-            // the exact regression that pinned this line). Restoring the
-            // update-side semantics makes the cycle a 0-row UPDATE against
-            // the dead id — correct anyway: the account is gone, there is
-            // no token row left to rotate, and any stale cookie now finds
-            // no user to authenticate.
-            $user->exists = true;
-        });
+                $user->delete();
+
+                // The logout below still holds THIS model instance in the
+                // guard, and SessionGuard::logout() cycles the remember token
+                // via EloquentUserProvider::updateRememberToken() -> save().
+                // After delete() the instance reads exists=false with its key
+                // still set, so that save() goes through performInsert() and
+                // RESURRECTED the just-deleted user row (verified by trace:
+                // the exact regression that pinned this line). Restoring the
+                // update-side semantics makes the cycle a 0-row UPDATE against
+                // the dead id — correct anyway: the account is gone, there is
+                // no token row left to rotate, and any stale cookie now finds
+                // no user to authenticate.
+                $user->exists = true;
+            });
+        } catch (\Throwable $e) {
+            DeferredFileUnlinks::discard();
+
+            throw $e;
+        }
+
+        DeferredFileUnlinks::drain();
 
         Auth::logout();
 

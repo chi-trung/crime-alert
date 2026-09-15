@@ -8,10 +8,10 @@ use App\Notifications\NewCommentOnPost;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use App\Notifications\NewReplyOnComment;
+use App\Support\DeferredFileUnlinks;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 class Alert extends Model
 {
@@ -65,9 +65,18 @@ class Alert extends Model
             // builder reads fire no retrieved event, so #163-style probes
             // stay armable. Row already gone (racing double-delete) reads
             // null and frees nothing — correct, the winner unlinked it.
+            // Issue #309: capture() instead of delete() — the WHICH is
+            // unchanged (same current-read value), the WHEN now defers ONLY
+            // when ProfileController::destroy() has armed the ledger around
+            // its #266 transaction, where an in-transaction unlink survived
+            // a late-sweep rollback (resurrected rows over dead files). The
+            // drain right after the commit — or the discard when it throws,
+            // because rolled-back rows KEEP their files — makes the account
+            // teardown as atomic as its rows. Every other caller sees the
+            // ledger unarmed and unlinks here, exactly as before.
             $live = DB::table('alerts')->where('id', $alert->id)->value('image');
             if ($live) {
-                Storage::disk('public')->delete($live);
+                DeferredFileUnlinks::capture($live);
             }
         });
     }
