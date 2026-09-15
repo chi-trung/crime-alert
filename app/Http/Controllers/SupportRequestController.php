@@ -418,7 +418,17 @@ class SupportRequestController extends Controller
                 return true;
             }
 
-            return SupportRequest::whereKey($supportRequest->id)->exists() ? false : null;
+            // Issue #285: this is the SAME re-read #233 demands be
+            // authoritative, and #163 says how on MySQL: a plain exists()
+            // under REPEATABLE READ is a snapshot read, so a rival DELETE
+            // (destroy(), admin or self) committed after the L403 status
+            // read still sees its row here and flashes 'already closed'
+            // for a thread that no longer exists. lockForUpdate turns it
+            // into a current read — the doctrine this file already follows
+            // at L114 (sendMessage), L267/L297 (store), and L464 (destroy)
+            // (probe: snapshot exists() -> 1 / for-update -> 0 under two
+            // real PDO connections on MySQL 8.4).
+            return SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->exists() ? false : null;
         });
 
         if ($outcome === null) {
