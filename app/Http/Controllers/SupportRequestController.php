@@ -259,7 +259,10 @@ class SupportRequestController extends Controller
         // (Documented residual inherited from #153: a close/commit landing
         // after the post-insert re-read but before this transaction commits
         // still slips through — closing that fully needs row locking in the
-        // thread's own delete/close paths.)
+        // thread's own delete/close paths. Issue #271 closed the DELETE half
+        // of that sentence: destroy() now takes the row lock before the #102
+        // sweep and sweeps again at a fixed point after the delete; the
+        // SQLite-only close window above remains as documented.)
         $outcome = DB::transaction(function () use ($supportRequest, $data) {
             $live = SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->first();
             if (! $live) {
@@ -434,7 +437,52 @@ class SupportRequestController extends Controller
     {
         // Issue #97: same in-method assertion as close() above.
         $this->authorizeAdmin();
-        $supportRequest->delete();
+
+        // Issue #271: this was a bare delete(), and the shape underneath it
+        // matched what #266 closed for account deletion. The #102
+        // notification sweep fires on the deleting() hook BEFORE the
+        // DELETE acquires the thread row's X lock — so a sendMessage
+        // transaction holding that lock (#163's lockForUpdate first
+        // statement) still had its commit path ahead: the sweep found no
+        // bell yet, the DELETE waited, and the fan-out then committed an
+        // admin bell whose morph row has no FK to cascade (the whole
+        // reason #102 exists). The thread row went away, so the hook could
+        // never sweep it again — a permanent orphan whose url 404s and
+        // which inflates the unread badge. Locking the row FIRST makes the
+        // rival's own re-read see a dead thread and back out with the
+        // honest 'vanished' answer instead, and the post-delete fixed-point
+        // sweep catches any bell that still lands between the hook's
+        // deletion and this transaction's commit. MySQL blocks the rival
+        // for real; sqlite's compileLock is a no-op, where the sweep is
+        // what actually closes the window. close() needs no twin: its
+        // conditional open-only UPDATE already resolves inside the row
+        // lock and bells only on a thread this path leaves alive.
+        DB::transaction(function () use ($supportRequest): void {
+            // Lock point: SELECT ... FOR UPDATE on the thread row, BEFORE
+            // the deleting() sweep can be observed. pluck() so no model is
+            // hydrated and no retrieved event can fire.
+            SupportRequest::whereKey($supportRequest->id)->lockForUpdate()->pluck('id');
+
+            $supportRequest->delete();
+
+            // Fixed point AFTER the delete: anything the hook's window let
+            // through (the rival bell above, or a retry re-inserting on a
+            // backend without FK enforcement) is swept here — scoped to the
+            // two classes this feature emits, with #102's comma-delimited
+            // id matcher so thread N's sweep cannot eat thread N1's rows.
+            // One statement clears every matching row, so the recheck only
+            // has to prove the table stopped answering; same fixed-point
+            // shape as #266's per-class sweeps.
+            do {
+                $swept = DB::table('notifications')
+                    ->whereIn('type', [
+                        NewSupportRequest::class,
+                        NewSupportMessage::class,
+                    ])
+                    ->where('data', 'like', '%"support_request_id":'.$supportRequest->id.',%')
+                    ->delete();
+            } while ($swept > 0);
+        });
 
         return back()->with('success', 'Đã xóa yêu cầu hỗ trợ!');
     }
