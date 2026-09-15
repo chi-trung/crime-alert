@@ -54,14 +54,25 @@ class CrawlWantedList extends Command
             // birth_year is regex-pinned to four digits, so it needs none.
             // Same accepted tradeoff as #100/#101: mb_substr counts
             // characters while utf8mb4 measures bytes.
+            // Issue #293: (name, birth_year, address) is NOT a person
+            // identity — the site's own listings carry same-named, same-age
+            // relatives at one household address (and truncation can equalise
+            // distinct names), with no UNIQUE index to catch the merge. The
+            // second row overwrote the first: a fugitive vanished from
+            // /wanted-list and the dashboard hotWanted tile, and the
+            // surviving row's crime/decision described only one of them.
+            // The decision number is the per-record discriminator, so it
+            // belongs IN the key, alongside the #106 truncation.
+            $decision = mb_substr(trim($cols->eq(6)->text()), 0, 255);
             WantedPerson::updateOrCreate([
                 'name' => mb_substr($name, 0, 255),
                 'birth_year' => $birthYear,
                 'address' => mb_substr(trim($cols->eq(3)->text()), 0, 255),
+                'decision' => $decision,
             ], [
                 'parents' => mb_substr(trim($cols->eq(4)->text()), 0, 255),
                 'crime' => mb_substr(trim($cols->eq(5)->text()), 0, 255),
-                'decision' => mb_substr(trim($cols->eq(6)->text()), 0, 255),
+                'decision' => $decision,
                 'agency' => mb_substr(trim($cols->eq(7)->text()), 0, 255),
             ]);
             $count++;

@@ -234,4 +234,107 @@ class CrawlerTest extends TestCase
             ->all();
         $this->assertSame(['Newest-A', 'Middle-B', 'Oldest-C'], $titles);
     }
+
+    /**
+     * Issue #293 (CN-01a): #100's head-only mb_substr(0,255) runs BEFORE the
+     * value becomes updateOrCreate's lookup key on the UNIQUE link column —
+     * and VnExpress puts the discriminator that makes a link unique at the
+     * END of the URL (the '-4839201.html' article id, '?zpage='/'&utm'
+     * params). Two over-length articles sharing a 255-char prefix therefore
+     * collapse onto one key: the second silently overwrites the first, one
+     * article never exists in the DB, and $count still reports both — the
+     * #181 collapse shape reopened through the #100 truncation path.
+     */
+    public function test_news_crawl_keeps_two_articles_whose_links_share_a_255_char_prefix(): void
+    {
+        $prefix = '/phap-luat/'.str_repeat('a', 300);
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response(
+                '<div class="item-news"><h3 class="title-news"><a href="'.$prefix.'-1.html">Bai mot</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a href="'.$prefix.'-2.html">Bai hai</a></h3></div>',
+                200
+            ),
+        ]);
+
+        $this->artisan('crawl:news')->assertSuccessful();
+
+        // Pre-fix: 1 row titled 'Bai mot' (reverse iteration upserts '-2'
+        // first, '-1' overwrites it) and 'Bai hai' is gone forever.
+        $this->assertSame(2, News::count());
+        $this->assertDatabaseHas('news', ['title' => 'Bai mot']);
+        $this->assertDatabaseHas('news', ['title' => 'Bai hai']);
+    }
+
+    public function test_news_crawl_digest_keys_stay_idempotent_across_runs(): void
+    {
+        // The digest must be a function of the URL, not of run order:
+        // crawling the same over-length page twice updates in place rather
+        // than minting fresh rows each pass.
+        $prefix = '/phap-luat/'.str_repeat('a', 300);
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response(
+                '<div class="item-news"><h3 class="title-news"><a href="'.$prefix.'-1.html">Bai mot</a></h3></div>'
+                .'<div class="item-news"><h3 class="title-news"><a href="'.$prefix.'-2.html">Bai hai</a></h3></div>',
+                200
+            ),
+        ]);
+
+        $this->artisan('crawl:news')->assertSuccessful();
+        $first = News::orderBy('id')->pluck('link')->all();
+
+        $this->artisan('crawl:news')->assertSuccessful();
+        $second = News::orderBy('id')->pluck('link')->all();
+
+        $this->assertSame($first, $second);
+        $this->assertSame(2, News::count());
+    }
+
+    /**
+     * Issue #293 (CN-01b, the wanted-list twin): the (name, birth_year,
+     * address) lookup key has no UNIQUE index, no decision number, and the
+     * site's own data routinely carries same-named, same-age relatives at
+     * one address. The second row overwrites the first: one fugitive
+     * disappears from /wanted-list and the dashboard hotWanted tile, and the
+     * surviving row's decision/crime/agency describe only one of them.
+     */
+    public function test_wanted_list_crawl_keeps_two_persons_sharing_name_year_and_address(): void
+    {
+        Http::fake([
+            'truyna.bocongan.gov.vn/*' => Http::response('<table>
+                <tr><td>STT</td><td>Họ tên</td><td>Năm sinh</td><td>Địa chỉ</td><td>Cha/Mẹ</td><td>Tội danh</td><td>Quyết định</td><td>Cơ quan</td></tr>
+                <tr><td>1</td><td>Nguyen Van A</td><td>1990</td><td>Ha Noi</td><td>Van B</td><td>Lua dao</td><td>QD-91</td><td>C03</td></tr>
+                <tr><td>2</td><td>Nguyen Van A</td><td>1990</td><td>Ha Noi</td><td>Van C</td><td>Trom cap</td><td>QD-92</td><td>PC03</td></tr>
+            </table>', 200),
+        ]);
+
+        $this->artisan('crawl:wanted-list')->assertSuccessful();
+
+        $this->assertSame(2, WantedPerson::count());
+        $this->assertDatabaseHas('wanted_people', ['decision' => 'QD-91', 'crime' => 'Lua dao']);
+        $this->assertDatabaseHas('wanted_people', ['decision' => 'QD-92', 'crime' => 'Trom cap']);
+    }
+
+    /**
+     * Issue #293 (CN-02): #181's promise ("a silent upstream markup change
+     * surfaces as one warn line per run instead of vanishing") only holds
+     * for href-less items — the $skipped counter lives INSIDE the per-item
+     * loop, so when the '.item-news' selector itself matches nothing (a
+     * class rename, the most likely markup change) the loop never runs, no
+     * counter moves, and the run printed "Đã crawl xong 0 tin tức" + SUCCESS,
+     * indistinguishable from a healthy crawl while the feed froze.
+     */
+    public function test_news_crawl_fails_loudly_when_the_listing_parses_to_zero_items(): void
+    {
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response('<html><body><div class="card-item">restructured page</div></body></html>', 200),
+        ]);
+
+        // Pre-fix: exit SUCCESS, one info line, zero warnings — the exact
+        // "vanishes" outcome #181's comment says must not happen.
+        $this->artisan('crawl:news')
+            ->expectsOutputToContain('Không phân tích được tin nào')
+            ->assertFailed();
+
+        $this->assertSame(0, News::count());
+    }
 }
