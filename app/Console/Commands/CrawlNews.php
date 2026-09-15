@@ -45,6 +45,17 @@ class CrawlNews extends Command
 
         $crawler = new Crawler($response->body());
         $items = $crawler->filter('.item-news');
+        // Issue #293: #181's "a silent markup change surfaces as one warn
+        // line" only covered href-less items — its counter lives INSIDE the
+        // loop, so the likeliest change of all (the .item-news class renamed)
+        // parsed to zero nodes, never entered the loop, and the run printed
+        // "Đã crawl xong 0 tin tức" + SUCCESS while the feed froze
+        // invisibly. Zero nodes is its own loud failure.
+        if ($items->count() === 0) {
+            $this->warn('Không phân tích được tin nào từ trang danh sách — nguồn có thể đã đổi cấu trúc.');
+
+            return self::FAILURE;
+        }
         $count = 0;
         // Issue #181: count href-less items so a silent upstream markup
         // change surfaces as one warn line per run instead of vanishing.
@@ -110,7 +121,23 @@ class CrawlNews extends Command
             // bytes, so a pathological all-4-byte title could still exceed
             // 255 bytes — accepted: Vietnamese text averages ~2 bytes/char
             // and the alternative (byte-cutting mid-character) corrupts.
-            $link = mb_substr($link, 0, 255);
+            // Issue #293: #100 truncated to the first 255 chars, but VnExpress
+            // puts the uniqueness discriminator at the END of the URL (the
+            // '-<id>.html' article number, '?zpage='/'&utm' params), so two
+            // over-length articles sharing a 255-char prefix collapsed onto
+            // one key of the UNIQUE link column — the #181 collapse shape
+            // reopened through the truncation path. The column cannot hold the
+            // full URL, so swap the lost tail for a digest of the WHOLE link:
+            // distinct links get distinct keys, a re-crawl of the same link
+            // gets the same key (updateOrCreate stays idempotent), and a
+            // digest collision needs 2^-44, not a shared prefix. Under-length
+            // links keep #100's byte-exact value untouched, and the result
+            // stays 255 chars (same accepted mb-vs-byte trade as #100/#106).
+            if (mb_strlen($link) > 255) {
+                $link = mb_substr($link, 0, 243).'~'.substr(md5($link), 0, 11);
+            } else {
+                $link = mb_substr($link, 0, 255);
+            }
             News::updateOrCreate(
                 ['link' => $link],
                 [
