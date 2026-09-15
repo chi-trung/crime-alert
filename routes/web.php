@@ -21,8 +21,25 @@ Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['au
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
-    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
-    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+    // Issue #180's sweep stopped at routes/auth.php and missed these two
+    // doors, yet each is the same boolean password oracle: ProfileUpdate-
+    // Request runs the 'current_password' rule on every email move (wrong
+    // guess = 302 + errors.current_password, right one = the RECOVERY address
+    // moves — #253's takeover primitive), and ProfileController::destroy()
+    // (#154) answers right/wrong through the 'userDeletion' bag before
+    // deleting the account. An attacker holding any session could grind the
+    // victim's plaintext at network speed with no limiter at all. 5/min
+    // mirrors login/#180's budget; dedicated lanes per #147 so neither shares
+    // a counter with the other, #180's oracle lanes, or #165's content lanes.
+    // The whole PATCH is capped, not just the credential leg — a legitimate
+    // edit is a once-in-a-while self-service action, and profile.edit itself
+    // (GET) stays unthrottled.
+    Route::patch('/profile', [ProfileController::class, 'update'])
+        ->middleware('throttle:5,1,profile-update')
+        ->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])
+        ->middleware('throttle:5,1,profile-destroy')
+        ->name('profile.destroy');
     Route::get('/alerts/create', [AlertController::class, 'create'])->name('alerts.create');
     // Issue #165: the three fan-out stores #141/#147 left bare. Each POST
     // writes one bell per admin synchronously (alerts/experiences fan
