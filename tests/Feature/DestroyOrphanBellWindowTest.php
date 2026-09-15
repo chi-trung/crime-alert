@@ -6,10 +6,10 @@ use App\Models\Alert;
 use App\Models\Comment;
 use App\Models\Experience;
 use App\Models\User;
-use App\Notifications\LikeCommentNotification;
 use App\Notifications\NewCommentOnPost;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewReplyOnComment;
+use App\Support\BellSweeps;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -357,12 +357,12 @@ class DestroyOrphanBellWindowTest extends TestCase
             'App\Notifications\NewCommentOnPost',
             'App\Notifications\NewReplyOnComment',
             'App\Notifications\LikeCommentNotification',
-        ], \App\Support\BellSweeps::POST_TYPES);
+        ], BellSweeps::POST_TYPES);
         $this->assertEqualsCanonicalizing([
             'App\Notifications\NewCommentOnPost',
             'App\Notifications\NewReplyOnComment',
             'App\Notifications\LikeCommentNotification',
-        ], \App\Support\BellSweeps::COMMENT_TYPES);
+        ], BellSweeps::COMMENT_TYPES);
 
         $this->assertStringNotContainsString('whereIn(\'type\'', file_get_contents(app_path('Models/Comment.php')));
         $this->assertStringNotContainsString('whereIn(\'type\'', file_get_contents(app_path('Models/Alert.php')));
