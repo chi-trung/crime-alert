@@ -77,7 +77,20 @@ class ExperienceController extends Controller
         // exactly the path this request stored before rethrowing.
         $storedAvatar = null;
         if ($request->hasFile('avatar')) {
-            $storedAvatar = $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            // Issue #281: mirror of the AlertController fix — store()'s
+            // documented 'string|false' contract with these disks'
+            // 'throw' => false, chained straight into $data, would persist
+            // avatar='0' under a success flash (broken image for every
+            // reader) whenever the public disk fails a write. The experiences
+            // form currently posts no avatar input, so this leg is reached by
+            // a crafted multipart request — but the route is auth'd and the
+            // field validated, so it must fail honestly. Error before $data
+            // is touched; a false store wrote nothing, so nothing to sweep.
+            $stored = $request->file('avatar')->store('avatars', 'public');
+            if ($stored === false) {
+                return back()->withInput()->withErrors(['avatar' => 'Không thể lưu ảnh đại diện lên server. Vui lòng thử lại.']);
+            }
+            $storedAvatar = $data['avatar'] = $stored;
         }
         try {
             DB::transaction(function () use ($data) {
