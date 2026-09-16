@@ -9,6 +9,7 @@ use App\Notifications\NewPostPendingApprovalNotification;
 use App\Support\BellSweeps;
 use App\Support\BoundedPaginator;
 use App\Support\DeferredFileUnlinks;
+use App\Support\UploadedImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -68,7 +69,9 @@ class ExperienceController extends Controller
             // to 255; the display branches in create/edit now surface
             // @error('name') so a future rejection can never be silent.
             'name' => 'required|string|max:255',
-            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // Issue #323: dimensions cap mirrors AlertController (named
+            // parameter form is the only one Laravel parses).
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048|dimensions:max_width=4096,max_height=4096',
         ]);
         $data = $request->only(['title', 'content', 'name']);
         $data['user_id'] = Auth::id();
@@ -90,7 +93,8 @@ class ExperienceController extends Controller
             // a crafted multipart request — but the route is auth'd and the
             // field validated, so it must fail honestly. Error before $data
             // is touched; a false store wrote nothing, so nothing to sweep.
-            $stored = $request->file('avatar')->store('avatars', 'public');
+            // (Issue #323: GD re-encode strip, same contract — see there.)
+            $stored = UploadedImage::store($request->file('avatar'), 'avatars', 'public');
             if ($stored === false) {
                 return back()->withInput()->withErrors(['avatar' => 'Không thể lưu ảnh đại diện lên server. Vui lòng thử lại.']);
             }

@@ -10,6 +10,7 @@ use App\Services\DashboardStatsService;
 use App\Support\BellSweeps;
 use App\Support\BoundedPaginator;
 use App\Support\DeferredFileUnlinks;
+use App\Support\UploadedImage;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -46,7 +47,13 @@ class AlertController extends Controller
             // huge payload either 500s on MySQL's byte limit or bloats the DB.
             'description' => 'required|string|max:10000',
             'location' => 'nullable|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // Issue #323: dimensions caps PIXELS (the max: cap only bounds
+            // bytes, so a <2MB 8000x6000 PNG or multi-frame GIF passed and
+            // every later page visitor's browser decoded it). The NAMED
+            // parameter form is mandatory: vendor parseNamedParameters keys
+            // each item on '=', making the positional form
+            // 'dimensions:,,,,4096,4096' a silent no-op (probed both ways).
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048|dimensions:max_width=4096,max_height=4096',
             'confirmCheckbox' => 'accepted',
             // Issue #31: these three used to be persisted unvalidated.
             'type' => 'nullable|string|max:255',
@@ -78,7 +85,12 @@ class AlertController extends Controller
             // silent broken image the user never learns about. Return a form
             // error here, before $data is touched: nothing was written to the
             // disk (that is the whole premise), so there is no file to sweep.
-            $stored = $request->file('image')->store('alerts', 'public');
+            //
+            // Issue #323: UploadedImage::store() replaces the raw store() —
+            // GD re-encode strips EXIF/GPS before the public-disk copy is
+            // ever served; same 'string|false' contract, so every branch
+            // above and the #267 sweep below are untouched.
+            $stored = UploadedImage::store($request->file('image'), 'alerts', 'public');
             if ($stored === false) {
                 return back()->withInput()->withErrors(['image' => 'Không thể lưu ảnh lên server. Vui lòng thử lại.']);
             }
@@ -333,7 +345,8 @@ class AlertController extends Controller
             // huge payload either 500s on MySQL's byte limit or bloats the DB.
             'description' => 'required|string|max:10000',
             'location' => 'nullable|string|max:255',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            // Issue #323: dimensions cap mirrors store() above.
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048|dimensions:max_width=4096,max_height=4096',
             // Issue #31: mirrors store() — junk coords and oversized type
             // used to be written straight to the database.
             'type' => 'nullable|string|max:255',
@@ -439,7 +452,8 @@ class AlertController extends Controller
             // save. Bailing out before $data['image'] is assigned keeps the
             // old path in the guard's expected value — the row, the file and
             // the next request's $oldImage all survive intact.
-            $stored = $request->file('image')->store('alerts', 'public');
+            // (Issue #323: GD re-encode strip, same contract — see store().)
+            $stored = UploadedImage::store($request->file('image'), 'alerts', 'public');
             if ($stored === false) {
                 return back()->withInput()->withErrors(['image' => 'Không thể lưu ảnh lên server. Vui lòng thử lại.']);
             }
