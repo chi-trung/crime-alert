@@ -7,6 +7,7 @@ use App\Models\User;
 use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use App\Support\BellSweeps;
+use App\Support\BoundedPaginator;
 use App\Support\DeferredFileUnlinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -32,7 +33,8 @@ class ExperienceController extends Controller
     public function index()
     {
         // Issue #81: id tiebreak for stable page boundaries (see #75).
-        $experiences = Experience::with('user')->where('status', 'approved')->orderByDesc('created_at')->orderByDesc('id')->paginate(9);
+        // Issue #317: bounded page — see WantedListController for the probe.
+        $experiences = BoundedPaginator::paginate(Experience::with('user')->where('status', 'approved')->orderByDesc('created_at')->orderByDesc('id'), 9);
 
         return view('experiences.index', compact('experiences'));
     }
@@ -363,7 +365,8 @@ class ExperienceController extends Controller
     // Trang quản lý cho admin
     public function adminIndex()
     {
-        $experiences = Experience::orderByDesc('created_at')->orderByDesc('id')->paginate(15);
+        // Issue #317: bounded page — see WantedListController for the probe.
+        $experiences = BoundedPaginator::paginate(Experience::orderByDesc('created_at')->orderByDesc('id'), 15);
 
         return view('experiences.admin_index', compact('experiences'));
     }

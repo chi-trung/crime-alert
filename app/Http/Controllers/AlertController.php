@@ -8,6 +8,7 @@ use App\Notifications\NewPostNotification;
 use App\Notifications\NewPostPendingApprovalNotification;
 use App\Services\DashboardStatsService;
 use App\Support\BellSweeps;
+use App\Support\BoundedPaginator;
 use App\Support\DeferredFileUnlinks;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -245,14 +246,19 @@ class AlertController extends Controller
         // Issue #81: created_at is second-resolution, so same-second rows had
         // no deterministic order and page boundaries shuffled on refresh —
         // the id tiebreak #75 established for the support lists.
-        $alerts = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(10)->withQueryString();
+        // Issue #317: bounded page — see WantedListController for the probe.
+        $alerts = BoundedPaginator::paginate($query->orderByDesc('created_at')->orderByDesc('id'), 10)->withQueryString();
 
         return view('alerts.index', compact('alerts'));
     }
 
     public function adminIndex()
     {
-        $alerts = Alert::with('user')->orderByDesc('created_at')->orderByDesc('id')->paginate(15);
+        // Issue #317: ?page=9223372036854775800 made this footer read
+        // "Hiển thị 1.3835058055282E+20 đến ... trong 3 kết quả" (firstItem()
+        // overflowed to float), and an int page past the end (20 of 3) kept
+        // total()>0 while the page itself was empty — blank spans.
+        $alerts = BoundedPaginator::paginate(Alert::with('user')->orderByDesc('created_at')->orderByDesc('id'), 15);
 
         return view('alerts.admin_index', compact('alerts'));
     }

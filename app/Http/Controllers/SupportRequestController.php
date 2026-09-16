@@ -7,6 +7,7 @@ use App\Models\SupportRequest;
 use App\Models\User;
 use App\Notifications\NewSupportMessage;
 use App\Notifications\NewSupportRequest;
+use App\Support\BoundedPaginator;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -45,10 +46,11 @@ class SupportRequestController extends Controller
         // Issue #75: unbounded ->get() of every request the user ever filed;
         // the id tiebreak keeps page boundaries stable when requests share a
         // created_at second (latest() alone orders by created_at only).
-        $requests = SupportRequest::where('user_id', Auth::id())
-            ->latest()
-            ->orderByDesc('id')
-            ->paginate(10);
+        // Issue #317: bounded page — see WantedListController for the probe.
+        $requests = BoundedPaginator::paginate(
+            SupportRequest::where('user_id', Auth::id())->latest()->orderByDesc('id'),
+            10
+        );
 
         return view('support.index', compact('requests'));
     }
@@ -363,10 +365,11 @@ class SupportRequestController extends Controller
     {
         // Issue #75: same class as #67/#71 — the whole request table loaded
         // on every admin page view. Paginate like every other list.
-        $requests = SupportRequest::with('user')
-            ->latest()
-            ->orderByDesc('id')
-            ->paginate(15);
+        // Issue #317: bounded page — see WantedListController for the probe.
+        $requests = BoundedPaginator::paginate(
+            SupportRequest::with('user')->latest()->orderByDesc('id'),
+            15
+        );
 
         return view('support.admin_index', compact('requests'));
     }

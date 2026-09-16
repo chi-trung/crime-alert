@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\WantedPerson;
+use App\Support\BoundedPaginator;
 use App\Support\LocalUrl;
 use Illuminate\Http\Request;
 use Illuminate\Validation\ValidationException;
@@ -52,7 +53,11 @@ class WantedListController extends Controller
                     ->orWhereRaw("name LIKE ? ESCAPE '!'", ['% '.$escaped]);
             });
         }
-        $wantedPeople = $query->orderByDesc('id')->paginate(20)->withQueryString();
+        // Issue #317: a bare paginate() lets any int64-fitting ?page reach
+        // firstItem() — ?page=9223372036854775800 overflowed the (page-1)*20+1
+        // multiply to a float and the STT cells rendered "1.844674407371E+20"
+        // over real rows on BOTH dialects (and fired a huge-OFFSET SELECT).
+        $wantedPeople = BoundedPaginator::paginate($query->orderByDesc('id'), 20)->withQueryString();
 
         return view('wanted_list.index', compact('wantedPeople'));
     }
