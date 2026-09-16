@@ -383,4 +383,34 @@ class CrawlerTest extends TestCase
 
         $this->assertSame(0, WantedPerson::count());
     }
+
+    /**
+     * Issue #319: the #299 port's second half. CrawlNews guards zero NODES
+     * (#293) but not zero PARSED: if VnExpress keeps .item-news but renames
+     * the anchor inside it, every node takes the uncounted continue at the
+     * titleNode check — $skipped (the #181 counter) never moves either, it
+     * only starts after a title node exists — so the run printed
+     * "Đã crawl xong 0 tin tức" + SUCCESS from a two-item page, the exact
+     * silent freeze #293 was written to catch. Probed on pre-fix code:
+     * nodes=2, both skipped uncounted, exit SUCCESS, zero warn lines.
+     */
+    public function test_news_crawl_fails_loudly_when_every_item_lacks_a_title_link(): void
+    {
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response(
+                '<div class="item-news"><h3 class="new-title"><a href="/phap-luat/a-1.html">T1</a></h3></div>'
+                .'<div class="item-news"><h3 class="new-title"><a href="/phap-luat/b-2.html">T2</a></h3></div>',
+                200
+            ),
+        ]);
+
+        // Post-loop $count === 0 with a non-empty listing: loud FAILURE, no
+        // rows written, message distinct from the zero-NODES guard above
+        // ("từ trang tin" vs "từ trang danh sách").
+        $this->artisan('crawl:news')
+            ->expectsOutputToContain('Không phân tích được tin nào từ trang tin')
+            ->assertFailed();
+
+        $this->assertSame(0, News::count());
+    }
 }

@@ -152,6 +152,22 @@ class CrawlNews extends Command
         if ($skipped > 0) {
             $this->warn("Bỏ qua {$skipped} tin không có đường dẫn (nguồn có thể đã đổi cấu trúc).");
         }
+        // Issue #319: #299's second half, ported to this twin. The zero-NODES
+        // guard above only catches the selector matching nothing; if upstream
+        // keeps .item-news but renames the anchor inside it (.title-news a ->
+        // something else), every node takes the UNCOUNTED continue at the
+        // titleNode check — $count stays 0, $skipped stays 0 (that counter
+        // only starts once an item HAS a title node), and the run printed
+        // "Đã crawl xong 0 tin tức" + SUCCESS exactly like the #293 freeze it
+        // was written to catch. Probed on the pre-fix code: nodes=2, both
+        // skipped uncounted, exit SUCCESS with zero warn lines. A run that
+        // parsed nothing from a non-empty page is a loud failure, same
+        // doctrine as CrawlWantedList's post-loop guard.
+        if ($count === 0) {
+            $this->warn('Không phân tích được tin nào từ trang tin — nguồn có thể đã đổi cấu trúc.');
+
+            return self::FAILURE;
+        }
         $this->info("Đã crawl xong $count tin tức pháp luật từ VnExpress.");
 
         return self::SUCCESS;
