@@ -326,4 +326,95 @@ class ChatbotTest extends TestCase
             ->assertOk()
             ->assertJson(['answer' => 'Tra loi that']);
     }
+
+    /**
+     * Issue #321: an API key carrying CR/LF (Windows copy-paste into .env)
+     * made Guzzle's PSR-7 header-value validation throw
+     * InvalidArgumentException at request-BUILD time — before the #135
+     * ConnectionException catch — so the widget got a 500 AND the exception
+     * message, which embeds the offending value verbatim, wrote the raw key
+     * into the log (#32 violation). Probed on pre-fix main: STATUS=500,
+     * LOG_HAS_LEAK=YES with key material in storage/logs/laravel.log. The
+     * header path is fixed by sanitizing the key in ask(); the exception
+     * can no longer occur, so the request proceeds normally to the dead
+     * port and #135's ConnectionException fallback contract holds again.
+     */
+    public function test_newline_in_key_answers_fallback_not_500_and_leaves_no_key_material_in_logs(): void
+    {
+        config([
+            'services.ai.provider' => 'openrouter',
+            'services.ai.providers.openrouter.key' => "sk-LEAKME-TAIL\nINJECTED-HEADER",
+            // Real-send endpoint (port 9 is closed): the build-phase throw
+            // must be proven gone on the actual Guzzle path, not just the
+            // fake handler.
+            'services.ai.providers.openrouter.endpoint' => 'http://127.0.0.1:9/v1/chat/completions',
+        ]);
+
+        $logged = [];
+        Log::shouldReceive('error')->andReturnUsing(function ($message, $context = []) use (&$logged): void {
+            $logged[] = (string) $message.' '.json_encode($context);
+        });
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.']);
+
+        // The failure must still be logged (#135 doctrine), but never with
+        // key material — pre-fix the InvalidArgumentException text carried the
+        // whole header value, head and tail.
+        $this->assertNotEmpty($logged, 'the connection failure must still be logged');
+        foreach ($logged as $line) {
+            $this->assertStringNotContainsString('LEAKME-TAIL', $line);
+            $this->assertStringNotContainsString('INJECTED-HEADER', $line);
+        }
+    }
+
+    /**
+     * Issue #321: sanitizing is a repair, not a rejection — the common
+     * CRLF-paste key must reach the provider byte-identical to its clean
+     * form (this is what keeps legit configs working after the guard).
+     */
+    public function test_crlf_pasted_key_is_silently_repaired_before_the_provider_call(): void
+    {
+        config([
+            'services.ai.provider' => 'openrouter',
+            'services.ai.providers.openrouter.key' => "good-key\r\n",
+        ]);
+
+        Http::fake([
+            'openrouter.ai/*' => Http::response([
+                'choices' => [['message' => ['content' => 'Chao']]],
+            ], 200),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Chao']);
+
+        Http::assertSent(fn ($request) => $request->header('Authorization') === ['Bearer good-key']);
+    }
+
+    /**
+     * Issue #321: a key made only of control bytes sanitizes to empty, and
+     * the existing not-configured gate must catch it — the honest "chưa
+     * được cấu hình" answer, never a bare 'Bearer ' against the provider.
+     */
+    public function test_key_of_only_control_bytes_falls_to_the_not_configured_branch(): void
+    {
+        config([
+            'services.ai.provider' => 'openrouter',
+            'services.ai.providers.openrouter.key' => "\n\t\r ",
+        ]);
+
+        Http::fake();
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Trợ lý AI hiện chưa được cấu hình. Vui lòng thử lại sau.']);
+
+        Http::assertNothingSent();
+    }
 }

@@ -54,6 +54,32 @@ class ChatbotController extends Controller
             ]);
         }
 
+        // Issue #321: a key pasted from a Windows/PDF file can carry CR/LF
+        // (and other control bytes) around the real value. On the header
+        // path askChatCompletions concatenates it into 'Authorization:
+        // Bearer <key>', and Guzzle validates header VALUES at request-build
+        // time via PSR-7 assertValue: a control byte throws
+        // InvalidArgumentException whose message EMBEDS the offending value —
+        // the raw key. That exception is NOT a ConnectionException, so it
+        // escapes the #135 catch, reaches the framework (HTTP 500 into the
+        // widget, breaking the #135/#190/#208/#223 always-a-string guarantee)
+        // AND the framework logs the exception message, writing the key into
+        // laravel.log (violating the #32 keys-never-to-logs mandate). The
+        // Gemini twin is immune only because its key rides the URL, where the
+        // control byte surfaces as a ConnectionException the #135 catch
+        // already handles.
+        //
+        // Sanitize ONCE here so both providers get a clean key. Keep only
+        // printable ASCII (\x21-\x7E) — a strict subset of PSR-7's accepted
+        // set [\x20\x09\x21-\x7E\x80-\xFF], so a real key (alphanumerics,
+        // '-', '_') is byte-identical and a sanitized value can NEVER
+        // re-trigger the throw. Stripping the surrounding CRLF also silently
+        // REPAIRS the common copy-paste case: the provider then receives the
+        // correct key instead of failing. A key that is ONLY control bytes
+        // collapses to '', which the empty() gate below reports as the
+        // honest "not configured" outcome — never a bare 'Bearer '.
+        $settings['key'] = preg_replace('/[^\x21-\x7E]/', '', (string) ($settings['key'] ?? ''));
+
         if (empty($settings['key'])) {
             Log::warning("Chatbot: provider '{$provider}' has no API key configured.");
 
