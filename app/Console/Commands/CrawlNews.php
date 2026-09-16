@@ -138,14 +138,28 @@ class CrawlNews extends Command
             } else {
                 $link = mb_substr($link, 0, 255);
             }
+            // Issue #325: description/image_url used to ride the updateOrCreate
+            // payload unconditionally, with $desc/$img null when the listing
+            // node carries no .description/<img>. A re-crawl of such a page
+            // then WIPED the stored description/image_url to NULL — the same
+            // loss shape #16 closed for published_at (listing carries no
+            // timestamp, so it stays out of the payload). Absent-on-page is
+            // not deleted-upstream; only a parsed value may overwrite. Fresh
+            // rows still land NULL via the column defaults (both nullable),
+            // and title/is_video always parse, so they stay unconditional.
+            $update = [
+                'title' => mb_substr($title, 0, 255),
+                'is_video' => $isVideo,
+            ];
+            if ($desc !== null) {
+                $update['description'] = $desc;
+            }
+            if ($img !== null) {
+                $update['image_url'] = mb_substr($img, 0, 255);
+            }
             News::updateOrCreate(
                 ['link' => $link],
-                [
-                    'title' => mb_substr($title, 0, 255),
-                    'description' => $desc,
-                    'image_url' => $img === null ? null : mb_substr($img, 0, 255),
-                    'is_video' => $isVideo,
-                ]
+                $update
             );
             $count++;
         }

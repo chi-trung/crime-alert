@@ -394,6 +394,58 @@ class CrawlerTest extends TestCase
      * silent freeze #293 was written to catch. Probed on pre-fix code:
      * nodes=2, both skipped uncounted, exit SUCCESS, zero warn lines.
      */
+    public function test_news_recrawl_without_description_or_image_keeps_stored_values(): void
+    {
+        // Issue #325: description/image_url rode the updateOrCreate payload
+        // unconditionally, with null when the listing node carries no
+        // .description/<img> — so a re-crawl of such a page WIPED the stored
+        // values to NULL (same loss shape #16 closed for published_at), with
+        // the run still reporting SUCCESS. Absent-on-page must not overwrite.
+        News::create([
+            'title' => 'Old',
+            'description' => 'kept-desc',
+            'image_url' => 'https://cdn.example/kept.jpg',
+            'link' => 'https://vnexpress.net/phap-luat/tin-a-123.html',
+        ]);
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response('<div class="item-news">
+                <h3 class="title-news"><a href="/phap-luat/tin-a-123.html">Tieu de tin</a></h3>
+            </div>', 200),
+        ]);
+
+        $this->artisan('crawl:news')->assertSuccessful();
+
+        $news = News::sole();
+        $this->assertSame('Tieu de tin', $news->title);
+        $this->assertSame('kept-desc', $news->description);
+        $this->assertSame('https://cdn.example/kept.jpg', $news->image_url);
+    }
+
+    public function test_news_recrawl_with_description_and_image_still_overwrites(): void
+    {
+        // Companion control: the #325 guard must only skip ABSENT values —
+        // a listing that carries fresh ones still updates the row.
+        News::create([
+            'title' => 'Old',
+            'description' => 'old-desc',
+            'image_url' => 'https://cdn.example/old.jpg',
+            'link' => 'https://vnexpress.net/phap-luat/tin-a-123.html',
+        ]);
+        Http::fake([
+            'vnexpress.net/phap-luat' => Http::response('<div class="item-news">
+                <h3 class="title-news"><a href="/phap-luat/tin-a-123.html">Tieu de tin</a></h3>
+                <p class="description">Mo ta moi</p>
+                <img src="https://cdn.example/new.jpg">
+            </div>', 200),
+        ]);
+
+        $this->artisan('crawl:news')->assertSuccessful();
+
+        $news = News::sole();
+        $this->assertSame('Mo ta moi', $news->description);
+        $this->assertSame('https://cdn.example/new.jpg', $news->image_url);
+    }
+
     public function test_news_crawl_fails_loudly_when_every_item_lacks_a_title_link(): void
     {
         Http::fake([
