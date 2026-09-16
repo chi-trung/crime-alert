@@ -9,6 +9,7 @@ use App\Models\Comment;
 use App\Models\Experience;
 use App\Models\SupportRequest;
 use App\Models\User;
+use App\Support\BoundedPaginator;
 use App\Support\DeferredFileUnlinks;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\RedirectResponse;
@@ -294,16 +295,18 @@ class ProfileController extends Controller
         // independent: ?alerts_page= moves only the alerts table, ?exp_page=
         // only the experiences one.
         // Issue #81: id tiebreak for stable page boundaries (see #75).
-        $myAlerts = Alert::where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate(10, ['*'], 'alerts_page')
-            ->withQueryString();
-        $myExperiences = Experience::where('user_id', $user->id)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id')
-            ->paginate(10, ['*'], 'exp_page')
-            ->withQueryString();
+        // Issue #317: bounded page — see WantedListController for the probe;
+        // the helper takes the page name so each table clamps on its own key.
+        $myAlerts = BoundedPaginator::paginate(
+            Alert::where('user_id', $user->id)->orderByDesc('created_at')->orderByDesc('id'),
+            10,
+            'alerts_page'
+        )->withQueryString();
+        $myExperiences = BoundedPaginator::paginate(
+            Experience::where('user_id', $user->id)->orderByDesc('created_at')->orderByDesc('id'),
+            10,
+            'exp_page'
+        )->withQueryString();
 
         return view('profile.my_history', compact('myAlerts', 'myExperiences'));
     }

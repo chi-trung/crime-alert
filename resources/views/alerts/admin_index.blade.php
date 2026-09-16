@@ -115,8 +115,15 @@
              null, so this footer rendered "Hiển thị  đến  trong  0 kết quả"
              with two blank spans while links() emitted nothing. The summary
              row only describes page content that exists — the @if(count()===0)
-             CTA block above already carries the empty state. --}}
-        @if($alerts->total() > 0)
+             CTA block above already carries the empty state.
+             Issue #317: the guard said total(), but firstItem()/lastItem()
+             answer for the CURRENT page — an int page past the last one kept
+             total()>0 while the slice was empty and re-rendered the exact
+             blank-span sentence #227 killed. BoundedPaginator clamps the page
+             upstream now, so total()>0 and count()>0 agree again; guarding on
+             count() keeps the sentence honest even if a future call site
+             forgets the clamp. --}}
+        @if($alerts->count() > 0)
             <div class="d-flex justify-content-between align-items-center card-footer bg-white border-0 py-4 px-5">
                 <div class="text-muted">
                     Hiển thị <span class="fw-semibold">{{ $alerts->firstItem() }}</span> đến
