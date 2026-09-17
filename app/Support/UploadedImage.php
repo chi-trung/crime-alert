@@ -154,11 +154,13 @@ class UploadedImage
             IMAGETYPE_JPEG => @imagejpeg($im, null, self::JPEG_QUALITY),
         };
 
-        $encoded = $ok === false ? false : (string) ob_get_clean();
+        // Always close our buffer, even if the encoder emitted partial bytes
+        // before returning false. Never leave those bytes in the caller's output.
+        $encoded = (string) ob_get_clean();
 
         imagedestroy($im);
 
-        return ($encoded === false || $encoded === '') ? null : $encoded;
+        return ($ok === false || $encoded === '') ? null : $encoded;
     }
 
     /** EXIF Orientation for a byte string, or 1 when unavailable/unknown. */
