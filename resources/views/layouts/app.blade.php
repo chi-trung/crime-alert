@@ -11,7 +11,7 @@
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha384-blOohCVdhjmtROpu8+CfTnUWham9nkX7P7OZQMst+RUnhtoY/9qemFAkIKOYxDI3" crossorigin="anonymous">
         <style>
             body, .font-sans, .navbar, .btn, .form-control, .card, .alert, .dropdown-menu {
                 font-family: 'Inter', 'Roboto', 'Nunito', Arial, sans-serif !important;
@@ -20,7 +20,7 @@
         </style>
 
         <!-- Bootstrap 5 -->
-        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
         <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
         <!-- Favicon -->
@@ -69,7 +69,10 @@
             </footer>
         </div>
         <!-- Bootstrap 5 JS bundle (for dropdown, modal, v.v.) -->
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+        {{-- Issue #327: pinned but integrity-less; hashed like the #221
+             sweetalert2 sibling above (no CSP ships in this repo, so SRI is
+             the only CDN integrity layer). --}}
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
         <!-- SweetAlert2 CDN -->
         {{-- Issue #221: was sweetalert2@11 — jsdelivr resolves the bare major
              to the newest v11.x on every render (26.x today), so the whole
