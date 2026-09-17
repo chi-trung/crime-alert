@@ -103,6 +103,21 @@ class ChatbotController extends Controller
     {
         $url = $settings['endpoint'].'?key='.$settings['key'];
 
+        // Issue #329: the key used to ride the URL as ?key=<secret>, so
+        // EVERY transport failure (DNS, refused, timeout, TLS mismatch,
+        // proxy) carried it inside the exception message — verified by
+        // probe: a ConnectionException against the real endpoint embeds the
+        // full URL, key included. The #135 catch below stayed safe only by
+        // deliberately NOT logging getMessage(); one refactor adding that
+        // single line (as askChatCompletions does at its own catch) would
+        // have written the key into laravel.log, breaking the #32 mandate
+        // by habit rather than by structure. Google accepts the same key in
+        // the x-goog-api-key header, so move it there: the URL is clean, and
+        // the exception message, effectiveUri(), and any error page that
+        // echoes the request URL are all key-free. askChatCompletions
+        // already used the header path — both providers now share one shape.
+        $url = $settings['endpoint'];
+
         // Issue #135: an unreachable host (DNS failure, refused connection,
         // cURL timeout) throws ConnectionException BEFORE any $response
         // exists — the !successful() branch below only sees HTTP-level
@@ -110,17 +125,20 @@ class ChatbotController extends Controller
         // JSON-parse, defeating fallbackMessage's exact "cannot connect"
         // purpose. Same shape as CrawlerTest's host-unreachable case.
         try {
-            $response = Http::timeout(30)->post($url, [
-                'contents' => [
-                    ['parts' => [['text' => $this->systemPrompt()."\n\nCâu hỏi: {$question}"]]],
-                ],
-            ]);
+            $response = Http::timeout(30)
+                ->withHeaders(['x-goog-api-key' => $settings['key']])
+                ->post($url, [
+                    'contents' => [
+                        ['parts' => [['text' => $this->systemPrompt()."\n\nCâu hỏi: {$question}"]]],
+                    ],
+                ]);
         } catch (ConnectionException $e) {
-            // getMessage() is deliberately NOT logged here: Guzzle's
-            // connection-error text embeds the request URL, and the Gemini
-            // URL carries the API key as a query param (issue #32 pairing —
-            // keys stay out of logs).
-            Log::error('Chatbot: Gemini connection error ('.get_class($e).')');
+            // Issue #329: with the key out of the URL this message is
+            // key-free and can finally be logged like askChatCompletions'
+            // own catch — the "deliberately not logged" coupling is gone.
+            Log::error('Chatbot: Gemini connection error', [
+                'message' => $e->getMessage(),
+            ]);
 
             return $this->fallbackMessage();
         }
