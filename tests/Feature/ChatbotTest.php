@@ -133,8 +133,13 @@ class ChatbotTest extends TestCase
         $this->assertStringNotContainsString('ds-test-key', $response->getContent());
     }
 
-    public function test_gemini_provider_uses_key_query_param(): void
+    public function test_gemini_provider_sends_key_in_the_header_not_the_url(): void
     {
+        // Issue #329: the key used to ride the URL as ?key=<secret>, so any
+        // transport failure wrote it into the exception text (and thus the
+        // log). Google accepts the same key in x-goog-api-key, so the URL must
+        // now be key-free — this is what makes the connection-error catch
+        // below safe to log verbatim.
         config([
             'services.ai.provider' => 'gemini',
             'services.ai.providers.gemini.key' => 'gm-test-key',
@@ -152,7 +157,9 @@ class ChatbotTest extends TestCase
             ->assertJson(['answer' => 'Chao']);
 
         Http::assertSent(fn ($request) => str_contains($request->url(), 'generativelanguage.googleapis.com')
-            && str_contains($request->url(), 'key=gm-test-key'));
+            && str_contains($request->url(), 'generateContent')
+            && ! str_contains($request->url(), 'gm-test-key')
+            && $request->header('x-goog-api-key') === ['gm-test-key']);
     }
 
     public function test_chatbot_is_throttled_at_twenty_requests_per_minute(): void
@@ -200,7 +207,11 @@ class ChatbotTest extends TestCase
             'services.ai.providers.gemini.key' => 'gm-test-key',
         ]);
 
-        Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to https://generativelanguage.googleapis.com/v1beta?key=gm-test-key'));
+        // Issue #329: this message text is a realistic transport error that
+        // embeds the request URL — the exact shape Guzzle produces. The URL
+        // no longer carries the key (the fix moved it to the header), so the
+        // logged message is key-free and the #32 mandate holds by structure.
+        Http::fake(fn () => throw new ConnectionException('cURL error 7: Failed to connect to https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent'));
         $logged = [];
         Log::shouldReceive('error')->andReturnUsing(function ($message, $context = []) use (&$logged): void {
             $logged[] = $message.' '.json_encode($context);
@@ -210,8 +221,10 @@ class ChatbotTest extends TestCase
             ->postJson('/chatbot/ask', ['question' => 'Hello'])
             ->assertOk();
 
-        // The Gemini key rides the URL, which Guzzle embeds in connection
-        // error text — it must appear neither in the client body nor the log.
+        // The URL no longer carries the key (Issue #329), so this exception
+        // message — the one a maintainer would naturally add back to the log
+        // — can be logged verbatim and still keep the #32 mandate. Both the
+        // client body and the log stay key-free.
         $this->assertStringNotContainsString('gm-test-key', $response->getContent());
         $this->assertNotEmpty($logged, 'the connection failure must still be logged');
         foreach ($logged as $line) {
@@ -288,6 +301,76 @@ class ChatbotTest extends TestCase
             ->postJson('/chatbot/ask', ['question' => 'Xin chao'])
             ->assertOk()
             ->assertJson(['answer' => 'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.']);
+    }
+
+    public function test_gemini_error_page_echoing_the_url_stays_out_of_the_log(): void
+    {
+        // Issue #329 negative control: the !successful() branch logs the
+        // response body. A provider or an intermediary (Nginx/Apache/proxy)
+        // error page can echo the request URL back into the body. Pre-fix
+        // that URL carried ?key=<secret>, so the log captured the key; now
+        // the echoed URL is key-free, so the body can be logged safely and
+        // the key never reaches laravel.log.
+        config([
+            'services.ai.provider' => 'gemini',
+            'services.ai.providers.gemini.key' => 'gm-test-key',
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response(
+                'Bad Request: rejected for https://generativelanguage.googleapis.com/v1beta/models/gemini-flash:generateContent',
+                400
+            ),
+        ]);
+
+        $logged = [];
+        Log::shouldReceive('error')->andReturnUsing(function ($message, $context = []) use (&$logged): void {
+            $logged[] = $message.' '.json_encode($context);
+        });
+        $response = $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk();
+
+        $this->assertSame(
+            'Xin lỗi, hiện tôi không thể kết nối tới trợ lý AI. Vui lòng thử lại sau.',
+            $response->json('answer')
+        );
+
+        // The failure must be logged (the API-error branch is the one that
+        // captured the body), and neither the entry nor the client body may
+        // contain the key.
+        $this->assertNotEmpty($logged, 'the provider error must still be logged');
+        foreach ($logged as $line) {
+            $this->assertStringNotContainsString('gm-test-key', $line);
+        }
+        $this->assertStringNotContainsString('gm-test-key', $response->getContent());
+    }
+
+    /**
+     * Issue #329: the two providers now share one key-handling shape. This
+     * pins the Gemini twin of the #321 header-sanitization contract so a
+     * future divergence cannot reintroduce a key-in-URL or a build-phase
+     * throw that escapes the #135 catch.
+     */
+    public function test_gemini_crlf_pasted_key_is_repaired_before_the_provider_call(): void
+    {
+        config([
+            'services.ai.provider' => 'gemini',
+            'services.ai.providers.gemini.key' => "good-key\r\n",
+        ]);
+
+        Http::fake([
+            'generativelanguage.googleapis.com/*' => Http::response([
+                'candidates' => [['content' => ['parts' => [['text' => 'Chao']]]]],
+            ], 200),
+        ]);
+
+        $this->actingAs(User::factory()->create())
+            ->postJson('/chatbot/ask', ['question' => 'Hello'])
+            ->assertOk()
+            ->assertJson(['answer' => 'Chao']);
+
+        Http::assertSent(fn ($request) => $request->header('x-goog-api-key') === ['good-key']);
     }
 
     public function test_gemini_non_string_part_text_takes_the_fallback(): void
