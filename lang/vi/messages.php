@@ -28,6 +28,13 @@ return [
     'email' => 'Email',
     'password' => 'Mật khẩu',
     'confirm_password' => 'Xác nhận mật khẩu',
+    // Issue #335: Breeze scaffold leaves confirm-password's button on the
+    // raw __('Confirm') key, which has no vi entry and silently falls back
+    // to the English string. Both keys below close the three untranslated
+    // auth pages; the notice covers the "secure area" paragraph too.
+    'confirm' => 'Xác nhận',
+    'forgot_password_notice' => 'Bạn quên mật khẩu? Không sao cả. Chỉ cần cho chúng tôi biết địa chỉ email của bạn và chúng tôi sẽ gửi một liên kết đặt lại mật khẩu để bạn tự chọn mật khẩu mới.',
+    'confirm_secure_area_notice' => 'Đây là khu vực bảo mật của ứng dụng. Vui lòng xác nhận mật khẩu của bạn trước khi tiếp tục.',
     'remember_me' => 'Ghi nhớ đăng nhập',
     'forgot_password' => 'Quên mật khẩu?',
     'reset_password' => 'Đặt lại mật khẩu',
