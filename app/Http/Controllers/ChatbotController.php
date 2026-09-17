@@ -64,10 +64,9 @@ class ChatbotController extends Controller
         // escapes the #135 catch, reaches the framework (HTTP 500 into the
         // widget, breaking the #135/#190/#208/#223 always-a-string guarantee)
         // AND the framework logs the exception message, writing the key into
-        // laravel.log (violating the #32 keys-never-to-logs mandate). The
-        // Gemini twin is immune only because its key rides the URL, where the
-        // control byte surfaces as a ConnectionException the #135 catch
-        // already handles.
+        // laravel.log (violating the #32 keys-never-to-logs mandate).
+        // Gemini now sends its key in a header too (#329), so this
+        // sanitization protects both providers from invalid header values.
         //
         // Sanitize ONCE here so both providers get a clean key. Keep only
         // printable ASCII (\x21-\x7E) — a strict subset of PSR-7's accepted
@@ -101,8 +100,6 @@ class ChatbotController extends Controller
      */
     private function askGemini(array $settings, string $question): string
     {
-        $url = $settings['endpoint'].'?key='.$settings['key'];
-
         // Issue #329: the key used to ride the URL as ?key=<secret>, so
         // EVERY transport failure (DNS, refused, timeout, TLS mismatch,
         // proxy) carried it inside the exception message — verified by
@@ -181,9 +178,9 @@ class ChatbotController extends Controller
             $headers['X-Title'] = config('app.name', 'Crime Alert');
         }
 
-        // Issue #135: same unguarded-Http shape as askGemini — the key rides
-        // in a header, so Guzzle's connection-error text (which embeds the
-        // URL) is safe to log, unlike Gemini's query-param key.
+        // Issue #135: same connection-error handling as askGemini. Both
+        // providers send their keys in headers, keeping those keys out of
+        // the request URL embedded in Guzzle's connection-error text.
         try {
             $response = Http::timeout(30)
                 ->withHeaders($headers)
