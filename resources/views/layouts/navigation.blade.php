@@ -361,7 +361,8 @@
     transition: var(--transition);
   }
 
-  .nav-item:hover .dropdown-menu {
+  .nav-item:hover .dropdown-menu,
+  .nav-item.menu-open .dropdown-menu {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
@@ -558,7 +559,8 @@
      and tablets. :focus-within covers keyboard and screen-reader users too;
      the JS handler toggles .dropdown-toggle for everyone else. */
   .user-profile:hover .profile-dropdown,
-  .user-profile:focus-within .profile-dropdown {
+  .user-profile:focus-within .profile-dropdown,
+  .user-profile.menu-open .profile-dropdown {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
@@ -708,7 +710,8 @@
       margin: 0.5rem 0;
     }
     
-    .nav-item:hover .dropdown-menu {
+    .nav-item:hover .dropdown-menu,
+    .nav-item.menu-open .dropdown-menu {
       display: block;
     }
     
@@ -781,33 +784,33 @@
       });
     }
     
-    // Close dropdowns when clicking outside
+    // Close dropdowns when clicking outside.
+    // Issue #365: this used to write an inline display rule on the menu
+    // element. Desktop CSS opens these menus through opacity/visibility and
+    // never touches display, so that inline rule outlived the click and
+    // hover could not open the menu again until the page was reloaded.
+    // Toggling the .menu-open class instead keeps hover authoritative.
     document.addEventListener('click', function(e) {
-      if (!e.target.closest('.dropdown-toggle') && !e.target.closest('.dropdown-menu')) {
-        document.querySelectorAll('.dropdown-menu').forEach(menu => {
-          menu.style.display = 'none';
-        });
-        // Issue #357: the profile menu is .profile-dropdown, not
-        // .dropdown-menu, so the line above never closed it. Include it here
-        // so tapping elsewhere collapses it like every other menu.
-        document.querySelectorAll('.profile-dropdown').forEach(menu => {
-          menu.style.display = 'none';
+      if (!e.target.closest('.dropdown-toggle') && !e.target.closest('.dropdown-menu') && !e.target.closest('.profile-dropdown')) {
+        document.querySelectorAll('.nav-item.menu-open, .user-profile.menu-open').forEach(item => {
+          item.classList.remove('menu-open');
         });
       }
     });
 
-    // Toggle dropdowns on click (for mobile & desktop)
+    // Toggle dropdowns on click (for mobile & desktop). Same class, not
+    // inline display: see the #365 note above.
     document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
       toggle.addEventListener('click', function(e) {
         e.preventDefault();
-        const menu = this.nextElementSibling;
-        if (menu.style.display === 'block') {
-          menu.style.display = 'none';
-        } else {
-          document.querySelectorAll('.dropdown-menu, .profile-dropdown').forEach(m => {
-            m.style.display = 'none';
-          });
-          menu.style.display = 'block';
+        const container = this.closest('.nav-item, .user-profile');
+        if (!container) return;
+        const isOpen = container.classList.contains('menu-open');
+        document.querySelectorAll('.nav-item.menu-open, .user-profile.menu-open').forEach(item => {
+          item.classList.remove('menu-open');
+        });
+        if (!isOpen) {
+          container.classList.add('menu-open');
         }
       });
     });
@@ -879,6 +882,14 @@
           })
           .then(response => response.json())
           .then(data => {
+              // Issue #365: a 401 (expired session) answers with
+              // {success:false, message, redirect} and no count/notifications
+              // keys. Without this guard, data.notifications.length throws a
+              // TypeError, the promise rejects unhandled, and the 10s
+              // interval keeps re-throwing for as long as the tab is open.
+              if (!data || !Array.isArray(data.notifications)) {
+                  return;
+              }
               // Cập nhật badge
               const badge = document.querySelector('.notification-badge');
               if (badge) {
@@ -922,7 +933,11 @@
                       list.appendChild(div);
                   }
               }
-          });
+          })
+          // Issue #365: a dropped request or an expired session must not
+          // surface as an unhandled rejection in the visitor's console every
+          // 10s. Same idiom as app.blade.php and support/show.blade.php.
+          .catch(() => {});
       }
       setInterval(fetchNotifications, 10000); // 10 giây
       document.addEventListener('DOMContentLoaded', fetchNotifications);

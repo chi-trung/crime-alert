@@ -54,11 +54,13 @@ class ProfileDropdownTouchLockoutTest extends TestCase
     public function test_profile_dropdown_closes_on_outside_click(): void
     {
         // The menu is .profile-dropdown, not .dropdown-menu: the outside-click
-        // closer used to skip it entirely, so once open it stayed open.
+        // closer used to skip it entirely, so once open it stayed open. Since
+        // #365 the closer removes a class from the container instead of writing
+        // inline display, so what must survive is the class on the container.
         $js = $this->navScript($this->authenticatedNav());
 
         $this->assertStringContainsString(
-            "'.profile-dropdown'",
+            '.user-profile.menu-open',
             $js,
             'the outside-click closer must also collapse the profile menu'
         );
