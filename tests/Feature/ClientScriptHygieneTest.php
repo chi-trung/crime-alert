@@ -84,7 +84,15 @@ class ClientScriptHygieneTest extends TestCase
         // The rules the page actually needs must survive the sweep.
         $this->assertStringContainsString('.password-requirements', $css);
         $this->assertStringContainsString('.requirement', $css);
-        $this->assertStringContainsString('.password-strength', $css);
+        // .password-strength used to be listed here as a live rule, but its
+        // div rendered blank on every keystroke: checkPasswordStrength() only
+        // flips the .requirement rows and never writes #passwordStrength. Both
+        // the rule and the div are removed in #370.
+        $this->assertDoesNotMatchRegularExpression(
+            '/^\s*\.password-strength\s*\{/m',
+            $css,
+            'the unreachable strength-bar rule must be gone'
+        );
     }
 
     public function test_no_raw_server_body_is_echoed_to_the_visitor_console(): void

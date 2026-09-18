@@ -124,7 +124,12 @@
                     <!-- <div class="password-toggle" onclick="togglePassword('password')">
                         <i class="far fa-eye"></i>
                     </div> -->
-                    <div class="password-strength" id="passwordStrength"></div>
+                    {{-- Issue #370: the strength bar rendered here was
+                         unreachable — checkPasswordStrength() only toggles the
+                         .requirement rows and never writes #passwordStrength,
+                         so this div was blank on every keystroke. Removed with
+                         its register.css rule; the requirement list below is
+                         the live strength indicator. --}}
                     <div class="password-requirements" id="passwordRequirements">
                         <div class="requirement" id="lengthReq">
                             <i class="far fa-circle"></i>

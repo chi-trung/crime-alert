@@ -40,26 +40,13 @@ body {
     box-shadow: 0 7px 14px rgba(79, 70, 229, 0.3);
 }
 
-.password-strength {
-    height: 4px;
-    margin-top: 8px;
-    border-radius: 2px;
-    transition: all 0.3s ease;
-}
-
-.password-toggle {
-    position: absolute;
-    right: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    cursor: pointer;
-    color: #94a3b8;
-}
-
-.password-toggle:hover {
-    color: #4f46e5;
-}
-
+/* Issue #370: two rules died here. The toggle's only call sites sit inside
+ * HTML comments in register.blade.php (togglePassword was dead from the first
+ * commit, see register.js), and the strength bar's div renders but
+ * checkPasswordStrength never populates #passwordStrength — it only flips the
+ * .requirement rows — so the bar was blank on every keystroke. Both the rules
+ * and the unreachable div are gone; .password-requirements/.requirement below
+ * stay live. */
 .animate-bounce-slow {
     animation: bounce-slow 2s infinite;
 }
