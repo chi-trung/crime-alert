@@ -20,9 +20,10 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Chart !== 'undefined' && window.createdData && window.approvedData) {
         // Bar Chart (Cảnh báo theo tháng)
         const ctx = document.getElementById('alertsChart').getContext('2d');
-        if (alertsChartInstance) {
-            alertsChartInstance.destroy();
-        }
+        // Issue #372: there was a destroy() guard here, but this handler is
+        // the only place that assigns the instance — it read the variable one
+        // line before that first and only assignment, so it was always null.
+        // DOMContentLoaded fires once per load; nothing re-enters this block.
         alertsChartInstance = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -94,9 +95,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof Chart !== 'undefined' && window.typePercentsAdmin) {
         // Donut Chart (Phân loại cảnh báo)
         const pieCtx = document.getElementById('alertsPieChart').getContext('2d');
-        if (alertsPieChartInstance) {
-            alertsPieChartInstance.destroy();
-        }
+        // Same #372 shape as the bar chart above: no re-entry, no prior
+        // assignment, so the old guard could never have fired.
         // Chuẩn bị dữ liệu và màu sắc
         let pieLabels = ['Cướp giật', 'Trộm cắp', 'Lừa đảo', 'Bạo lực', 'Khác'];
         let pieColors = ['#e63946', '#0d6efd', '#fd7e14', '#198754', '#6c757d'];
