@@ -95,9 +95,17 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         L.marker([lat, lng], {icon: myIcon}).addTo(map).bindPopup('Vị trí của bạn').openPopup();
     }
-    var locateBtn = document.getElementById('locateMeBtn');
-    if (locateBtn) {
-        locateBtn.onclick = function() {
+    // Issue #361: the DOM button is a different object from the L.control
+    // above, but reused the same name — the control reference was shadowed
+    // from this line on. Renamed to match the sibling picker
+    // (alert_map_picker.js), which also attaches the handler on the next
+    // tick: the control is added asynchronously by addTo(), so the button
+    // is not guaranteed to exist yet at this point.
+    setTimeout(function () {
+        var locateButton = document.getElementById('locateMeBtn');
+        if (!locateButton) return;
+
+        locateButton.onclick = function() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
                     var lat = position.coords.latitude;
@@ -110,6 +118,6 @@ document.addEventListener('DOMContentLoaded', function() {
             } else {
                 alert('Trình duyệt không hỗ trợ định vị!');
             }
-        }
-    }
-}); 
+        };
+    }, 0);
+});
