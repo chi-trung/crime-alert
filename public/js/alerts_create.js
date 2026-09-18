@@ -29,6 +29,11 @@ function setupImagePreview() {
 
                 var img = document.createElement('img');
                 img.src = e.target.result;
+                // Issue #368: every server-rendered <img> in this repo carries
+                // an alt; this was the only image built without one, so a
+                // screen reader announced nothing for the picture the user had
+                // just picked.
+                img.alt = 'Ảnh xem trước';
                 img.className = 'img-fluid rounded-3 shadow-sm border';
                 img.style.maxHeight = '300px';
 

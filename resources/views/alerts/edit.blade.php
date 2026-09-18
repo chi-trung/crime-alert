@@ -54,7 +54,7 @@
                          siblings) — the preview never loaded, so the
                          #125 remove-image button was operated blind. --}}
                     <img src="{{ asset('storage/'.$alert->image) }}" alt="Ảnh hiện tại" class="preview-img" style="max-width: 350px; max-height: 350px; object-fit: cover; border-radius: 8px; border: 1px solid #ddd;">
-                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 rounded-circle remove-image-btn" style="z-index:10;">
+                    <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 m-2 rounded-circle remove-image-btn" style="z-index:10;" aria-label="Bỏ ảnh này">
                         <i class="fas fa-times"></i>
                     </button>
                     <input type="hidden" name="remove_image" class="remove_image_input" value="0">
@@ -64,6 +64,12 @@
                 </div>
             @endif
             <input type="file" class="form-control mt-2" id="image" name="image" accept="image/*">
+            {{-- Issue #368: the create page shows a live preview of a picked
+                 file before submit; the edit page did not, so replacing the
+                 stored image was a blind operation until the form was saved.
+                 The div is always rendered (not only when an image exists) so
+                 a user clearing the stored image can still see the pick. --}}
+            <div class="mt-3" id="image-preview"></div>
             {{-- Issue #343: the edit form was the #211 fix's blind spot. The
                  create page advertises the enforced cap, the edit page did
                  not — same 2MB validator rule, same rejection, no notice, so
@@ -87,6 +93,7 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
 <script src="https://unpkg.com/leaflet-control-geocoder@4.0.0/dist/Control.Geocoder.js" integrity="sha384-GwOxBPYQUJoAtZlP9zcDGxDFHdgRasiwmwj4JQoxhWpOBaETX1aOU/qm8fsP4Hf5" crossorigin="anonymous"></script>
 <script src="{{ asset('js/alert_map_picker.js') }}"></script>
+<script src="{{ asset('js/alerts_create.js') }}"></script>
 <script>
 window.addEventListener('load', function () {
     fixLeafletIcons();
