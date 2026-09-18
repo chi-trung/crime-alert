@@ -59,7 +59,7 @@
                         <div class="col-md-6 text-center text-md-end">
                             <p class="mb-0 text-muted">
                                 © 2025 <strong>Nhóm 5</strong>. Tất cả các quyền được bảo lưu.
-                                <a href="https://chi-trung.github.io/CV/" target="_blank" class="text-decoration-none ms-2">
+                                <a href="https://chi-trung.github.io/CV/" target="_blank" rel="noopener" class="text-decoration-none ms-2">
                                     <img src="https://cdn-icons-png.flaticon.com/128/3462/3462381.png" alt="External Link" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">Về chúng tôi
                                 </a>
                             </p>

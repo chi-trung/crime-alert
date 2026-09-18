@@ -56,7 +56,7 @@
         </div>
     @endif
     <div class="text-muted small mt-3">
-        Nguồn dữ liệu: <a href="https://truyna.bocongan.gov.vn/" target="_blank">Cổng thông tin truy nã Bộ Công An</a>
+        Nguồn dữ liệu: <a href="https://truyna.bocongan.gov.vn/" target="_blank" rel="noopener">Cổng thông tin truy nã Bộ Công An</a>
     </div>
 </div>
 @endsection 

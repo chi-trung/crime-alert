@@ -10,8 +10,14 @@
             <h1 class="fw-bold mb-1">Bảng điều khiển</h1>
         </div>
         <div class="d-flex align-items-center">
+            {{-- Issue #345: this read "Cập nhật lần cuối" (last updated)
+                 followed by now() — i.e. the current server time, which a
+                 reload re-renders to a NEW now(). It was never a "last
+                 updated" value; it ticked on every render and described
+                 nothing. Relabeled as the load time, which is what it
+                 always showed. --}}
             <div class="me-3 d-none d-sm-block text-end">
-                <div class="text-muted small">Cập nhật lần cuối</div>
+                <div class="text-muted small">Thời gian tải trang</div>
                 <div class="fw-semibold text-primary">{{ now()->format('d/m/Y H:i') }}</div>
             </div>
             <button class="btn btn-light rounded-circle p-2" id="refresh-btn">
@@ -272,7 +278,7 @@
                             <div class="d-grid gap-3">
                             @foreach($latestNews as $news)
                                 <div class="border-bottom pb-2">
-                                    <a href="{{ $news->link }}" target="_blank" class="fw-semibold text-dark text-decoration-none">{{ $news->title }}</a>
+                                    <a href="{{ $news->link }}" target="_blank" rel="noopener" class="fw-semibold text-dark text-decoration-none">{{ $news->title }}</a>
                                     <div class="text-muted small">{{ Str::limit($news->description, 60) }}</div>
                                 </div>
                             @endforeach
@@ -644,9 +650,17 @@
                             <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
                                 <i class="fas fa-ellipsis-v"></i>
                             </button>
+                            {{-- Issue #345: both items were href="#" with no
+                                 handler anywhere — dead weight in an ellipsis
+                                 menu. "Xuất báo cáo" has no export feature in
+                                 this app at all, so it is removed rather than
+                                 shipped as a button that scrolls to the top;
+                                 "Xem chi tiết" now opens the admin alert
+                                 index, which is the detail view of this chart
+                                 for admins (non-admins keep the whole menu
+                                 hidden, as the enclosing card already is). --}}
                             <ul class="dropdown-menu dropdown-menu-end">
-                                <li><a class="dropdown-item" href="#">Xuất báo cáo</a></li>
-                                <li><a class="dropdown-item" href="#">Xem chi tiết</a></li>
+                                <li><a class="dropdown-item" href="{{ auth()->user()->isAdmin ? route('admin.alerts') : route('alerts.index') }}">Xem chi tiết</a></li>
                             </ul>
                         </div>
                     </div>

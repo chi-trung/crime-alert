@@ -179,7 +179,7 @@
                         required
                     >
                     <label for="terms" class="ml-2 block text-sm text-gray-700">
-                        Tôi đồng ý với <a href="#" class="text-primary font-medium hover:underline">Điều khoản dịch vụ</a> và <a href="#" class="text-primary font-medium hover:underline">Chính sách bảo mật</a>
+                        Tôi đồng ý với <span class="text-primary font-medium">Điều khoản dịch vụ</span> và <span class="text-primary font-medium">Chính sách bảo mật</span>
                     </label>
                 </div>
                 

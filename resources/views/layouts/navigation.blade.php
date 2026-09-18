@@ -87,23 +87,37 @@
         </ul>
         @auth
           @if(auth()->user()->isAdmin)
+            {{-- Issue #345: this block was unreachable HTML. A stray </li>
+                 with no opening <li> below made the browser reject the whole
+                 <ul> as malformed, so "Bai viet" and "Bao cao" never rendered
+                 for ANY admin - verified by DOM-probing the rendered nav: the
+                 second ul came back with zero child <li>. The dashboard card
+                 buttons were the only path left to those admin indexes. --}}
             <ul class="nav-menu">
-              
-              </li>
-              <li class="nav-item">
-                <a href="{{ route('admin.experiences') }}" class="nav-link">
-                  <span class="link-icon">
-                    <i class="fas fa-book"></i>
-                  </span>
-                    <span class="link-text">Bài viết</span>
-                </a>
-              </li>
               <li class="nav-item">
                 <a href="{{ route('admin.alerts') }}" class="nav-link">
                   <span class="link-icon">
                     <i class="fas fa-chart-bar"></i>
                   </span>
                   <span class="link-text">Báo cáo</span>
+                </a>
+              </li>
+              <li class="nav-item">
+                <a href="{{ route('admin.experiences') }}" class="nav-link">
+                  <span class="link-icon">
+                    <i class="fas fa-book"></i>
+                  </span>
+                  <span class="link-text">Bài viết</span>
+                </a>
+              </li>
+              {{-- Issue #345: the admin support queue had no nav entry either
+                   - only a "Xem tất cả" button on one dashboard card. --}}
+              <li class="nav-item">
+                <a href="{{ route('admin.support.index') }}" class="nav-link">
+                  <span class="link-icon">
+                    <i class="fas fa-headset"></i>
+                  </span>
+                  <span class="link-text">Hỗ trợ</span>
                 </a>
               </li>
             </ul>
