@@ -23,11 +23,29 @@
     </div>
     <div class="row g-3">
         @forelse($notifications as $notification)
+            {{-- Issue #343: every row showed the same green fa-comment-dots
+                 regardless of what actually happened, so a reply, a like and
+                 a support-ticket reply looked identical at a glance. $type is
+                 the resolved class name stored at creation, so this branches
+                 on the real event; pre-rename rows and anything unknown fall
+                 through to the default bullhorn and still render. --}}
+            @php
+                $icon = match ($notification->type) {
+                    'App\Notifications\NewReplyOnComment' => ['fa-reply', 'text-info'],
+                    'App\Notifications\NewCommentOnPost' => ['fa-comment', 'text-primary'],
+                    'App\Notifications\LikeCommentNotification',
+                    'App\Notifications\LikePostNotification' => ['fa-heart', 'text-danger'],
+                    'App\Notifications\NewSupportMessage',
+                    'App\Notifications\NewSupportRequest' => ['fa-headset', 'text-success'],
+                    'App\Notifications\NewPostPendingApprovalNotification' => ['fa-shield-halved', 'text-warning'],
+                    default => ['fa-bullhorn', 'text-secondary'],
+                };
+            @endphp
             <div class="col-12">
                 <div class="card shadow-sm notification-card mb-2 @if(is_null($notification->read_at)) notification-unread-card @endif">
                     <a href="{{ route('notifications.read', $notification->id) }}" class="d-flex align-items-center gap-3 text-decoration-none text-dark p-3">
                         <div class="pt-1">
-                            <i class="fas fa-comment-dots text-success fa-2x"></i>
+                            <i class="fas {{ $icon[0] }} {{ $icon[1] }} fa-2x"></i>
                         </div>
                         <div class="flex-grow-1">
                             <div class="mb-1">

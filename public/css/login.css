@@ -57,36 +57,9 @@ body {
     box-shadow: 0 7px 14px rgba(79, 70, 229, 0.3);
 }
 
-.divider {
-    display: flex;
-    align-items: center;
-    text-align: center;
-    color: #94a3b8;
-    margin: 1.5rem 0;
-}
-
-.divider::before,
-.divider::after {
-    content: '';
-    flex: 1;
-    border-bottom: 1px solid #e2e8f0;
-}
-
-.divider::before {
-    margin-right: 1rem;
-}
-
-.divider::after {
-    margin-left: 1rem;
-}
-
-.social-btn {
-    transition: all 0.3s ease;
-}
-
-.social-btn:hover {
-    transform: translateY(-3px);
-}
+/* Issue #343: .divider and .social-btn died with the orphan
+   "HOẶC ĐĂNG NHẬP VỚI" block on the login form — no social provider is
+   wired, so both rule sets now match no element. */
 
 .remember-forgot a:hover {
     color: #4f46e5;

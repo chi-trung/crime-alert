@@ -55,6 +55,13 @@
                 </div>
             @endif
             <input type="file" class="form-control mt-2" id="image" name="image" accept="image/*">
+            {{-- Issue #343: the edit form was the #211 fix's blind spot. The
+                 create page advertises the enforced cap, the edit page did
+                 not — same 2MB validator rule, same rejection, no notice, so
+                 a user replacing an image here got a validation error with no
+                 prior warning. Mirrors the create view's copy; AlertUploadCopyTest
+                 pins the number to the rule so both pages stay in step. --}}
+            <div class="form-text">Chỉ chấp nhận ảnh (JPEG, PNG, GIF) tối đa 2MB.</div>
             @error('image')<div class="text-danger">{{ $message }}</div>@enderror
         </div>
         <button type="submit" class="btn btn-primary">Cập nhật</button>
