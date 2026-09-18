@@ -1,6 +1,5 @@
 @extends('layouts.app')
 @section('content')
-<link rel="stylesheet" href="{{ asset('css/news.css') }}">
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-3 text-primary">Tin tức & Thông báo an ninh</h1>
     <p class="lead text-muted">Cập nhật tin tức mới nhất về tình hình an ninh, cảnh báo lừa đảo, truy nã đặc biệt...</p>

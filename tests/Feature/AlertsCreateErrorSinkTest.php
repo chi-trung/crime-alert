@@ -18,8 +18,11 @@ use Tests\TestCase;
  * the catch: self-XSS, exactly the #77/#18 class, one form away. The fix
  * gates marker/pan/reverseGeocode on Number.isFinite (so no throw happens
  * with garbage at all) and builds the fallback alert from a text node.
- * Like AlertsMapPopupTest, the file is a static asset that never reaches a
- * test response, so this pins the source itself.
+ *
+ * Issue #349: the map init moved from alerts_create.js to the shared
+ * alert_map_picker.js (the edit page needs the identical map), so the guards
+ * are pinned wherever the code lives. The two files are asserted together:
+ * a copy of the dangerous shape in either one reaches a live page.
  */
 class AlertsCreateErrorSinkTest extends TestCase
 {
@@ -30,7 +33,8 @@ class AlertsCreateErrorSinkTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
-        $this->js = file_get_contents(public_path('js/alerts_create.js'));
+        $this->js = file_get_contents(public_path('js/alert_map_picker.js'))
+            ."\n".file_get_contents(public_path('js/alerts_create.js'));
     }
 
     public function test_no_interpolated_template_literal_reaches_innerhtml(): void
@@ -68,14 +72,23 @@ class AlertsCreateErrorSinkTest extends TestCase
 
     public function test_reverse_geocode_query_params_are_encoded(): void
     {
-        $this->assertMatchesRegularExpression(
-            '/reverse\?lat=\$\{encodeURIComponent\(/',
+        // Issue #349: the picker builds the URL from string concatenation
+        // rather than a template literal (the surrounding code is ES5 so the
+        // page stays parseable by older engines), so the literal pin is
+        // asserted against the encoded pair directly.
+        $this->assertStringContainsString(
+            'reverse?lat='."' + encodeURIComponent(lat)",
             $this->js,
             'untrusted input must be percent-encoded into the outbound URL'
         );
-        $this->assertMatchesRegularExpression(
-            '/&lon=\$\{encodeURIComponent\(/',
+        $this->assertStringContainsString(
+            "' + encodeURIComponent(lng)",
             $this->js
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            '/reverse\?lat=\$\{[^}]*\}/',
+            $this->js,
+            'the coordinates must not be interpolated raw into the URL'
         );
     }
 

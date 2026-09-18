@@ -16,11 +16,20 @@
             <textarea class="form-control" id="description" name="description" rows="4" required>{{ old('description', $alert->description) }}</textarea>
             @error('description')<div class="text-danger">{{ $message }}</div>@enderror
         </div>
+        {{-- Issue #349: this page used to ship a stripped-down inline map that
+             only handled click-to-drop — no geocoder, no address field — so a
+             user editing the position could move the point but never enter an
+             address, leaving a stale location next to new coordinates. It also
+             omitted fixLeafletIcons(), so its marker did not render at all.
+             The map is now the shared alert_map_picker.js used by the create
+             page. The location input is readonly: the address is derived from
+             the chosen point (Nominatim), same as on create. --}}
         <div class="mb-3">
             <label class="form-label fw-bold">Chọn vị trí trên bản đồ</label>
             <div id="map" style="height: 350px; border-radius: 12px; overflow: hidden;"></div>
             <input type="hidden" id="latitude" name="latitude" value="{{ old('latitude', $alert->latitude) }}">
             <input type="hidden" id="longitude" name="longitude" value="{{ old('longitude', $alert->longitude) }}">
+            <input type="text" id="location" name="location" class="form-control mt-2" placeholder="Địa chỉ sẽ tự động điền khi chọn vị trí" value="{{ old('location', $alert->location) }}" readonly>
             <div class="form-text">Nhấn vào bản đồ để chọn vị trí xảy ra sự việc (có thể bỏ qua nếu không rõ).</div>
         </div>
         <div class="mb-3">
@@ -72,35 +81,21 @@
 
 @section('scripts')
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>
-{{-- Issue #327: pinned leaflet pair was integrity-less; now hashed like the
-     map and create views (#167 doctrine). --}}
+{{-- Issue #349: the edit page needs the geocoder too — without it there is no
+     way to enter an address here, only drag a marker. Hashes per #167/#327. --}}
+<link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder@4.0.0/dist/Control.Geocoder.css" integrity="sha384-dtZhMVplthx1XPTPFEKMM5M6e369Paz7gy0QTqvuQKB42lq4FIPsrqe125Ho6bfO" crossorigin="anonymous" />
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha384-cxOPjt7s7Iz04uaHJceBmS+qpjv2JkIHNVcuOrM+YHwZOmJGBXI00mdUXEq65HTH" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/leaflet-control-geocoder@4.0.0/dist/Control.Geocoder.js" integrity="sha384-GwOxBPYQUJoAtZlP9zcDGxDFHdgRasiwmwj4JQoxhWpOBaETX1aOU/qm8fsP4Hf5" crossorigin="anonymous"></script>
+<script src="{{ asset('js/alert_map_picker.js') }}"></script>
 <script>
-window.onload = function() {
-    const lat = parseFloat(document.getElementById('latitude').value) || 10.762622;
-    const lng = parseFloat(document.getElementById('longitude').value) || 106.660172;
-    const map = L.map('map').setView([lat, lng], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 19,
-    }).addTo(map);
-    setTimeout(function () {
-        map.invalidateSize();
-    }, 0);
-    let marker;
-    if (!isNaN(lat) && !isNaN(lng) && (lat !== 10.762622 || lng !== 106.660172)) {
-        marker = L.marker([lat, lng]).addTo(map);
-    }
-    map.on('click', function(e) {
-        const { lat, lng } = e.latlng;
-        document.getElementById('latitude').value = lat.toFixed(7);
-        document.getElementById('longitude').value = lng.toFixed(7);
-        if (marker) marker.setLatLng(e.latlng);
-        else marker = L.marker(e.latlng).addTo(map);
-    });
+window.addEventListener('load', function () {
+    fixLeafletIcons();
+    editPositionableMap({ containerId: 'map', geocodeOnLoad: false });
 
-    document.querySelectorAll('.remove-image-btn').forEach(function(removeBtn) {
-        removeBtn.onclick = function() {
+    // #125's remove-image toggle. Kept here rather than in the shared picker:
+    // the create page has no stored image to remove.
+    document.querySelectorAll('.remove-image-btn').forEach(function (removeBtn) {
+        removeBtn.onclick = function () {
             var previewBlock = this.closest('.image-preview-block');
             var removeInput = previewBlock.querySelector('.remove_image_input');
             var removeMsg = document.getElementById('remove-image-message');
@@ -111,6 +106,6 @@ window.onload = function() {
             if (fileInput) fileInput.value = '';
         };
     });
-};
+});
 </script>
 @endsection 
