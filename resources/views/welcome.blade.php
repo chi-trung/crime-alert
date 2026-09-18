@@ -17,12 +17,16 @@
     <!-- Header -->
     <header class="header">
         <nav class="nav">
-            <a href="#" class="logo">🚨NHÓM 5</a>
+            <a href="{{ url('/') }}" class="logo">🚨NHÓM 5</a>
             <div class="nav-links">
                 <a href="{{ route('news.index') }}" class="nav-link">Tin tức</a>
                 <a href="{{ route('wanted_list.index') }}" class="nav-link">Truy nã</a>
-                <a href="{{ route('login') }}" class="nav-link">Đăng nhập</a>
-                <a href="{{ route('register') }}" class="nav-link">Đăng ký</a>
+                @auth
+                    <a href="{{ route('dashboard') }}" class="nav-link">Dashboard</a>
+                @else
+                    <a href="{{ route('login') }}" class="nav-link">Đăng nhập</a>
+                    <a href="{{ route('register') }}" class="nav-link">Đăng ký</a>
+                @endauth
             </div>
         </nav>
     </header>
@@ -33,7 +37,7 @@
             <h1 class="hero-title">CẢNH BÁO TỘI PHẠM</h1>
             <p class="hero-subtitle">BẢO VỆ CỘNG ĐỒNG - AN TOÀN MỌI NHÀ</p>
             <p class="hero-description">
-                Hệ thống cảnh báo tội phạm thông minh giúp cộng đồng kết nối, chia sẻ thông tin an ninh 
+                Hệ thống cảnh báo tội phạm thông minh giúp cộng đồng kết nối, chia sẻ thông tin an ninh
                 và bảo vệ lẫn nhau. Cùng nhau xây dựng một môi trường sống an toàn và hòa bình.
             </p>
 
@@ -58,65 +62,82 @@
             </div>
 
             <div class="features">
-                <div class="feature-card">
-                    <a href="/alerts/create" style="text-decoration:none;color:inherit;display:block">
-                        <div class="feature-icon">📱</div>
-                        <h3 class="feature-title">Báo cáo nhanh</h3>
-                        <p class="feature-text">
-                            Báo cáo sự cố chỉ với vài thao tác đơn giản. 
-                            Thông tin được gửi ngay lập tức đến cơ quan chức năng và cộng đồng.
-                        </p>
-                    </a>
-                </div>
-                
-                <div class="feature-card">
-                    <a href="/alerts/map" style="text-decoration:none;color:inherit;display:block">
-                        <div class="feature-icon">🗺️</div>
-                        <h3 class="feature-title">Bản đồ an ninh</h3>
-                        <p class="feature-text">
-                            Xem bản đồ thời gian thực các vụ việc trong khu vực. 
-                            Cập nhật liên tục để bạn luôn nắm bắt tình hình an ninh.
-                        </p>
-                    </a>
-                </div>
-                
-                <div class="feature-card">
-                    <a href="/experiences/create" style="text-decoration:none;color:inherit;display:block">
-                        <div class="feature-icon">👥</div>
-                        <h3 class="feature-title">Cộng đồng kết nối</h3>
-                        <p class="feature-text">
-                            Kết nối với hàng xóm và cộng đồng địa phương. 
-                            Chia sẻ thông tin, hỗ trợ lẫn nhau để tạo môi trường an toàn.
-                        </p>
-                    </a>
-                </div>
-                <div class="feature-card">
-                    <a href="/notifications" style="text-decoration:none;color:inherit;display:block">
-                        <div class="feature-icon">💬</div>
-                        <h3 class="feature-title">Hỗ trợ trực tuyến</h3>
-                        <p class="feature-text">
-                            Đội ngũ hỗ trợ luôn sẵn sàng giải đáp thắc mắc, tiếp nhận thông tin và hỗ trợ bạn 24/7 qua nhiều kênh liên lạc.
-                        </p>
-                    </a>
-                </div>
-                <div class="feature-card">
-                    <a href="/dashboard" style="text-decoration:none;color:inherit;display:block">
-                        <div class="feature-icon">🤖</div>
-                        <h3 class="feature-title">Chatbot AI</h3>
-                        <p class="feature-text">
-                            Trợ lý ảo thông minh giúp bạn tra cứu thông tin, hướng dẫn sử dụng hệ thống và hỗ trợ xử lý tình huống khẩn cấp.
-                        </p>
-                    </a>
-                </div>
-                <div class="feature-card">
-                    <a href="/notifications" style="text-decoration:none;color:inherit;display:block">
-                        <div class="feature-icon">🔔</div>
-                        <h3 class="feature-title">Thông báo</h3>
-                        <p class="feature-text">
-                            Nhận thông báo tức thì về các sự kiện an ninh, cảnh báo mới và cập nhật quan trọng trong khu vực của bạn.
-                        </p>
-                    </a>
-                </div>
+                @php
+                    // Issue #341: the cards hardcoded '/alerts/create' etc. as
+                    // plain strings. route() fails loudly if a route is later
+                    // renamed, and the two cards below pointed at the wrong
+                    // page: 'Hỗ trợ trực tuyến' went to /notifications instead
+                    // of the support form, and 'Chatbot AI' went to /dashboard
+                    // even though the chatbot is a floating widget on every
+                    // authenticated page, not a page of its own.
+                    //
+                    // Issue #341 (auth gate): news and the wanted list are the
+                    // only public ones here. Every other target sits behind
+                    // auth middleware, so a guest clicking a card lands on the
+                    // login form. That form remembers the intended URL
+                    // (AuthenticatedSessionController::redirect()->intended),
+                    // so the guest still reaches the page after signing in;
+                    // the badge below just sets the expectation first.
+                    $features = [
+                        [
+                            'icon' => '📱',
+                            'title' => 'Báo cáo nhanh',
+                            'text' => 'Báo cáo sự cố chỉ với vài thao tác đơn giản. Thông tin được gửi ngay lập tức đến cơ quan chức năng và cộng đồng.',
+                            'route' => 'alerts.create',
+                            'public' => false,
+                        ],
+                        [
+                            'icon' => '🗺️',
+                            'title' => 'Bản đồ an ninh',
+                            'text' => 'Xem bản đồ thời gian thực các vụ việc trong khu vực. Cập nhật liên tục để bạn luôn nắm bắt tình hình an ninh.',
+                            'route' => 'alerts.map',
+                            'public' => false,
+                        ],
+                        [
+                            'icon' => '👥',
+                            'title' => 'Cộng đồng kết nối',
+                            'text' => 'Kết nối với hàng xóm và cộng đồng địa phương. Chia sẻ thông tin, hỗ trợ lẫn nhau để tạo môi trường an toàn.',
+                            'route' => 'experiences.create',
+                            'public' => false,
+                        ],
+                        [
+                            'icon' => '💬',
+                            'title' => 'Hỗ trợ trực tuyến',
+                            'text' => 'Đội ngũ hỗ trợ luôn sẵn sàng giải đáp thắc mắc, tiếp nhận thông tin và hỗ trợ bạn 24/7 qua nhiều kênh liên lạc.',
+                            'route' => 'support.create',
+                            'public' => false,
+                        ],
+                        [
+                            'icon' => '🤖',
+                            'title' => 'Chatbot AI',
+                            'text' => 'Trợ lý ảo thông minh giúp bạn tra cứu thông tin, hướng dẫn sử dụng hệ thống và hỗ trợ xử lý tình huống khẩn cấp. Đăng nhập rồi bấm nút trợ lý ở góc phải màn hình.',
+                            'route' => 'dashboard',
+                            'public' => false,
+                        ],
+                        [
+                            'icon' => '🔔',
+                            'title' => 'Thông báo',
+                            'text' => 'Nhận thông báo tức thì về các sự kiện an ninh, cảnh báo mới và cập nhật quan trọng trong khu vực của bạn.',
+                            'route' => 'notifications.index',
+                            'public' => false,
+                        ],
+                    ];
+                @endphp
+
+                @foreach($features as $feature)
+                    <div class="feature-card">
+                        <a href="{{ route($feature['route']) }}" style="text-decoration:none;color:inherit;display:block">
+                            <div class="feature-icon">{{ $feature['icon'] }}</div>
+                            <h3 class="feature-title">{{ $feature['title'] }}</h3>
+                            <p class="feature-text">
+                                {{ $feature['text'] }}
+                                @if(! $feature['public'] && ! auth()->check())
+                                    <span class="feature-guest-hint">Cần đăng nhập</span>
+                                @endif
+                            </p>
+                        </a>
+                    </div>
+                @endforeach
             </div>
         </div>
     </main>
