@@ -51,14 +51,18 @@ function animateStats() {
     });
 }
 
-// Enhanced parallax effect
+// Enhanced parallax effect.
+// Issue #359: the listener used to be registered *inside* the scroll
+// handler, so every scroll event attached another scroll handler and the
+// transform work compounded. Registered once here instead.
 function handleParallax() {
+    const background = document.querySelector('.background');
+    const particles = document.querySelector('.particles');
+
     window.addEventListener('scroll', () => {
         const scrolled = window.pageYOffset;
         const rate = scrolled * -0.3;
-        const background = document.querySelector('.background');
-        const particles = document.querySelector('.particles');
-        
+
         background.style.transform = `translateY(${rate}px)`;
         particles.style.transform = `translateY(${rate * 0.5}px)`;
     });
@@ -141,17 +145,3 @@ style.textContent = `
     }
 `;
 document.head.appendChild(style);
-
-// Smooth scrolling for navigation
-document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-    anchor.addEventListener('click', function (e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
-        if (target) {
-            target.scrollIntoView({
-                behavior: 'smooth',
-                block: 'start'
-            });
-        }
-    });
-}); 
