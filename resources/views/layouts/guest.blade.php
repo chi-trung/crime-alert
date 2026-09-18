@@ -16,7 +16,7 @@
         <script src="{{ asset('js/app.js') }}"></script>
 
         <!-- Favicon -->
-        <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/2592/2592317.png">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     </head>
     <body class="font-sans text-gray-900 antialiased">
         <div class="min-h-screen flex flex-col sm:justify-center items-center pt-6 sm:pt-0 bg-gray-100">

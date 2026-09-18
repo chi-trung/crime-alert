@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
 <div class="container py-5">
-    <h1 class="display-5 fw-bold mb-4 text-success"><i class="fas fa-plus-circle me-2"></i>Gửi bài chia sẻ kinh nghiệm</h1>
+    <h1 class="display-5 fw-bold mb-4 text-success">Gửi bài chia sẻ kinh nghiệm</h1>
     <form action="{{ route('experiences.store') }}" method="POST" enctype="multipart/form-data" class="mx-auto" style="max-width:600px;">
         @csrf
         @if(Auth::user())

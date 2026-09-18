@@ -34,10 +34,10 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                 </span>
                             </div>
                             <span class="text-muted small d-block">
-                                <i class="far fa-calendar-alt me-1"></i> {{ $alert->created_at->format('d/m/Y H:i') }}
+                                {{ $alert->created_at->format('d/m/Y H:i') }}
                             </span>
                             <span class="text-muted small">
-                                <i class="far fa-user me-1"></i> {{ $alert->user->name ?? 'N/A' }}
+                                {{ $alert->user->name ?? 'N/A' }}
                             </span>
                         </div>
                     </div>
@@ -80,13 +80,13 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                     
                     <div class="alert-details mb-4">
                         <div class="mb-3">
-                            <h5 class="fw-semibold mb-2"><i class="fas fa-info-circle text-primary me-2"></i>Mô tả</h5>
+                            <h5 class="fw-semibold mb-2">Mô tả</h5>
                             <p class="card-text ps-4">{{ $alert->description }}</p>
                         </div>
                         
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <h5 class="fw-semibold mb-2"><i class="fas fa-map-marker-alt text-primary me-2"></i>Vị trí</h5>
+                                <h5 class="fw-semibold mb-2">Vị trí</h5>
                                 @if($alert->location)
                                     <p class="ps-4">{{ $alert->location }}</p>
                                 @elseif($alert->latitude && $alert->longitude)
@@ -100,7 +100,7 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                 @endif
                             </div>
                             <div class="col-md-6 mb-3">
-                                <h5 class="fw-semibold mb-2"><i class="fas fa-tag text-primary me-2"></i>Trạng thái</h5>
+                                <h5 class="fw-semibold mb-2">Trạng thái</h5>
                                 <p class="ps-4">
                                     @if($alert->status == 'pending')
                                         <span class="badge bg-warning bg-opacity-25 text-warning-emphasis py-2 px-3 rounded-pill">
@@ -125,29 +125,29 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                         <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div class="d-flex gap-2 flex-wrap">
                                 <a href="{{ route('alerts.index') }}" class="btn btn-outline-secondary rounded-pill">
-                                    <i class="fas fa-arrow-left me-1"></i> Quay lại
+                                    Quay lại
                                 </a>
                                 @if(auth()->check() && (auth()->user()->isAdmin || auth()->id() === $alert->user_id))
                                     @if(auth()->user()->isAdmin)
                                         <a href="{{ route('admin.alerts.edit', $alert) }}" class="btn btn-primary rounded-pill">
-                                            <i class="fas fa-edit me-1"></i> Sửa
+                                            Sửa
                                         </a>
                                         <form action="{{ route('admin.alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-danger rounded-pill">
-                                                <i class="fas fa-trash-alt me-1"></i> Xóa
+                                                Xóa
                                             </button>
                                         </form>
                                     @else
                                         <a href="{{ route('alerts.edit', $alert) }}" class="btn btn-primary rounded-pill">
-                                            <i class="fas fa-edit me-1"></i> Sửa
+                                            Sửa
                                         </a>
                                         <form action="{{ route('alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn btn-danger rounded-pill">
-                                                <i class="fas fa-trash-alt me-1"></i> Xóa
+                                                Xóa
                                             </button>
                                         </form>
                                     @endif
@@ -179,7 +179,7 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
             <div class="card border-0 shadow-sm rounded-3">
                 <div class="card-body p-4">
                     <h4 class="fw-bold mb-4 d-flex align-items-center">
-                        <i class="fas fa-comments text-primary me-2"></i> Bình luận
+                        Bình luận
                         <span class="badge bg-primary bg-opacity-10 text-primary ms-2 rounded-pill">
                             {{ $alert->comments()->count() }}
                         </span>
@@ -213,18 +213,18 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                         @enderror
                                     </div>
                                     <button type="submit" class="btn btn-primary rounded-pill px-4">
-                                        <i class="fas fa-paper-plane me-1"></i> Gửi bình luận
+                                        Gửi bình luận
                                     </button>
                                 </form>
                             @endif
                         @else
                             <div class="alert alert-info rounded-3">
-                                <i class="fas fa-info-circle me-2"></i> Vui lòng <a href="{{ route('login') }}" class="alert-link">đăng nhập</a> để bình luận.
+                                Vui lòng <a href="{{ route('login') }}" class="alert-link">đăng nhập</a> để bình luận.
                             </div>
                         @endauth
                     @else
                         <div class="alert alert-warning rounded-3">
-                            <i class="fas fa-info-circle me-2"></i> Chỉ bình luận khi cảnh báo đã được duyệt.
+                            Chỉ bình luận khi cảnh báo đã được duyệt.
                         </div>
                     @endif
                     

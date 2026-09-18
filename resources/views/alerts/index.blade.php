@@ -5,9 +5,6 @@
 <div class="container mt-4">
     <!-- Header với background cảnh sát -->
     <div class="alert-header bg-primary text-white rounded-4 p-4 mb-4 position-relative overflow-hidden">
-        <div class="position-absolute top-0 end-0 opacity-10">
-            <i class="fas fa-shield-alt fa-10x"></i>
-        </div>
         <h1 class="display-5 fw-bold mb-3">Cảnh báo tội phạm cộng đồng</h1>
         <p class="lead mb-0">Cùng chung tay phòng chống tội phạm bằng cách chia sẻ thông tin</p>
     </div>
@@ -30,7 +27,7 @@
                 <div class="col-md-3">
                     <label for="location" class="form-label fw-semibold">Khu vực</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-map-marker-alt"></i></span>
+                        <span class="input-group-text"></span>
                         <input type="text" name="location" id="location" class="form-control border-2" 
                                value="{{ request('location') }}" placeholder="Nhập khu vực...">
                     </div>
@@ -38,14 +35,14 @@
                 <div class="col-md-3">
                     <label for="q" class="form-label fw-semibold">Tìm kiếm</label>
                     <div class="input-group">
-                        <span class="input-group-text"><i class="fas fa-search"></i></span>
+                        <span class="input-group-text"></span>
                         <input type="text" name="q" id="q" class="form-control border-2" 
                                value="{{ request('q') }}" placeholder="Tìm theo tiêu đề...">
                     </div>
                 </div>
                 <div class="col-md-1 d-grid">
                     <button type="submit" class="btn btn-danger">
-                        <i class="fas fa-filter me-1"></i> Lọc
+                        Lọc
                     </button>
                 </div>
             </form>
@@ -96,7 +93,7 @@
                         @else
                             <a href="{{ route('alerts.show', $alert) }}">
                                 <div class="card-img-top overflow-hidden d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
-                                    <img src="https://cdn-icons-png.flaticon.com/512/2642/2642651.png" class="img-fluid w-100 h-100 object-fit-cover opacity-50" alt="Ảnh cảnh báo mặc định">
+                                    <div class="thumb-ph w-100 h-100"></div>
                                 </div>
                             </a>
                         @endif
@@ -124,11 +121,11 @@
                             <!-- Thông tin vị trí và thời gian -->
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
-                                    <i class="fas fa-map-marker-alt text-danger me-1"></i>
+                                    
                                     <small class="text-muted">{{ $alert->location ?? 'Không rõ' }}</small>
                                 </div>
                                 <div>
-                                    <i class="fas fa-clock text-muted me-1"></i>
+                                    
                                     <small class="text-muted">{{ $alert->created_at->diffForHumans() }}</small>
                                 </div>
                             </div>
@@ -139,14 +136,14 @@
                             <div class="d-flex justify-content-between align-items-center">
                                 <div>
                                     <span class="badge bg-primary bg-opacity-10 text-primary me-2">
-                                        <i class="fas fa-user"></i> {{ $alert->user->name ?? 'Ẩn danh' }}
+                                        {{ $alert->user->name ?? 'Ẩn danh' }}
                                     </span>
                                 </div>
                                 <small class="text-muted">
-                                    <i class="fas fa-comments me-1"></i> {{ $alert->comments_count ?? 0 }} bình luận
+                                    {{ $alert->comments_count ?? 0 }} bình luận
                                 </small>
                                 <a href="{{ route('alerts.show', $alert) }}" class="btn btn-sm btn-outline-primary">
-                                    Xem chi tiết <i class="fas fa-arrow-right ms-1"></i>
+                                    Xem chi tiết
                                 </a>
                             </div>
                         </div>
@@ -167,7 +164,7 @@
             <h3 class="mb-3">Bạn có thông tin về tội phạm?</h3>
             <p class="text-muted mb-4">Hãy chia sẻ ngay để cảnh báo cộng đồng và giúp đỡ mọi người phòng tránh</p>
             <a href="{{ route('alerts.create') }}" class="btn btn-danger px-4 py-2">
-                <i class="fas fa-bell me-2"></i> Tạo cảnh báo ngay
+                Tạo cảnh báo ngay
             </a>
         </div>
     </div>

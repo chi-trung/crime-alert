@@ -83,8 +83,12 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Đánh dấu vị trí hiện tại bằng icon đặc biệt
     function addCurrentLocationMarker(lat, lng) {
-        var myIcon = L.icon({
-            iconUrl: 'https://cdn-icons-png.flaticon.com/512/684/684908.png',
+        // Issue #347: was a hot-linked flaticon PNG, so every map view
+        // fetched a third-party pixel just to draw "you are here". A
+        // divIcon renders the pin from inline SVG, no extra request.
+        var myIcon = L.divIcon({
+            className: 'current-location-marker',
+            html: '<svg viewBox="0 0 24 24" width="32" height="32" fill="#0d6efd" stroke="#fff" stroke-width="1.5"><path d="M12 22s7-6.2 7-12A7 7 0 0 0 5 10c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.6" fill="#fff" stroke="none"/></svg>',
             iconSize: [32, 32],
             iconAnchor: [16, 32],
             popupAnchor: [0, -32]

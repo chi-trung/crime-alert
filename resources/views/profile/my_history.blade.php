@@ -2,7 +2,7 @@
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/profile_my_history.css') }}">
 <div class="container py-5">
-    <h1 class="fw-bold mb-4 display-5 text-primary"><i class="fas fa-history me-2"></i>Lịch sử bài đăng của bạn</h1>
+    <h1 class="fw-bold mb-4 display-5 text-primary">Lịch sử bài đăng của bạn</h1>
     <div class="row g-4 mb-4">
         <div class="col-lg-6">
             <div class="card shadow rounded-4 border-0 mb-4">
@@ -38,13 +38,13 @@
                                     </td>
                                     <td>{{ $alert->created_at->format('d/m/Y H:i') }}</td>
                                     <td>
-                                        <a href="{{ route('alerts.show', $alert) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3"><i class="fas fa-eye me-1"></i> Xem</a>
+                                        <a href="{{ route('alerts.show', $alert) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">Xem</a>
                                         @if($alert->status != 'approved')
-                                            <a href="{{ route('alerts.edit', $alert) }}" class="btn btn-outline-success btn-sm rounded-pill px-3"><i class="fas fa-edit me-1"></i> Sửa</a>
+                                            <a href="{{ route('alerts.edit', $alert) }}" class="btn btn-outline-success btn-sm rounded-pill px-3">Sửa</a>
                                             <form action="{{ route('alerts.destroy', $alert) }}" method="POST" class="d-inline form-delete">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3"><i class="fas fa-trash me-1"></i> Xóa</button>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">Xóa</button>
                                             </form>
                                         @endif
                                     </td>
@@ -52,7 +52,7 @@
                                 @empty
                                 <tr>
                                     <td colspan="5" class="text-center text-muted py-4">
-                                        <img src="https://cdn-icons-png.flaticon.com/512/4076/4076478.png" alt="No alerts" width="60" class="mb-2 opacity-50">
+                                        <div class="empty-state-icon small mb-2"></div>
                                         <div>Bạn chưa đăng cảnh báo nào</div>
                                     </td>
                                 </tr>
@@ -101,13 +101,13 @@
                                     </td>
                                     <td>{{ $exp->created_at->format('d/m/Y H:i') }}</td>
                                     <td>
-                                        <a href="{{ route('experiences.show', $exp) }}" class="btn btn-outline-success btn-sm rounded-pill px-3"><i class="fas fa-eye me-1"></i> Xem</a>
+                                        <a href="{{ route('experiences.show', $exp) }}" class="btn btn-outline-success btn-sm rounded-pill px-3">Xem</a>
                                         @if($exp->status != 'approved')
-                                            <a href="{{ route('experiences.edit', $exp) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3"><i class="fas fa-edit me-1"></i> Sửa</a>
+                                            <a href="{{ route('experiences.edit', $exp) }}" class="btn btn-outline-primary btn-sm rounded-pill px-3">Sửa</a>
                                             <form action="{{ route('experiences.destroy', $exp) }}" method="POST" class="d-inline form-delete">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3"><i class="fas fa-trash me-1"></i> Xóa</button>
+                                                <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3">Xóa</button>
                                             </form>
                                         @endif
                                     </td>
@@ -115,7 +115,7 @@
                                 @empty
                                 <tr>
                                     <td colspan="4" class="text-center text-muted py-4">
-                                        <img src="https://cdn-icons-png.flaticon.com/512/4076/4076478.png" alt="No exp" width="60" class="mb-2 opacity-50">
+                                        <div class="empty-state-icon small mb-2"></div>
                                         <div>Bạn chưa có bài chia sẻ nào</div>
                                     </td>
                                 </tr>

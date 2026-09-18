@@ -25,7 +25,7 @@
             <textarea name="message" id="message" class="form-control @error('message') is-invalid @enderror" rows="5" maxlength="5000" required>{{ old('message') }}</textarea>
             @error('message')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </div>
-        <button type="submit" class="btn btn-primary"><i class="fas fa-paper-plane me-1"></i> Gửi yêu cầu</button>
+        <button type="submit" class="btn btn-primary">Gửi yêu cầu</button>
         <a href="{{ route('support.index') }}" class="btn btn-link">Quay lại danh sách</a>
     </form>
 </div>

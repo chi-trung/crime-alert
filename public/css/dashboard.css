@@ -207,3 +207,41 @@ body {
     box-shadow: 0 8px 32px rgba(0,0,0,0.25);
     position: relative;
 } 
+
+/* Issue #347: replaces the per-tile .avatar-sm/.avatar-title chrome, which
+   existed only to host a decorative glyph restating the tile's own label.
+   One element per tile now carries the color coding instead of eleven. */
+.stat-accent {
+    display: block;
+    width: 28px;
+    height: 4px;
+    border-radius: 2px;
+    margin-top: .35rem;
+}
+.tile-accent {
+    display: block;
+    width: 36px;
+    height: 4px;
+    border-radius: 2px;
+    margin: 0 auto .5rem;
+}
+.thumb-ph {
+    width: 56px;
+    height: 56px;
+    background: repeating-linear-gradient(
+        45deg, #eef2f7, #eef2f7 6px, #e3e9f2 6px, #e3e9f2 12px);
+}
+.empty-state-icon {
+    width: 80px;
+    height: 80px;
+    margin: 0 auto;
+    border-radius: 50%;
+    background: repeating-linear-gradient(
+        45deg, #eef2f7, #eef2f7 8px, #e3e9f2 8px, #e3e9f2 16px);
+}
+.empty-state-icon.small { width: 60px; height: 60px; }
+.empty-state-icon.large { width: 120px; height: 120px; }
+.photo-missing {
+    background: repeating-linear-gradient(
+        45deg, #eef2f7, #eef2f7 6px, #e3e9f2 6px, #e3e9f2 12px);
+}

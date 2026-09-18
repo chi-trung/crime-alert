@@ -5,7 +5,7 @@
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="card shadow p-4" style="max-width: 420px; width: 100%; border-radius: 18px;">
         <div class="text-center mb-3">
-            <img src="https://cdn-icons-png.flaticon.com/512/561/561127.png" alt="Verify Email" style="width: 70px; opacity: 0.85;">
+            <div class="empty-state-icon" style="margin-bottom:1rem;"></div>
         </div>
         <h3 class="text-center mb-2 text-success">Xác thực Email của bạn</h3>
         <p class="text-center mb-4">

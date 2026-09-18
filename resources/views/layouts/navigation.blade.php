@@ -4,7 +4,7 @@
       <div class="nav-brand">
         <a href="{{ route('dashboard') }}" class="brand-link">
           <div class="brand-icon">
-            <img src="https://cdn-icons-png.flaticon.com/128/2592/2592317.png" alt="Logo" width="32" height="32" />
+            <img src="{{ asset('favicon.svg') }}" alt="Logo" width="28" height="28" />
           </div>
           <span class="brand-text">Trang chủ</span>
         </a>
