@@ -730,10 +730,14 @@
                     
                     // Scroll to bottom
                     messagesContainer.scrollTop = messagesContainer.scrollHeight;
-                    
-                    // Save to history
+
+                    // Keep the in-memory trail. Issue #355: saveMessageHistory()
+                    // used to slice the last 50 here and then discard the
+                    // result — no store was ever written (no localStorage, by
+                    // requirement), so the method saved nothing while its name
+                    // promised persistence. Removed; the push stays because a
+                    // future store would want the trail already collected.
                     this.messageHistory.push({ content, type, timestamp: Date.now() });
-                    this.saveMessageHistory();
                 }
 
                 showLoading() {
@@ -773,17 +777,6 @@
                         .replace(/\n/g, '<br>')
                         .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                         .replace(/\*(.*?)\*/g, '<em>$1</em>');
-                }
-
-                saveMessageHistory() {
-                    try {
-                        // Only keep last 50 messages to prevent memory issues
-                        const recentHistory = this.messageHistory.slice(-50);
-                        // Note: Not using localStorage as per requirements
-                        // History will be lost on page refresh, which is acceptable for this use case
-                    } catch (error) {
-                        console.warn('Could not save chat history:', error);
-                    }
                 }
 
                 loadMessageHistory() {
