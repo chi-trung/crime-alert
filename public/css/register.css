@@ -27,17 +27,12 @@ body {
     margin-bottom: 1.5rem;
 }
 
-.input-icon {
-    position: absolute;
-    left: 15px;
-    top: 50%;
-    transform: translateY(-50%);
-    color: #94a3b8;
-    z-index: 10;
-}
+/* Issue #351: .input-icon matched nothing — all four wrapper divs in
+   register.blade.php are commented out, and the .form-input padding that
+   made room for the glyph is commented out below. The login page still uses
+   its icons, so login.css keeps its copy. */
 
 .form-input {
-    /* padding-left: 45px !important; */
     transition: all 0.2s ease;
 }
 
@@ -106,33 +101,8 @@ body {
     height: 100px;
 }
 
-.tooltip {
-    position: relative;
-    display: inline-block;
-}
-
-.tooltip .tooltiptext {
-    visibility: hidden;
-    width: 200px;
-    background-color: #1e293b;
-    color: #fff;
-    text-align: center;
-    border-radius: 6px;
-    padding: 8px;
-    position: absolute;
-    z-index: 1;
-    bottom: 125%;
-    left: 50%;
-    transform: translateX(-50%);
-    opacity: 0;
-    transition: opacity 0.3s;
-    font-size: 12px;
-}
-
-.tooltip:hover .tooltiptext {
-    visibility: visible;
-    opacity: 1;
-}
+/* Issue #351: .tooltip/.tooltiptext matched no element and no JS assigns the
+   class — the three blocks are removed. */
 
 .password-requirements {
     margin-top: 8px;

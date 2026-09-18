@@ -13,7 +13,7 @@
          #167 doctrine (repo ships no CSP, so SRI is the only CDN integrity
          layer). The two-card layout below relies on the utility classes this
          script generates; css/login.css only styles the custom parts
-         (.login-card, .input-group, .divider, .wave…). --}}
+         (.login-card, .input-group, .wave…). --}}
     <script src="https://cdn.tailwindcss.com/3.4.17" integrity="sha384-igm5BeiBt36UU4gqwWS7imYmelpTsZlQ45FZf+XBn9MuJbn4nQr7yx1yFydocC/K" crossorigin="anonymous"></script>
     <script>
         tailwind.config = {
@@ -30,7 +30,10 @@
         }
     </script>
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
-    <script src="{{ asset('js/login.js') }}"></script>
+    {{-- Issue #351: js/login.js was a byte-sibling of the inline toggle at the
+         bottom of this file. Two listeners on one click meant the field flipped
+         password -> text -> password and the eye never opened. The inline copy
+         survives; the extra file is deleted. --}}
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 </head>
 <body>
@@ -160,6 +163,11 @@
     </div>
     
     <script>
+    // Issue #351: this toggle used to exist TWICE — once in public/js/login.js
+    // (loaded at the top of <body>) and once here. Two listeners fire on one
+    // click, so the field flipped password -> text -> password again and the
+    // eye never opened. login.js is gone; this inline copy is the surviving
+    // one, matching the idiom of register.blade.php's inline handlers.
     (function() {
         const passwordToggle = document.getElementById('passwordToggle');
         const passwordInput = document.getElementById('password');

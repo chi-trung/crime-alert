@@ -26,11 +26,18 @@ function animateStats() {
     
     statNumbers.forEach(stat => {
         const text = stat.textContent;
-        if (text.includes('+')) {
-            const finalNumber = parseInt(text.replace('+', ''));
+        // Issue #351: the guard below used to be text.includes('+'), which
+        // matches "1000+" (fine) but also a hypothetical "24/7+" or any copy
+        // carrying a plus that is not a count. parseInt then yields NaN, the
+        // interval counts NaN forever and the stat displays "NaN+". Require
+        // an actual integer; anything else (the "24/7" monitoring badge
+        // alongside) renders verbatim, which is what it already does today.
+        const parsed = parseInt(text, 10);
+        if (text.includes('+') && Number.isInteger(parsed)) {
+            const finalNumber = parsed;
             let currentNumber = 0;
             const increment = finalNumber / 80;
-            
+
             const timer = setInterval(() => {
                 currentNumber += increment;
                 if (currentNumber >= finalNumber) {

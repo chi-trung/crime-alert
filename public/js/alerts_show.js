@@ -41,12 +41,16 @@ document.addEventListener('DOMContentLoaded', function() {
                 };
                 const res = await fetch(url, options);
                 const text = await res.text();
-                console.log('Raw response:', text); // Log raw response
+                // Issue #351: dropped console.log('Raw response:', text) and
+                // console.error(..., text) — the raw server body (which can
+                // carry a rendered exception, user text or token noise) does
+                // not belong in a visitor's console. The alert() that quotes
+                // the fixed Vietnamese string stays, as the user-facing
+                // failure notice.
                 let data;
                 try {
                     data = JSON.parse(text);
                 } catch (err) {
-                    console.error('Không parse được JSON:', text);
                     alert('Có lỗi xảy ra! (JSON parse error)');
                     btn.disabled = false;
                     return;
@@ -60,11 +64,9 @@ document.addEventListener('DOMContentLoaded', function() {
                     window.location.href = data.redirect;
                 } else {
                     alert('Có lỗi xảy ra! (API error)');
-                    console.error('API error:', data);
                 }
             } catch (err) {
                 alert('Có lỗi xảy ra! (JS error)');
-                console.error('JS error:', err);
             }
             btn.disabled = false;
         });

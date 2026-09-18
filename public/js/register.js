@@ -1,18 +1,8 @@
-// Toggle password visibility
-function togglePassword(fieldId) {
-    const field = document.getElementById(fieldId);
-    const icon = document.querySelector(`#${fieldId} ~ .password-toggle i`);
-    if (field.type === "password") {
-        field.type = "text";
-        if(icon) icon.classList.remove('fa-eye');
-        if(icon) icon.classList.add('fa-eye-slash');
-    } else {
-        field.type = "password";
-        if(icon) icon.classList.remove('fa-eye-slash');
-        if(icon) icon.classList.add('fa-eye');
-    }
-}
-
+// Issue #351: togglePassword() was dead from the first commit — both of its
+// call sites sit inside HTML comments in register.blade.php (L124, L166), so
+// nothing could ever invoke it. The login page's toggle lives inline in its
+// own view; if this page ever wants one, add the markup and the handler
+// together rather than reviving an unwired function.
 // Hiệu ứng đáp ứng yêu cầu mật khẩu
 function checkPasswordStrength(password) {
     // Yêu cầu

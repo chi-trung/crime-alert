@@ -1,3 +1,7 @@
+// Issue #351: the four console.log/console.error calls that echoed the raw
+// server body into every visitor's console are gone (a rendered exception or
+// user text has no business in a production console). The alert() notices
+// stay, and errors are caught and reported — nothing is silently swallowed.
 document.getElementById('like-btn-exp')?.addEventListener('click', async function(e) {
     e.preventDefault();
     const btn = this;
@@ -19,12 +23,10 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
         };
         const res = await fetch(url, options);
         const text = await res.text();
-        console.log('Raw response:', text); // Log raw response
         let data;
         try {
             data = JSON.parse(text);
         } catch (err) {
-            console.error('Không parse được JSON:', text);
             alert('Có lỗi xảy ra! (JSON parse error)');
             btn.disabled = false;
             return;
@@ -38,11 +40,9 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
             window.location.href = data.redirect;
         } else {
             alert('Có lỗi xảy ra! (API error)');
-            console.error('API error:', data);
         }
     } catch (err) {
         alert('Có lỗi xảy ra! (JS error)');
-        console.error('JS error:', err);
     }
     btn.disabled = false;
-}); 
+});
