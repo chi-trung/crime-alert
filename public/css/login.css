@@ -10,18 +10,6 @@ body {
     padding: 20px;
 }
 
-.login-card {
-    transition: all 0.3s ease;
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.1);
-    border-radius: 16px;
-    overflow: hidden;
-}
-
-.login-card:hover {
-    box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
-    transform: translateY(-5px);
-}
-
 .input-group {
     position: relative;
     margin-bottom: 1.5rem;
