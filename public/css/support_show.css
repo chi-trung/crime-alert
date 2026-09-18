@@ -46,28 +46,10 @@
     border-bottom-right-radius: 4px;
     text-align: right;
 }
-.support-chat-avatar {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.2rem;
-    font-weight: bold;
-}
-.support-chat-msg.admin .support-chat-avatar {
-    background: #ffe0b2;
-    color: #e65100;
-    margin-right: 4px;
-    margin-left: 0;
-}
-.support-chat-msg.user .support-chat-avatar {
-    background: #e3f0ff;
-    color: #1976d2;
-    margin-left: 4px;
-    margin-right: 0;
-}
+/* Issue #363: the three chat-avatar rules were dead — the support thread
+ * markup and the JS bubble builder both ship a bubble with no avatar
+ * element, so they styled a class that never rendered. */
+
 @media (max-width: 700px) {
     .support-chat-container { max-width: 100%; }
 } 

@@ -13,7 +13,7 @@
          #167 doctrine (repo ships no CSP, so SRI is the only CDN integrity
          layer). The two-card layout below relies on the utility classes this
          script generates; css/login.css only styles the custom parts
-         (.login-card, .input-group, .wave…). --}}
+         (.input-group, .wave…; .login-card was removed in #363). --}}
     <script src="https://cdn.tailwindcss.com/3.4.17" integrity="sha384-igm5BeiBt36UU4gqwWS7imYmelpTsZlQ45FZf+XBn9MuJbn4nQr7yx1yFydocC/K" crossorigin="anonymous"></script>
     <script>
         tailwind.config = {
