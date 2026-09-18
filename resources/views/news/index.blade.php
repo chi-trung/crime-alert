@@ -31,7 +31,7 @@
                 <div class="card-body d-flex flex-column">
                     <h5 class="card-title mb-2" style="font-size:1.1rem;">{{ $item->title }}</h5>
                     <p class="card-text text-muted small flex-grow-1">{{ $item->description }}</p>
-                    <a href="{{ $item->link }}" class="btn btn-outline-primary btn-sm mt-2" target="_blank">Đọc chi tiết <i class="fas fa-arrow-right ms-1"></i></a>
+                    <a href="{{ $item->link }}" class="btn btn-outline-primary btn-sm mt-2" target="_blank" rel="noopener">Đọc chi tiết <i class="fas fa-arrow-right ms-1"></i></a>
                 </div>
             </div>
         </div>
