@@ -4,27 +4,10 @@
     margin-bottom: 0;
     overflow: hidden;
 }
-.card-header {
-    font-size: 1.15rem;
-    font-weight: 600;
-    border-bottom: 1px solid rgba(0,0,0,0.05);
-    padding: 1.25rem 1.5rem;
-}
-.table th {
-    font-weight: 600;
-    text-transform: uppercase;
-    font-size: 0.85rem;
-    letter-spacing: 0.5px;
-    color: #6c757d;
-    border-top: none;
-    white-space: nowrap;
-}
-.table > :not(:first-child) {
-    border-top: none;
-}
-.table-hover tbody tr:hover {
-    background-color: rgba(0, 0, 0, 0.02);
-}
+/* Issue #370: this page is a card list — it renders no <table> and no card
+ * header (the only page loading this sheet; checked with
+ * grep -rln experiences_index.css resources/views/). The four table rules
+ * removed here were inert copies of the ones alerts_admin_index.css uses. */
 .badge {
     font-weight: 500;
     padding: 0.35em 0.65em;

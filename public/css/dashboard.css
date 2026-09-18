@@ -49,28 +49,10 @@ body {
     background: var(--primary-gradient);
 }
 
-.avatar-sm {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.avatar-title {
-    box-shadow: 0 2px 8px rgba(0,0,0,0.10);
-    border: 2px solid #fff;
-    background: linear-gradient(135deg, #fff 60%, #f0f0f0 100%);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 40px;
-    height: 40px;
-    font-size: 1.5rem;
-    border-radius: 50%;
-    margin-right: 0.5rem;
-    transition: box-shadow 0.2s, background 0.2s;
-}
+/* Issue #370: the wanted-list avatar chrome (a 40px box plus its disc and six
+ * colour variants) styled tiles this page stopped rendering in #347. Those
+ * classes appear on one view only, alerts/admin_index.blade.php:47-48, and
+ * that page loads alerts_admin_index.css, not this file. */
 
 .bg-danger, .bg-danger.bg-opacity-10 {
     background: var(--danger-gradient) !important;
@@ -100,30 +82,6 @@ body {
 .bg-secondary, .bg-secondary.bg-opacity-10 {
     background: var(--secondary-gradient) !important;
     color: #fff !important;
-}
-
-.avatar-title.bg-danger {
-    box-shadow: 0 0 12px 2px rgba(255,95,109,0.25);
-}
-
-.avatar-title.bg-success {
-    box-shadow: 0 0 12px 2px rgba(67,233,123,0.25);
-}
-
-.avatar-title.bg-warning {
-    box-shadow: 0 0 12px 2px rgba(247,151,30,0.25);
-}
-
-.avatar-title.bg-info {
-    box-shadow: 0 0 12px 2px rgba(86,204,242,0.25);
-}
-
-.avatar-title.bg-primary {
-    box-shadow: 0 0 12px 2px rgba(13,110,253,0.25);
-}
-
-.avatar-title.bg-secondary {
-    box-shadow: 0 0 12px 2px rgba(134,143,150,0.25);
 }
 
 .card-stat .badge {
@@ -204,9 +162,10 @@ body {
 /* Issue #363: the wanted-list photo zoom rule was dead — no markup or JS
  * ever carried its class. Removed. #347's photo handling replaced it. */
 
-/* Issue #347: replaces the per-tile .avatar-sm/.avatar-title chrome, which
-   existed only to host a decorative glyph restating the tile's own label.
-   One element per tile now carries the color coding instead of eleven. */
+/* Issue #347: replaces the per-tile avatar chrome, which existed only to
+   host a decorative glyph restating the tile's own label. One element per
+   tile now carries the color coding instead of eleven. The chrome's own
+   rules were removed in #370 — see the note above the gradient block. */
 .stat-accent {
     display: block;
     width: 28px;
