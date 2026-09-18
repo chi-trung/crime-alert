@@ -21,7 +21,6 @@
 
         <!-- Bootstrap 5 -->
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH" crossorigin="anonymous">
-        <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
         <!-- Favicon -->
         <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
@@ -79,7 +78,6 @@
              Pinned to the exact build verified byte-identical to what the @11
              URL served at fix time; #167's geocoder tags are the precedent. --}}
         <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.26.25/dist/sweetalert2.all.min.js" integrity="sha384-nLoOnA/BDh8A/jxqtckg4DumuCGOBYUnNJLZdQz/zfYNp3wcjGSoWTAzgko06G/2" crossorigin="anonymous"></script>
-        <script src="{{ asset('js/app.js') }}"></script>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 @if(session('success'))
