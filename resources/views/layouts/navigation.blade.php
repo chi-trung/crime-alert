@@ -11,7 +11,7 @@
       </div>
 
       <!-- Main Navigation -->
-      <div class="nav-main">
+      <div class="nav-main" id="nav-main">
         <ul class="nav-menu">
           <li class="nav-item {{ request()->routeIs('alerts.map') ? 'active' : '' }}">
             <a href="{{ route('alerts.map') }}" class="nav-link">
@@ -57,7 +57,12 @@
           
           <!-- More menu items -->
           <li class="nav-item dropdown">
-            <a href="javascript:void(0)" class="nav-link dropdown-toggle">
+            {{-- Issue #374: a real navigation link that goes nowhere is the
+                 wrong element for a control that only toggles content — a
+                 button is keyboard-focusable and Enter-able with no extra
+                 wiring. Styled to sit in the flex row like its sibling
+                 anchors; the handler below still calls preventDefault(). --}}
+            <button type="button" class="nav-link dropdown-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="category-dropdown" id="categoryToggle">
               <span class="link-icon">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
                   <rect x="3" y="3" width="7" height="7"></rect>
@@ -67,9 +72,9 @@
                 </svg>
               </span>
               <span class="link-text">Chuyên mục</span>
-              
-            </a>
-            <div class="dropdown-menu">
+
+            </button>
+            <div class="dropdown-menu" id="category-dropdown">
               <a href="{{ route('news.index') }}" class="dropdown-item {{ request()->routeIs('news.index') ? 'active' : '' }}">
                 <span>Tin tức an ninh</span>
               </a>
@@ -177,13 +182,13 @@
                dropdown-toggle puts the existing handler in charge;
                :focus-within below covers keyboard users the same way. --}}
           <div class="user-profile dropdown">
-            <a href="#" class="profile-link dropdown-toggle">
+            <a href="#" class="profile-link dropdown-toggle" aria-expanded="false" aria-haspopup="true" aria-controls="profile-dropdown" id="profileToggle">
               <div class="profile-avatar">
                 {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1, 'UTF-8'), 'UTF-8') }}
               </div>
               <span class="profile-name">{{ auth()->user()->name }}</span>
             </a>
-            <div class="profile-dropdown">
+            <div class="profile-dropdown" id="profile-dropdown">
               <a href="{{ route('profile.edit') }}" class="dropdown-item">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
@@ -213,7 +218,12 @@
       </div>
       
       <!-- Mobile Toggle -->
-      <button class="mobile-toggle" aria-label="Toggle navigation">
+      {{-- Issue #374: the button toggles .nav-container.active but never told
+           assistive technology whether the menu it controls was open, so the
+           label was the same collapsed and expanded. aria-expanded reports
+           exactly the state the CSS already acts on; aria-controls points at
+           the region it opens. --}}
+      <button class="mobile-toggle" aria-label="Mở menu" aria-expanded="false" aria-controls="nav-main" id="mobileToggle">
         <span></span>
         <span></span>
         <span></span>
@@ -331,6 +341,17 @@
   }
 
   /* Dropdown Styles */
+  /* Issue #374: the category toggle is a real <button>, not an anchor, so it
+   * needs the browser defaults reset to sit in the row like its siblings. */
+  button.nav-link {
+    border: none;
+    background: none;
+    cursor: pointer;
+    font: inherit;
+    width: 100%;
+    text-align: left;
+  }
+
   .dropdown-toggle {
     position: relative;
     padding-right: 1.75rem !important;
@@ -780,7 +801,27 @@
     
     if (mobileToggle && navContainer) {
       mobileToggle.addEventListener('click', function() {
-        navContainer.classList.toggle('active');
+        const isOpen = navContainer.classList.toggle('active');
+        // Issue #374: report the state the CSS already acts on.
+        mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        mobileToggle.setAttribute('aria-label', isOpen ? 'Đóng menu' : 'Mở menu');
+      });
+    }
+
+    // Keeps every dropdown toggle's aria-expanded in step with the class the
+    // CSS opens the menu with (#374).
+    function syncDropdownToggles() {
+      document.querySelectorAll('.nav-item.menu-open, .user-profile.menu-open').forEach(item => {
+        const toggle = item.querySelector('.dropdown-toggle');
+        if (toggle) {
+          toggle.setAttribute('aria-expanded', 'true');
+        }
+      });
+      document.querySelectorAll('.nav-item:not(.menu-open), .user-profile:not(.menu-open)').forEach(item => {
+        const toggle = item.querySelector('.dropdown-toggle');
+        if (toggle) {
+          toggle.setAttribute('aria-expanded', 'false');
+        }
       });
     }
     
@@ -795,6 +836,7 @@
         document.querySelectorAll('.nav-item.menu-open, .user-profile.menu-open').forEach(item => {
           item.classList.remove('menu-open');
         });
+        syncDropdownToggles();
       }
     });
 
@@ -812,6 +854,7 @@
         if (!isOpen) {
           container.classList.add('menu-open');
         }
+        syncDropdownToggles();
       });
     });
     
