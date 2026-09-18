@@ -178,20 +178,13 @@
                         });
                     });
                 });
-                // Xử lý toggle menu 3 gạch thủ công nếu Bootstrap JS lỗi
-                var toggler = document.querySelector('.navbar-toggler');
-                var menu = document.getElementById('mainNavbar');
-                if (toggler && menu) {
-                    toggler.addEventListener('click', function(e) {
-                        menu.classList.toggle('show');
-                    });
-                    // Đóng menu khi click ra ngoài (trên mobile)
-                    document.addEventListener('click', function(e) {
-                        if (!menu.contains(e.target) && !toggler.contains(e.target)) {
-                            menu.classList.remove('show');
-                        }
-                    });
-                }
+                // Issue #353: a manual #mainNavbar / .navbar-toggler fallback
+                // for a Bootstrap hamburger used to live here. That markup was
+                // replaced by layouts/navigation.blade.php's own .modern-nav,
+                // which ships its own button.mobile-toggle and its own handler
+                // — neither id nor class existed anywhere in a rendered page, so
+                // the guard below never passed. Removed alongside the !important
+                // #mainNavbar style hack at the bottom of this file.
             });
         </script>
 
@@ -814,12 +807,6 @@
 
         @yield('scripts')
         <style>
-        #mainNavbar {
-          display: flex !important;
-          opacity: 1 !important;
-          visibility: visible !important;
-          height: auto !important;
-        }   
         .chatbot-header, .chatbot-close {
             z-index: 2001 !important;
         }
