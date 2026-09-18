@@ -9,7 +9,7 @@
     <div class="card shadow-sm border-0 rounded-4 mx-auto" style="max-width: 720px;">
         <div class="card-body p-4 p-md-5">
             <h1 class="h4 fw-bold mb-4 text-primary">
-                <i class="fas fa-comment-dots me-2"></i>Sửa bình luận
+                Sửa bình luận
             </h1>
             <form action="{{ route('comments.update', $comment) }}" method="POST">
                 @csrf
@@ -27,10 +27,10 @@
                          owning post exactly like CommentController::update()'s
                          redirect. --}}
                     <a href="{{ $comment->experience_id ? route('experiences.show', $comment->experience_id) : route('alerts.show', $comment->alert_id) }}" class="btn btn-outline-secondary">
-                        <i class="fas fa-arrow-left me-1"></i> Quay lại
+                        Quay lại
                     </a>
                     <button type="submit" class="btn btn-primary">
-                        <i class="fas fa-save me-1"></i> Cập nhật
+                        Cập nhật
                     </button>
                 </div>
             </form>

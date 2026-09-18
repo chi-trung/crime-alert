@@ -31,7 +31,7 @@
     </script>
     <link rel="stylesheet" href="{{ asset('css/login.css') }}">
     <script src="{{ asset('js/login.js') }}"></script>
-    <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/2592/2592317.png">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
 </head>
 <body>
     <div class="flex flex-col md:flex-row w-full max-w-6xl bg-white rounded-2xl overflow-hidden shadow-xl">

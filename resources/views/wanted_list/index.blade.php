@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
 <div class="container py-5">
-    <h1 class="display-5 fw-bold mb-3 text-danger"><i class="fas fa-user-secret me-2"></i>Danh sách đối tượng truy nã</h1>
+    <h1 class="display-5 fw-bold mb-3 text-danger">Danh sách đối tượng truy nã</h1>
     {{-- Issue #343: this header listed four fields the table never shows —
          "có ảnh, mô tả, mức độ nguy hiểm, khen thưởng". The schema has no
          image, danger-level or reward columns at all (verified live on both
@@ -12,7 +12,7 @@
     <p class="lead text-muted">Tổng hợp các đối tượng truy nã: họ tên, năm sinh, nơi đăng ký thường trú, tội danh và quyết định truy nã.</p>
     <form method="GET" action="{{ route('wanted_list.index') }}" class="mb-3 d-flex" role="search">
         <input type="text" name="q" class="form-control me-2" placeholder="Tìm theo tên, năm sinh, địa chỉ, tội danh..." value="{{ request('q') }}">
-        <button class="btn btn-danger" type="submit"><i class="fas fa-search"></i> Tìm kiếm</button>
+        <button class="btn btn-danger" type="submit">Tìm kiếm</button>
     </form>
     {{-- Issue #343: the table markup was fully duplicated between the
          filled-q and empty-q branches — one branch renders it, the other

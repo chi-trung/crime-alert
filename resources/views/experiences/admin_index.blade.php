@@ -2,13 +2,13 @@
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/experiences_admin_index.css') }}">
 <div class="container py-5">
-    <h1 class="display-5 fw-bold mb-4 text-success"><i class="fas fa-comments me-2"></i>Quản lý bài chia sẻ kinh nghiệm</h1>
+    <h1 class="display-5 fw-bold mb-4 text-success">Quản lý bài chia sẻ kinh nghiệm</h1>
     @if(session('success'))
         <div class="alert alert-success">{{ session('success') }}</div>
     @endif
     <div class="card shadow rounded-4 border-0 mb-4">
         <div class="card-header bg-success text-white rounded-top-4 d-flex align-items-center gap-2">
-            <i class="fas fa-comments"></i>
+            
             <h4 class="mb-0 fw-bold">Danh sách bài chia sẻ</h4>
         </div>
         <div class="card-body p-0">
@@ -43,22 +43,22 @@
                             <td class="text-center" style="min-width: 120px;">
                                 <div class="d-flex flex-column align-items-center gap-1">
                                     <a href="{{ route('experiences.show', $exp) }}" class="btn btn-outline-info btn-sm rounded-pill px-3 mb-1">
-                                        <i class="fas fa-eye me-1"></i> Xem
+                                        Xem
                                     </a>
                                     @if($exp->status == 'pending')
                                         <form action="{{ route('admin.experiences.approve', $exp) }}" method="POST" class="d-inline mb-1">
                                             @csrf
-                                            <button class="btn btn-success btn-sm rounded-pill px-3" title="Duyệt"><i class="fas fa-check me-1"></i> Duyệt</button>
+                                            <button class="btn btn-success btn-sm rounded-pill px-3" title="Duyệt">Duyệt</button>
                                         </form>
                                         <form action="{{ route('admin.experiences.reject', $exp) }}" method="POST" class="d-inline mb-1 form-reject">
                                             @csrf
-                                            <button class="btn btn-warning btn-sm rounded-pill px-3" title="Từ chối"><i class="fas fa-times me-1"></i> Từ chối</button>
+                                            <button class="btn btn-warning btn-sm rounded-pill px-3" title="Từ chối">Từ chối</button>
                                         </form>
                                     @endif
                                     <form action="{{ route('admin.experiences.destroy', $exp) }}" method="POST" class="d-inline form-delete">
                                         @csrf
                                         @method('DELETE')
-                                        <button class="btn btn-danger btn-sm rounded-pill px-3" title="Xóa"><i class="fas fa-trash me-1"></i> Xóa</button>
+                                        <button class="btn btn-danger btn-sm rounded-pill px-3" title="Xóa">Xóa</button>
                                     </form>
                                 </div>
                             </td>

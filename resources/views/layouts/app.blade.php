@@ -24,7 +24,7 @@
         <link rel="stylesheet" href="{{ asset('css/app.css') }}">
 
         <!-- Favicon -->
-        <link rel="icon" type="image/png" href="https://cdn-icons-png.flaticon.com/128/2592/2592317.png">
+        <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
@@ -52,15 +52,14 @@
                     <div class="row align-items-center">
                         <div class="col-md-6 text-center text-md-start">
                             <p class="mb-0 text-muted">
-                                <img src="https://cdn-icons-png.flaticon.com/128/2592/2592317.png" alt="Shield" style="width: 16px; height: 16px; margin-right: 8px; vertical-align: middle;">
-                                <strong>Hệ thống cảnh báo tội phạm</strong> 
+                                <strong>Hệ thống cảnh báo tội phạm</strong>
                             </p>
                         </div>
                         <div class="col-md-6 text-center text-md-end">
                             <p class="mb-0 text-muted">
                                 © 2025 <strong>Nhóm 5</strong>. Tất cả các quyền được bảo lưu.
                                 <a href="https://chi-trung.github.io/CV/" target="_blank" rel="noopener" class="text-decoration-none ms-2">
-                                    <img src="https://cdn-icons-png.flaticon.com/128/3462/3462381.png" alt="External Link" style="width: 14px; height: 14px; margin-right: 4px; vertical-align: middle;">Về chúng tôi
+                                    Về chúng tôi
                                 </a>
                             </p>
                         </div>

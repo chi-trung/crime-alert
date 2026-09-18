@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('content')
 <div class="container py-5">
-    <h1 class="display-5 fw-bold mb-4 text-success"><i class="fas fa-edit me-2"></i>Chỉnh sửa bài chia sẻ</h1>
+    <h1 class="display-5 fw-bold mb-4 text-success">Chỉnh sửa bài chia sẻ</h1>
     <form action="{{ route('experiences.update', $experience) }}" method="POST" class="mx-auto" style="max-width:600px;">
         @csrf
         @method('PUT')
@@ -26,7 +26,7 @@
             @error('content')<div class="invalid-feedback">{{ $message }}</div>@enderror
         </div>
         <div class="d-flex justify-content-between">
-            <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary"><i class="fas fa-arrow-left me-1"></i> Quay lại</a>
+            <a href="{{ route('dashboard') }}" class="btn btn-outline-secondary">Quay lại</a>
             <button type="submit" class="btn btn-success">Cập nhật</button>
         </div>
     </form>

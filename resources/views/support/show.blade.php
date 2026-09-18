@@ -7,7 +7,7 @@
     @if(session('success'))
         <div class="alert alert-success alert-dismissible fade show rounded-3 shadow-sm mb-4">
             <div class="d-flex align-items-center">
-                <i class="fas fa-check-circle me-3 fs-4"></i>
+                
                 <div class="flex-grow-1">
                     <h5 class="alert-heading mb-1">Thành công!</h5>
                     <div class="mb-0">{{ session('success') }}</div>
@@ -19,7 +19,7 @@
     @if(session('error'))
         <div class="alert alert-danger alert-dismissible fade show rounded-3 shadow-sm mb-4">
             <div class="d-flex align-items-center">
-                <i class="fas fa-times-circle me-3 fs-4"></i>
+                
                 <div class="flex-grow-1">
                     <h5 class="alert-heading mb-1">Lỗi!</h5>
                     <div class="mb-0">{{ session('error') }}</div>
@@ -34,7 +34,7 @@
             @if(auth()->user()->isAdmin && $supportRequest->status == 'open')
                 <form action="{{ route('admin.support.close', $supportRequest) }}" method="POST" class="d-inline">
                     @csrf
-                    <button type="submit" class="btn btn-danger btn-sm"><i class="fas fa-lock me-1"></i> Đóng</button>
+                    <button type="submit" class="btn btn-danger btn-sm">Đóng</button>
                 </form>
             @endif
         </div>
@@ -86,7 +86,7 @@
             @csrf
             <div class="d-flex gap-2 mt-2">
                 <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="2" maxlength="5000" required placeholder="Nhập tin nhắn..." id="chat-input">{{ old('message') }}</textarea>
-                <button type="submit" class="btn btn-success"><i class="fas fa-paper-plane me-1"></i> Gửi</button>
+                <button type="submit" class="btn btn-success">Gửi</button>
             </div>
             @error('message')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror
         </form>
