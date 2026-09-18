@@ -169,8 +169,15 @@
           </div>
           
           <!-- User Profile -->
+          {{-- Issue #357: this anchor carried only .profile-link, so the nav's
+               generic .dropdown-toggle click handler (below) never bound it
+               and the menu opened through CSS :hover alone. On a phone or
+               tablet there is no hover, so "Hồ sơ cá nhân" and "Đăng xuất"
+               were unreachable — a hard lockout of sign-out on mobile.
+               dropdown-toggle puts the existing handler in charge;
+               :focus-within below covers keyboard users the same way. --}}
           <div class="user-profile dropdown">
-            <a href="#" class="profile-link">
+            <a href="#" class="profile-link dropdown-toggle">
               <div class="profile-avatar">
                 {{ mb_strtoupper(mb_substr(auth()->user()->name, 0, 1, 'UTF-8'), 'UTF-8') }}
               </div>
@@ -546,7 +553,12 @@
     transition: var(--transition);
   }
 
-  .user-profile:hover .profile-dropdown {
+  /* Issue #357: :hover alone never fires on a touch device, and the dropdown
+     has no click handler of its own, so the menu was unreachable on phones
+     and tablets. :focus-within covers keyboard and screen-reader users too;
+     the JS handler toggles .dropdown-toggle for everyone else. */
+  .user-profile:hover .profile-dropdown,
+  .user-profile:focus-within .profile-dropdown {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
@@ -775,9 +787,15 @@
         document.querySelectorAll('.dropdown-menu').forEach(menu => {
           menu.style.display = 'none';
         });
+        // Issue #357: the profile menu is .profile-dropdown, not
+        // .dropdown-menu, so the line above never closed it. Include it here
+        // so tapping elsewhere collapses it like every other menu.
+        document.querySelectorAll('.profile-dropdown').forEach(menu => {
+          menu.style.display = 'none';
+        });
       }
     });
-    
+
     // Toggle dropdowns on click (for mobile & desktop)
     document.querySelectorAll('.dropdown-toggle').forEach(toggle => {
       toggle.addEventListener('click', function(e) {
@@ -786,7 +804,7 @@
         if (menu.style.display === 'block') {
           menu.style.display = 'none';
         } else {
-          document.querySelectorAll('.dropdown-menu').forEach(m => {
+          document.querySelectorAll('.dropdown-menu, .profile-dropdown').forEach(m => {
             m.style.display = 'none';
           });
           menu.style.display = 'block';
