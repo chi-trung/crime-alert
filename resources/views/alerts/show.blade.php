@@ -59,25 +59,13 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                             </div>
                         </div>
                     </div>
-                    <script>
-                    function toggleSharePopupAlert(e) {
-                        e.stopPropagation();
-                        var popup = document.getElementById('share-popup-alert');
-                        var url = window.location.href;
-                        document.getElementById('share-fb-alert').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
-                        document.getElementById('share-x-alert').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(url);
-                        popup.style.display = (popup.style.display === 'block' ? 'none' : 'block');
-                        document.addEventListener('click', closeSharePopupAlert);
-                    }
-                    function closeSharePopupAlert(e) {
-                        var popup = document.getElementById('share-popup-alert');
-                        if (popup && !popup.contains(e.target) && e.target.id !== 'share-btn-alert') {
-                            popup.style.display = 'none';
-                            document.removeEventListener('click', closeSharePopupAlert);
-                        }
-                    }
-                    </script>
-                    
+                    {{-- Issue #351: this inline block duplicated
+                         toggleSharePopupAlert/closeSharePopupAlert verbatim
+                         from public/js/alerts_show.js (loaded at the top of
+                         this section). Two identical definitions — the second
+                         wins, so the inline copy was dead weight. Deleted;
+                         the file copy is authoritative. --}}
+
                     <div class="alert-details mb-4">
                         <div class="mb-3">
                             <h5 class="fw-semibold mb-2">Mô tả</h5>
