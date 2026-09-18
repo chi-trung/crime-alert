@@ -26,7 +26,9 @@ class PageSmokeTest extends TestCase
             'news' => ['/news'],
             'wanted-list' => ['/wanted-list'],
             'experiences' => ['/experiences'],
-            'fraud-alerts' => ['/fraud-alerts'],
+            // Issue #343: /fraud-alerts removed — a "coming soon" Route::view
+            // linked from nothing. Keeping it here would have pinned dead
+            // weight as a feature.
             'login' => ['/login'],
             'register' => ['/register'],
             'forgot-password' => ['/forgot-password'],

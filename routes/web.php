@@ -151,7 +151,10 @@ Route::middleware(['auth', 'admin'])->group(function () {
 });
 
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
-Route::view('/fraud-alerts', 'fraud_alerts.index')->name('fraud_alerts.index');
+// Issue #343: /fraud-alerts was a "coming soon" Route::view that nothing in
+// the app linked to — no nav entry, no button, no JS anywhere. Its view is
+// gone too. Removed rather than left as an unreached placeholder; re-add both
+// together when the feature lands (round-29 dead-code doctrine).
 Route::get('/experiences', [ExperienceController::class, 'index'])->name('experiences.index');
 Route::get('/experiences/create', [ExperienceController::class, 'create'])->middleware('auth')->name('experiences.create');
 // Issue #165: same fan-out class as POST /alerts and POST /support above

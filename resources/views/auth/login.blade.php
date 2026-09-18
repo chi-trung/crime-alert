@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="vi">
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -143,13 +143,14 @@
                     Đăng nhập
                 </button>
                 
-                <!-- Divider -->
-                <div class="divider text-sm">HOẶC ĐĂNG NHẬP VỚI</div>
+                {{-- Issue #343: this "HOẶC ĐĂNG NHẬP VỚI" divider was
+                     followed by an empty social-login block — no provider
+                     is wired in this app and none is planned. A divider
+                     to nowhere promised a button that never appears; the
+                     orphan .social-btn styles in login.css die with it.
+                     Removed rather than left as a UI that lies. --}}
                 
-                <!-- Social Login -->
-               
-                
-                <!-- Register Link -->
+<!-- Register Link -->
                 <div class="text-center text-gray-600">
                     Chưa có tài khoản? 
                     <a href="{{ route('register') }}" class="text-primary font-medium hover:underline">Đăng ký ngay</a>
