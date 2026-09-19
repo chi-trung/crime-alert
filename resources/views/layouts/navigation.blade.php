@@ -74,17 +74,24 @@
               <span class="link-text">Chuyên mục</span>
 
             </button>
-            <div class="dropdown-menu" id="category-dropdown">
-              <a href="{{ route('news.index') }}" class="dropdown-item {{ request()->routeIs('news.index') ? 'active' : '' }}">
+            {{-- Issue #406: the toggle above declares aria-haspopup="true" and
+                 aria-controls="category-dropdown", so this container is
+                 announced as a menu — but it was a plain div, and the four
+                 links inside lost their menu context. role="menu" + the
+                 role="menuitem" on each item make the declared relationship
+                 real (WCAG 1.3.1). The .menu-open/:focus-within open
+                 behaviour of #374 is untouched. --}}
+            <div class="dropdown-menu" id="category-dropdown" role="menu">
+              <a href="{{ route('news.index') }}" class="dropdown-item {{ request()->routeIs('news.index') ? 'active' : '' }}" role="menuitem">
                 <span>Tin tức an ninh</span>
               </a>
-              <a href="{{ route('experiences.index') }}" class="dropdown-item {{ request()->routeIs('experiences.index') ? 'active' : '' }}">
+              <a href="{{ route('experiences.index') }}" class="dropdown-item {{ request()->routeIs('experiences.index') ? 'active' : '' }}" role="menuitem">
                 <span>Chia sẻ kinh nghiệm</span>
               </a>
-              <a href="{{ route('wanted_list.index') }}" class="dropdown-item {{ request()->routeIs('wanted_list.index') ? 'active' : '' }}">
+              <a href="{{ route('wanted_list.index') }}" class="dropdown-item {{ request()->routeIs('wanted_list.index') ? 'active' : '' }}" role="menuitem">
                 <span>Truy nã</span>
               </a>
-              <a href="{{ route('my-history') }}" class="dropdown-item {{ request()->routeIs('my-history') ? 'active' : '' }}">
+              <a href="{{ route('my-history') }}" class="dropdown-item {{ request()->routeIs('my-history') ? 'active' : '' }}" role="menuitem">
                 <span>Lịch sử</span>
               </a>
             </div>
@@ -195,15 +202,19 @@
               </div>
               <span class="profile-name">{{ auth()->user()->name }}</span>
             </a>
-            <div class="profile-dropdown" id="profile-dropdown">
-              <a href="{{ route('profile.edit') }}" class="dropdown-item">
+            {{-- Issue #406: same gap as the category menu — the profile toggle
+                 declares the menu relationship, the container did not honour
+                 it. The logout item is a POST form (#149), so its role goes on
+                 the form itself; the submit button keeps its real behaviour. --}}
+            <div class="profile-dropdown" id="profile-dropdown" role="menu">
+              <a href="{{ route('profile.edit') }}" class="dropdown-item" role="menuitem">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
                   <circle cx="12" cy="7" r="4"></circle>
                 </svg>
                 <span>Hồ sơ cá nhân</span>
               </a>
-              <form action="{{ route('logout') }}" method="POST" class="dropdown-item">
+              <form action="{{ route('logout') }}" method="POST" class="dropdown-item" role="menuitem">
                 @csrf
                 <button type="submit">
                   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
