@@ -27,7 +27,11 @@ document.addEventListener('DOMContentLoaded', function() {
     var locateBtn = L.control({position: 'topleft'});
     locateBtn.onAdd = function(map) {
         var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-        div.innerHTML = '<button id="locateMeBtn" title="Lấy vị trí của tôi" style="background:white;border:none;padding:6px 10px;cursor:pointer;"><i class="fas fa-location-arrow"></i> Vị trí của tôi</button>';
+        // Issue #412: title= is a tooltip, not an accessible name — the same
+        // defect #408 closed on the comment like button. The glyph is
+        // decorative, so it is hidden from the accessibility tree; the button
+        // keeps its visible text.
+        div.innerHTML = '<button id="locateMeBtn" aria-label="Lấy vị trí của tôi" title="Lấy vị trí của tôi" style="background:white;border:none;padding:6px 10px;cursor:pointer;"><i class="fas fa-location-arrow" aria-hidden="true"></i> Vị trí của tôi</button>';
         return div;
     };
     locateBtn.addTo(map);
@@ -105,6 +109,28 @@ document.addEventListener('DOMContentLoaded', function() {
         var locateButton = document.getElementById('locateMeBtn');
         if (!locateButton) return;
 
+        // Issue #412: a raw alert() is a blocking, styleless, inaccessible
+        // dialog. The failure paths below are the ones a user hits most
+        // (permission denied, GPS off), and silent failure is worse than a
+        // blocked one — the button looks dead. Announce into a polite region
+        // built once and reused.
+        function announceLocation(message) {
+            var host = document.getElementById('map-location-status');
+            if (!host) {
+                host = document.createElement('span');
+                host.id = 'map-location-status';
+                host.setAttribute('role', 'status');
+                host.setAttribute('aria-live', 'polite');
+                // This page ships no stylesheet, so the visually-hidden rule
+                // is applied inline. Clipped, never display:none — that would
+                // remove the region from the accessibility tree.
+                host.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+                var mapEl = document.getElementById('map');
+                (mapEl || document.body).appendChild(host);
+            }
+            host.textContent = message;
+        }
+
         locateButton.onclick = function() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(function(position) {
@@ -112,11 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
                     var lng = position.coords.longitude;
                     map.setView([lat, lng], 15);
                     addCurrentLocationMarker(lat, lng);
+                    announceLocation('Đã định vị được vị trí của bạn.');
                 }, function() {
-                    alert('Không thể lấy vị trí của bạn!');
+                    announceLocation('Không thể lấy vị trí của bạn!');
                 });
             } else {
-                alert('Trình duyệt không hỗ trợ định vị!');
+                announceLocation('Trình duyệt không hỗ trợ định vị!');
             }
         };
     }, 0);
