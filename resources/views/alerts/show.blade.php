@@ -148,12 +148,20 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                     get a dead button that 403s. --}}
                                 @if($alert->status == 'approved')
                                 @auth
-                                <button id="like-btn-alert" class="btn-like-custom{{ $alert->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $alert->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $alert->id }}" data-type="alert">
+                                <button id="like-btn-alert" class="btn-like-custom{{ $alert->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $alert->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $alert->id }}" data-type="alert" aria-label="Thích cảnh báo này">
                                     <span id="like-text-alert">{{ $alert->likes()->where('user_id', auth()->id())->exists() ? 'Đã Thích' : 'Thích' }}</span> (<span id="like-count-alert">{{ $alert->likes()->count() }}</span>)
                                 </button>
                                 @else
-                                <a href="{{ route('login') }}" class="btn-like-custom" title="Đăng nhập để thích">
-                                    Thích (<span id="like-count-alert">{{ $alert->likes()->count() }}</span>)
+                                {{-- Issue #386: the guest branch used to repeat id="like-count-alert".
+                                     The two branches are mutually exclusive via @auth so only one
+                                     renders, but the template still ships a duplicate id, and
+                                     public/js/alerts_show.js:60 selects that node by bare id — a
+                                     refactor touching the guest branch would silently land on the
+                                     wrong node. The guest branch has no JS at all (it is a plain
+                                     login link), so it needs no id. comments/_item.blade.php uses
+                                     .like-count classes for exactly this reason. --}}
+                                <a href="{{ route('login') }}" class="btn-like-custom" title="Đăng nhập để thích" aria-label="Đăng nhập để thích cảnh báo này">
+                                    Thích (<span class="like-count">{{ $alert->likes()->count() }}</span>)
                                 </a>
                                 @endauth
                                 @endif
