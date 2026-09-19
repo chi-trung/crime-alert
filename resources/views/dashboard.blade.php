@@ -431,7 +431,7 @@
                                     {{-- Issue #137: literal \" broke the src (see alerts/show). --}}
                                     <img src="{{ asset('storage/'.$myLatest->image) }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
                                 @else
-                                    <div class="thumb-ph rounded-circle border shadow-sm"></div>
+                                    <div class="thumb-ph rounded-circle border shadow-sm" role="img" aria-label="Ảnh cảnh báo"></div>
                                 @endif
                             </div>
                             <div class="flex-grow-1">
@@ -690,7 +690,7 @@
                             @if($latestAlert->image)
                                 <img src="{{ asset('storage/'.$latestAlert->image) }}" alt="Ảnh cảnh báo" class="rounded-circle border shadow-sm" width="56" height="56">
                             @else
-                                <div class="thumb-ph rounded-circle border shadow-sm"></div>
+                                <div class="thumb-ph rounded-circle border shadow-sm" role="img" aria-label="Ảnh cảnh báo"></div>
                             @endif
                             <div class="flex-grow-1">
                                 <div class="d-flex align-items-center gap-2 mb-1 flex-wrap">
