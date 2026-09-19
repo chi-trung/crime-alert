@@ -48,7 +48,7 @@
                                 <a href="#" id="share-fb-exp" class="btn btn-light w-100 text-start" target="_blank" rel="noopener" style="font-weight:500;"><i class="fab fa-facebook text-primary me-2"></i> Facebook</a>
                                 <a href="#" id="share-x-exp" class="btn btn-light w-100 text-start" target="_blank" rel="noopener" style="font-weight:500;">
                                     <span style="display:inline-block;width:1.2em;vertical-align:middle;margin-right:8px;">
-                                        <svg viewBox="0 0 1200 1227" width="18" height="18" fill="currentColor" style="vertical-align:middle;"><path d="M1199.99 0H949.19L600.01 494.09L250.81 0H0L489.09 701.81L0 1227H250.81L600.01 732.91L949.19 1227H1200L710.91 525.19L1199.99 0ZM300.01 111.09L600.01 545.45L900.01 111.09H1050.91L600.01 801.09L149.09 111.09H300.01ZM149.09 1115.91L600.01 425.91L1050.91 1115.91H900.01L600.01 681.55L300.01 1115.91H149.09Z"></path></svg>
+                                        <svg viewBox="0 0 1200 1227" width="18" height="18" fill="currentColor" style="vertical-align:middle;" aria-hidden="true"><path d="M1199.99 0H949.19L600.01 494.09L250.81 0H0L489.09 701.81L0 1227H250.81L600.01 732.91L949.19 1227H1200L710.91 525.19L1199.99 0ZM300.01 111.09L600.01 545.45L900.01 111.09H1050.91L600.01 801.09L149.09 111.09H300.01ZM149.09 1115.91L600.01 425.91L1050.91 1115.91H900.01L600.01 681.55L300.01 1115.91H149.09Z"></path></svg>
                                     </span>
                                     X
                                 </a>
