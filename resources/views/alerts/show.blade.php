@@ -7,6 +7,7 @@ window.LIKE_STORE_URL = "{{ route('like.store') }}";
 window.LIKE_DESTROY_URL = "{{ route('like.destroy') }}";
 window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
 </script>
+<script src="{{ asset('js/share_popup.js') }}"></script>
 <script src="{{ asset('js/alerts_show.js') }}"></script>
 <div class="container mt-4">
     <div class="row justify-content-center">
@@ -44,10 +45,10 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                     
                     <!-- Nút chia sẻ -->
                     <div class="mb-3 position-relative d-inline-block">
-                        <button class="btn btn-outline-primary btn-sm rounded-pill" id="share-btn-alert" onclick="toggleSharePopupAlert(event)">
+                        <button class="btn btn-outline-primary btn-sm rounded-pill" id="share-btn-alert" aria-haspopup="true" aria-expanded="false" aria-label="Chia sẻ cảnh báo này">
                             <i class="fas fa-share-alt"></i> Chia sẻ
                         </button>
-                        <div id="share-popup-alert" style="display:none;position:absolute;left:0;top:100%;min-width:180px;background:#fff;border:1px solid #eee;padding:10px 16px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.13);z-index:9999;">
+                        <div id="share-popup-alert" role="dialog" aria-label="Chia sẻ" style="display:none;position:absolute;left:0;top:100%;min-width:180px;background:#fff;border:1px solid #eee;padding:10px 16px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.13);z-index:9999;">
                             <div class="d-flex flex-column align-items-start gap-2">
                                 <a href="#" id="share-fb-alert" class="btn btn-light w-100 text-start" target="_blank" rel="noopener" style="font-weight:500;"><i class="fab fa-facebook text-primary me-2"></i> Facebook</a>
                                 <a href="#" id="share-x-alert" class="btn btn-light w-100 text-start" target="_blank" rel="noopener" style="font-weight:500;">

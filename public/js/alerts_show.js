@@ -1,23 +1,19 @@
-// Chia sẻ popup
-function toggleSharePopupAlert(e) {
-    e.stopPropagation();
-    var popup = document.getElementById('share-popup-alert');
-    var url = window.location.href;
-    document.getElementById('share-fb-alert').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
-    document.getElementById('share-x-alert').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(url);
-    popup.style.display = (popup.style.display === 'block' ? 'none' : 'block');
-    document.addEventListener('click', closeSharePopupAlert);
-}
-function closeSharePopupAlert(e) {
-    var popup = document.getElementById('share-popup-alert');
-    if (popup && !popup.contains(e.target) && e.target.id !== 'share-btn-alert') {
-        popup.style.display = 'none';
-        document.removeEventListener('click', closeSharePopupAlert);
-    }
-}
+// Issue #398: the share popup's keyboard/focus/ARIA behaviour now lives in
+// public/js/share_popup.js, which both show pages load. This file keeps the
+// alert-side wiring only — the old toggleSharePopupAlert/closeSharePopupAlert
+// pair did not handle Escape or focus and is gone.
 
 // Like button (nếu có)
 document.addEventListener('DOMContentLoaded', function() {
+    // Issue #398: the alert share button's popup wiring. The ids are
+    // alert-specific, the behaviour is shared.
+    initSharePopup({
+        trigger: 'share-btn-alert',
+        popup: 'share-popup-alert',
+        facebook: 'share-fb-alert',
+        x: 'share-x-alert',
+    });
+
     var likeBtn = document.getElementById('like-btn-alert');
     if (likeBtn) {
         likeBtn.addEventListener('click', async function(e) {
