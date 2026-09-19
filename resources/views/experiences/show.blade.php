@@ -1,6 +1,9 @@
 @extends('layouts.app')
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/experiences_show.css') }}">
+{{-- Issue #398: the share popup's keyboard/focus/ARIA behaviour. Loaded before
+     experiences_show.js, which only wires the experience-side like button. --}}
+<script src="{{ asset('js/share_popup.js') }}"></script>
 <div class="container mt-4">
     <div class="row justify-content-center">
         <div class="col-md-10 col-lg-8">
@@ -40,10 +43,10 @@
                     </div>
                     <!-- Nút chia sẻ -->
                     <div class="mb-3 position-relative d-inline-block">
-                        <button class="btn btn-outline-success btn-sm rounded-pill" id="share-btn-exp" onclick="toggleSharePopupExp(event)">
+                        <button class="btn btn-outline-success btn-sm rounded-pill" id="share-btn-exp" aria-haspopup="true" aria-expanded="false" aria-label="Chia sẻ bài viết này">
                             <i class="fas fa-share-alt"></i> Chia sẻ
                         </button>
-                        <div id="share-popup-exp" style="display:none;position:absolute;left:0;top:100%;min-width:180px;background:#fff;border:1px solid #eee;padding:10px 16px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.13);z-index:9999;">
+                        <div id="share-popup-exp" role="dialog" aria-label="Chia sẻ" style="display:none;position:absolute;left:0;top:100%;min-width:180px;background:#fff;border:1px solid #eee;padding:10px 16px;border-radius:12px;box-shadow:0 4px 24px rgba(0,0,0,0.13);z-index:9999;">
                             <div class="d-flex flex-column align-items-start gap-2">
                                 <a href="#" id="share-fb-exp" class="btn btn-light w-100 text-start" target="_blank" rel="noopener" style="font-weight:500;"><i class="fab fa-facebook text-primary me-2"></i> Facebook</a>
                                 <a href="#" id="share-x-exp" class="btn btn-light w-100 text-start" target="_blank" rel="noopener" style="font-weight:500;">
@@ -55,24 +58,11 @@
                             </div>
                         </div>
                     </div>
-                    <script>
-                    function toggleSharePopupExp(e) {
-                        e.stopPropagation();
-                        var popup = document.getElementById('share-popup-exp');
-                        var url = window.location.href;
-                        document.getElementById('share-fb-exp').href = 'https://www.facebook.com/sharer/sharer.php?u=' + encodeURIComponent(url);
-                        document.getElementById('share-x-exp').href = 'https://twitter.com/intent/tweet?url=' + encodeURIComponent(url);
-                        popup.style.display = (popup.style.display === 'block' ? 'none' : 'block');
-                        document.addEventListener('click', closeSharePopupExp);
-                    }
-                    function closeSharePopupExp(e) {
-                        var popup = document.getElementById('share-popup-exp');
-                        if (popup && !popup.contains(e.target) && e.target.id !== 'share-btn-exp') {
-                            popup.style.display = 'none';
-                            document.removeEventListener('click', closeSharePopupExp);
-                        }
-                    }
-                    </script>
+                    {{-- Issue #398: this inline block duplicated the share
+                         popup logic (and missed keyboard/focus/ARIA entirely).
+                         Both show pages now load public/js/share_popup.js;
+                         this copy is deleted the same way #351 removed the
+                         duplicated login toggle. --}}
                     <div class="alert-details mb-4">
                         <div class="mb-3">
                             <h5 class="fw-semibold mb-2 text-success">Nội dung chia sẻ</h5>
@@ -209,4 +199,17 @@ window.LIKE_DESTROY_URL = "{{ route('like.destroy') }}";
 window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttribute('content');
 </script>
 <script src="{{ asset('js/experiences_show.js') }}"></script>
+{{-- Issue #398: the experience share button's popup wiring. The ids are
+     experience-specific, the behaviour is shared with the alert page via
+     public/js/share_popup.js. --}}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initSharePopup({
+        trigger: 'share-btn-exp',
+        popup: 'share-popup-exp',
+        facebook: 'share-fb-exp',
+        x: 'share-x-exp',
+    });
+});
+</script>
 @endsection 

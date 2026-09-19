@@ -126,7 +126,9 @@ class ClientScriptHygieneTest extends TestCase
         // alerts/show.blade.php used to define toggleSharePopupAlert inline
         // AND in alerts_show.js. Function redefinition is silent: the second
         // wins and the first becomes dead weight, but a reader cannot tell
-        // which is live. The page must load the file and define nothing.
+        // which is live. #398 then moved the whole behaviour into
+        // public/js/share_popup.js, which both show pages load — so the
+        // handler no longer exists at all in the page-specific files.
         $alert = $this->approvedAlert();
 
         $html = $this->actingAs($alert->user)
@@ -147,13 +149,28 @@ class ClientScriptHygieneTest extends TestCase
         $this->assertSame(
             1,
             substr_count($html, 'src="'.asset('js/alerts_show.js').'"'),
-            'the authoritative file must be loaded exactly once'
+            'the page-specific file must still load exactly once'
+        );
+        $this->assertSame(
+            1,
+            substr_count($html, 'src="'.asset('js/share_popup.js').'"'),
+            'the shared popup helper must load exactly once'
         );
 
-        // The live definitions survive in the file, not in the page.
-        $js = file_get_contents(public_path('js/alerts_show.js'));
-        $this->assertSame(1, substr_count($js, 'function toggleSharePopupAlert'));
-        $this->assertSame(1, substr_count($js, 'function closeSharePopupAlert'));
+        // The behaviour lives once, in the shared helper, and neither page
+        // file keeps its own copy of the toggle.
+        foreach (['alerts_show.js', 'experiences_show.js'] as $file) {
+            $this->assertSame(
+                0,
+                substr_count(file_get_contents(public_path('js/'.$file)), 'function toggleSharePopup'),
+                "{$file} must delegate the popup to the shared helper"
+            );
+        }
+        $this->assertSame(
+            1,
+            substr_count(file_get_contents(public_path('js/share_popup.js')), 'function initSharePopup'),
+            'the shared helper defines the wiring exactly once'
+        );
     }
 
     public function test_welcome_stat_animation_cannot_render_nan(): void
