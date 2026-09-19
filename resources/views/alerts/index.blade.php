@@ -92,9 +92,10 @@
                             </a>
                         @else
                             <a href="{{ route('alerts.show', $alert) }}">
-                                <div class="card-img-top overflow-hidden d-flex align-items-center justify-content-center bg-light" style="height: 200px;">
-                                    <div class="thumb-ph w-100 h-100"></div>
-                                </div>
+                                {{-- The image branch above gets alt="Ảnh cảnh báo"; the
+                                     placeholder is the same picture in spirit, so it
+                                     announces the same thing instead of nothing. --}}
+                                <div class="thumb-ph w-100 h-100" role="img" aria-label="Ảnh cảnh báo"></div>
                             </a>
                         @endif
                         
