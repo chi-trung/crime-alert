@@ -36,8 +36,8 @@
                 <div class="text-muted small">Thời gian tải trang</div>
                 <div class="fw-semibold text-primary">{{ now()->format('d/m/Y H:i') }}</div>
             </div>
-            <button class="btn btn-light rounded-circle p-2" id="refresh-btn">
-                <i class="fas fa-sync-alt"></i>
+            <button class="btn btn-light rounded-circle p-2" id="refresh-btn" aria-label="Tải lại dữ liệu">
+                <i class="fas fa-sync-alt" aria-hidden="true"></i>
             </button>
         </div>
     </div>
@@ -615,8 +615,8 @@
                     <div class="card-header bg-white border-bottom-0 pb-0 d-flex justify-content-between align-items-center rounded-top-4">
                         <h5 class="card-title mb-0 fw-bold text-primary" style="font-size: 1.25rem;">Thống kê cảnh báo theo tháng</h5>
                         <div class="dropdown">
-                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown">
-                                <i class="fas fa-ellipsis-v"></i>
+                            <button class="btn btn-link text-muted p-0" type="button" data-bs-toggle="dropdown" aria-label="Tùy chọn biểu đồ" aria-haspopup="true" aria-expanded="false">
+                                <i class="fas fa-ellipsis-v" aria-hidden="true"></i>
                             </button>
                             {{-- Issue #345: both items were href="#" with no
                                  handler anywhere — dead weight in an ellipsis

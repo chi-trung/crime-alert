@@ -506,8 +506,8 @@
                         <div class="chatbot-subtitle">Hỗ trợ 24/7</div>
                     </div>
                 </div>
-                <button class="chatbot-close" id="chatbotClose">
-                    <i class="fas fa-times"></i>
+                <button class="chatbot-close" id="chatbotClose" aria-label="Đóng cửa sổ chat">
+                    <i class="fas fa-times" aria-hidden="true"></i>
                 </button>
             </div>
 
@@ -534,8 +534,8 @@
                     maxlength="2000"
                     aria-label="Câu hỏi cho trợ lý ảo"
                 >
-                <button class="chatbot-send" id="chatbotSend" type="button">
-                    <i class="fas fa-paper-plane"></i>
+                <button class="chatbot-send" id="chatbotSend" type="button" aria-label="Gửi câu hỏi">
+                    <i class="fas fa-paper-plane" aria-hidden="true"></i>
                 </button>
             </div>
         </div>
