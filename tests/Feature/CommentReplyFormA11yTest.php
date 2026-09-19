@@ -23,7 +23,7 @@ class CommentReplyFormA11yTest extends TestCase
 
     public function test_the_reply_button_announces_the_region_it_controls(): void
     {
-        $html = $this->renderThread();
+        [$html, $commentId] = $this->renderThread();
 
         $this->assertSame(
             1,
@@ -32,17 +32,20 @@ class CommentReplyFormA11yTest extends TestCase
         );
         $tag = $m[0];
 
+        // The id is the real comment id, not a constant: MySQL auto-increment
+        // hands out ids from its own sequence, so hardcoding it makes the test
+        // pass only on SQLite.
         $this->assertStringContainsString('aria-expanded="false"', $tag, 'the button must announce its collapsed state before the form is opened');
-        $this->assertStringContainsString('aria-controls="reply-form-1"', $tag, 'the button must point at the region it controls');
+        $this->assertStringContainsString('aria-controls="reply-form-'.$commentId.'"', $tag, 'the button must point at the region it controls');
     }
 
     public function test_the_reply_form_is_announced_when_opened(): void
     {
-        $html = $this->renderThread();
+        [$html, $commentId] = $this->renderThread();
 
         $this->assertSame(
             1,
-            preg_match('/<div[^>]*id="reply-form-1"[^>]*>/i', $html, $m),
+            preg_match('/<div[^>]*id="reply-form-'.$commentId.'"[^>]*>/i', $html, $m),
             'the reply form container must render exactly once'
         );
         $this->assertStringContainsString('role="group"', $m[0], 'an opened form must be an announced landmark');
@@ -85,19 +88,21 @@ class CommentReplyFormA11yTest extends TestCase
         $this->assertStringContainsString('reply-status', $js, 'the handler must address the live region');
     }
 
-    private function renderThread(): string
+    private function renderThread(): array
     {
         [$user, $alert] = $this->seedThread();
-        Comment::create([
+        $comment = Comment::create([
             'user_id' => $user->id,
             'alert_id' => $alert->id,
             'content' => 'Nội dung bình luận',
         ]);
 
-        return $this->actingAs($user)
+        $html = $this->actingAs($user)
             ->get(route('alerts.show', $alert))
             ->assertOk()
             ->getContent();
+
+        return [$html, $comment->id];
     }
 
     private function partialStylesheet(): string
