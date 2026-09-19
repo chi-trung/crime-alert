@@ -13,7 +13,12 @@
         </div>
         <div class="d-flex align-items-center gap-2">
             @auth
-                <button class="btn btn-link btn-sm text-decoration-none text-primary px-2 py-0 reply-btn" data-comment-id="{{ $comment->id }}"><i class="fas fa-reply me-1"></i>Trả lời</button>
+                {{-- Issue #410: the reply button toggles the form below, so it
+                     owns an expanded region — aria-expanded tells a screen
+                     reader the state without opening it. Never an id: this
+                     partial is recursive, so an id would collide on nested
+                     replies (same doctrine as the #384 textarea). --}}
+                <button class="btn btn-link btn-sm text-decoration-none text-primary px-2 py-0 reply-btn" data-comment-id="{{ $comment->id }}" aria-expanded="false" aria-controls="reply-form-{{ $comment->id }}"><i class="fas fa-reply me-1"></i>Trả lời</button>
             @endauth
             @if(auth()->check() && (auth()->user()->isAdmin || auth()->id() === $comment->user_id))
                 {{-- Issue #388: both actions were icon-only, so a screen reader
@@ -61,13 +66,18 @@
     </div>
     <div class="comment-content ps-4">{{ $comment->content }}</div>
     <!-- Form reply (ẩn/hiện bằng JS) -->
-    <div class="reply-form-container mt-2" id="reply-form-{{ $comment->id }}" style="display:none;">
+    {{-- Issue #410: role="group" + aria-label makes the form an announced
+         landmark once it is visible; a polite live region beside it reports
+         the open/close so a screen reader user learns the button did
+         something. --}}
+    <div class="reply-form-container mt-2" id="reply-form-{{ $comment->id }}" role="group" aria-label="Form trả lời bình luận" style="display:none;">
+        <span class="reply-status sr-only" role="status" aria-live="polite"></span>
         <form action="{{ route('comments.store') }}" method="POST">
             @csrf
             <input type="hidden" name="parent_id" value="{{ $comment->id }}">
             <input type="hidden" name="{{ $parentType }}_id" value="{{ $parentId }}">
             <div class="mb-2">
-                <textarea name="content" class="form-control rounded-3" rows="2" placeholder="Viết trả lời..." required aria-label="Nội dung trả lời cho bình luận của {{ $comment->user?->name }}"></textarea>
+                <textarea name="content" class="form-control rounded-3" rows="2" placeholder="Viết trả lời..." required aria-label="Nội dung trả lời cho bình luận của {{ $comment->user?->name }}" id="reply-content-{{ $comment->id }}"></textarea>
             </div>
             <button type="submit" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-reply me-1"></i> Gửi trả lời</button>
             <button type="button" class="btn btn-link btn-sm text-secondary cancel-reply-btn" data-comment-id="{{ $comment->id }}">Hủy</button>
@@ -112,19 +122,52 @@
 .comment-item.border-bottom {
     border-bottom: 1.5px solid #e9ecef !important;
 }
+/* Issue #410: Bootstrap's .sr-only utility is not loaded by this app, so the
+   live region above needs its own visually-hidden rule. Kept in the DOM and
+   in the accessibility tree — display:none would silence the announcements. */
+.reply-status.sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
 </style>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Issue #410: opening the form is a state change the user has to be told
+    // about, and a keyboard user has to land in the textarea without tabbing
+    // through the whole comment above it. Closing returns focus to the reply
+    // button, or it is stranded inside the region just hidden.
+    function setReplyOpen(btn, open) {
+        var id = btn.getAttribute('data-comment-id');
+        var form = document.getElementById('reply-form-' + id);
+        if (!form) return;
+        form.style.display = open ? 'block' : 'none';
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        var status = form.querySelector('.reply-status');
+        if (status) status.textContent = open ? 'Đã mở form trả lời' : 'Đã đóng form trả lời';
+        if (open) {
+            var textarea = document.getElementById('reply-content-' + id);
+            if (textarea) textarea.focus();
+        } else {
+            btn.focus();
+        }
+    }
     document.querySelectorAll('.reply-btn').forEach(function(btn) {
         btn.onclick = function() {
-            var id = btn.getAttribute('data-comment-id');
-            document.getElementById('reply-form-' + id).style.display = 'block';
+            setReplyOpen(btn, true);
         };
     });
     document.querySelectorAll('.cancel-reply-btn').forEach(function(btn) {
         btn.onclick = function() {
             var id = btn.getAttribute('data-comment-id');
-            document.getElementById('reply-form-' + id).style.display = 'none';
+            var replyBtn = document.querySelector('.reply-btn[data-comment-id="' + id + '"]');
+            if (replyBtn) setReplyOpen(replyBtn, false);
         };
     });
     document.querySelectorAll('.btn-like-comment').forEach(function(btn) {
