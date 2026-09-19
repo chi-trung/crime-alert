@@ -26,6 +26,14 @@
         <link rel="icon" type="image/svg+xml" href="{{ asset('favicon.svg') }}">
     </head>
     <body class="font-sans antialiased">
+        {{-- Issue #404: a keyboard user had to tab through the whole nav
+             (three links, the category dropdown, up to three admin links, the
+             notification bell and the profile dropdown) before reaching any
+             page content on every single page load. The skip link jumps
+             straight to #main-content; tabindex="-1" makes the main element
+             focusable programmatically WITHOUT adding a redundant stop to the
+             tab order. WCAG 2.4.1 (Level A). --}}
+        <a href="#main-content" class="skip-link">Bỏ qua đến nội dung</a>
         <div class="min-h-screen bg-gray-100">
             @if(empty($hideMenu))
                 @include('layouts.navigation')
@@ -41,7 +49,7 @@
             @endisset
 
             <!-- Page Content -->
-            <main>
+            <main id="main-content" tabindex="-1">
                 @yield('content')
             </main>
 
@@ -485,6 +493,25 @@
                 font-size: 48px;
                 margin-bottom: 12px;
                 color: #667eea;
+            }
+
+            /* Issue #404: off-screen until focused. display:none would remove
+               the link from the tab order entirely and defeat the point — it
+               must be reachable, just invisible until it is used. */
+            .skip-link {
+                position: absolute;
+                left: -9999px;
+                top: 0;
+                z-index: 30000;
+                padding: 0.75rem 1.25rem;
+                background: #4f46e5;
+                color: #fff;
+                font-weight: 600;
+                border-radius: 0 0 0.5rem 0;
+                text-decoration: none;
+            }
+            .skip-link:focus {
+                left: 0;
             }
         </style>
 
