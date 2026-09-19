@@ -67,6 +67,8 @@
                 
                 <!-- Name -->
                 <div class="input-group">
+                    {{-- Issue #396: placeholder was the only label. --}}
+                    <label for="name" class="form-label">{{ __('messages.full_name') }}</label>
                     <!-- <div class="input-icon">
                         <i class="far fa-user"></i>
                     </div> -->
@@ -88,6 +90,7 @@
                 
                 <!-- Email -->
                 <div class="input-group">
+                    <label for="email" class="form-label">{{ __('messages.email') }}</label>
                     <!-- <div class="input-icon">
                         <i class="far fa-envelope"></i>
                     </div> -->
@@ -108,6 +111,7 @@
                 
                 <!-- Password -->
                 <div class="input-group">
+                    <label for="password" class="form-label">{{ __('messages.password') }}</label>
                     <!-- <div class="input-icon">
                         <i class="fas fa-lock"></i>
                     </div> -->
@@ -155,6 +159,7 @@
                 
                 <!-- Confirm Password -->
                 <div class="input-group">
+                    <label for="password_confirmation" class="form-label">{{ __('messages.confirm_password') }}</label>
                     <!-- <div class="input-icon">
                         <i class="fas fa-lock"></i>
                     </div> -->

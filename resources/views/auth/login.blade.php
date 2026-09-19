@@ -91,12 +91,18 @@
                 @csrf
                 <!-- Email -->
                 <div class="input-group">
+                    {{-- Issue #396: placeholder was the only label. It vanishes
+                         the moment a user starts typing and is not announced
+                         as the field's name. The sibling Breeze auth pages
+                         already ship <x-input-label for=, so this was the
+                         inconsistent one. --}}
+                    <label for="email" class="form-label">{{ __('messages.email') }}</label>
                     <div class="input-icon">
                         <i class="far fa-envelope"></i>
                     </div>
-                    <input 
-                        type="email" 
-                        id="email" 
+                    <input
+                        type="email"
+                        id="email"
                         name="email"
                         class="w-full form-input py-3 px-4 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                         placeholder="Địa chỉ email"
@@ -104,9 +110,10 @@
                         autocomplete="username"
                     >
                 </div>
-                
+
                 <!-- Password -->
                 <div class="input-group">
+                    <label for="password" class="form-label">{{ __('messages.password') }}</label>
                     <div class="input-icon">
                         <i class="fas fa-lock"></i>
                     </div>

@@ -15,10 +15,21 @@ body {
     margin-bottom: 1.5rem;
 }
 
+/* Issue #396: the fields used placeholder as their only label. A real label
+   now sits above the input, so the absolutely-centred icon has to centre on
+   the input rather than on the whole group. */
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
 .input-icon {
     position: absolute;
     left: 15px;
-    top: 50%;
+    top: calc(50% + 1.125rem);
     transform: translateY(-50%);
     color: #94a3b8;
     z-index: 10;

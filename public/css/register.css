@@ -15,6 +15,17 @@ body {
     margin-bottom: 1.5rem;
 }
 
+/* Issue #396: the fields used placeholder as their only label; a real label
+   now sits above each input. register.css has no absolutely-positioned icon
+   (see the #351 note below), so this rule is the label styling alone. */
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #374151;
+}
+
 /* Issue #351: .input-icon matched nothing — all four wrapper divs in
    register.blade.php are commented out, and the .form-input padding that
    made room for the glyph is commented out below. The login page still uses
