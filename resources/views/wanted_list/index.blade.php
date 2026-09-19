@@ -11,7 +11,7 @@
          row look half-broken. Describes the 7 columns actually rendered. --}}
     <p class="lead text-muted">Tổng hợp các đối tượng truy nã: họ tên, năm sinh, nơi đăng ký thường trú, tội danh và quyết định truy nã.</p>
     <form method="GET" action="{{ route('wanted_list.index') }}" class="mb-3 d-flex" role="search">
-        <input type="text" name="q" class="form-control me-2" placeholder="Tìm theo tên, năm sinh, địa chỉ, tội danh..." value="{{ request('q') }}">
+        <input type="search" id="wanted-q" name="q" class="form-control me-2" placeholder="Tìm theo tên, năm sinh, địa chỉ, tội danh..." value="{{ request('q') }}" aria-label="Tìm đối tượng truy nã">
         <button class="btn btn-danger" type="submit">Tìm kiếm</button>
     </form>
     {{-- Issue #343: the table markup was fully duplicated between the

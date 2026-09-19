@@ -26,10 +26,10 @@
              the chosen point (Nominatim), same as on create. --}}
         <div class="mb-3">
             <label class="form-label fw-bold">Chọn vị trí trên bản đồ</label>
-            <div id="map" style="height: 350px; border-radius: 12px; overflow: hidden;"></div>
+            <div id="map" style="height: 350px; border-radius: 12px; overflow: hidden;" role="group" aria-label="Bản đồ chọn vị trí"></div>
             <input type="hidden" id="latitude" name="latitude" value="{{ old('latitude', $alert->latitude) }}">
             <input type="hidden" id="longitude" name="longitude" value="{{ old('longitude', $alert->longitude) }}">
-            <input type="text" id="location" name="location" class="form-control mt-2" placeholder="Địa chỉ sẽ tự động điền khi chọn vị trí" value="{{ old('location', $alert->location) }}" readonly>
+            <input type="text" id="location" name="location" class="form-control mt-2" placeholder="Địa chỉ sẽ tự động điền khi chọn vị trí" value="{{ old('location', $alert->location) }}" readonly aria-label="Địa chỉ được chọn">
             <div class="form-text">Nhấn vào bản đồ để chọn vị trí xảy ra sự việc (có thể bỏ qua nếu không rõ).</div>
         </div>
         <div class="mb-3">

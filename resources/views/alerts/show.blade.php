@@ -195,7 +195,7 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                     @csrf
                                     <input type="hidden" name="alert_id" value="{{ $alert->id }}">
                                     <div class="mb-3">
-                                        <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required>{{ old('content') }}</textarea>
+                                        <textarea name="content" class="form-control rounded-3" rows="3" placeholder="Viết bình luận của bạn..." required aria-label="Nội dung bình luận">{{ old('content') }}</textarea>
                                         @error('content')
                                             <div class="text-danger small mt-1">{{ $message }}</div>
                                         @enderror
