@@ -17,6 +17,29 @@
                 font-family: 'Inter', 'Roboto', 'Nunito', Arial, sans-serif !important;
             }
             .swal2-container { z-index: 20000 !important; }
+            {{-- Issue #416: no stylesheet in the project honoured
+                prefers-reduced-motion (WCAG 2.2.2, Level A). The welcome page
+                alone ships four infinite animations — a 15s gradient shift, a
+                20s/25s/30s particle drift and a 3s title glow — so a user with
+                motion sensitivity cannot stay on the first page they see.
+
+                Shipped here rather than per-file so every page loading this
+                layout is covered, including ones whose stylesheet is added
+                further down. Durations collapse to 0.01ms instead of none so
+                elements still reach their final state — none would leave a
+                fade-in permanently invisible and an icon spin frozen mid-turn.
+                scroll-behavior: auto undoes the smooth scroll the skip link
+                relies on, since it is a transition too. --}}
+            @media (prefers-reduced-motion: reduce) {
+                *,
+                *::before,
+                *::after {
+                    animation-duration: 0.01ms !important;
+                    animation-iteration-count: 1 !important;
+                    transition-duration: 0.01ms !important;
+                    scroll-behavior: auto !important;
+                }
+            }
         </style>
 
         <!-- Bootstrap 5 -->

@@ -1,3 +1,14 @@
+// Issue #416: honour the OS-level reduced-motion preference. The CSS guard in
+// layouts/app.blade.php collapses animation durations, but the three effects
+// below are driven from JS and the CSS guard cannot reach them: createParticles
+// spawns the drifting dots, handleParallax moves layers on scroll, and the
+// ripple below is built per click. All three are motion, so all three are
+// skipped. The count-up stats are unaffected — a number reaching its final
+// value is content, not motion, and CSS cannot animate textContent anyway.
+function prefersReducedMotion() {
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
 // Create floating particles
 function createParticles() {
     const particlesContainer = document.getElementById('particles');
@@ -96,6 +107,10 @@ function setupIntersectionObserver() {
 
 // Initialize
 document.addEventListener('DOMContentLoaded', () => {
+    // Issue #416: the particle field, the scroll parallax and the click ripple
+    // are all generated here, so the CSS guard alone cannot suppress them.
+    if (prefersReducedMotion()) return;
+
     createParticles();
     setupIntersectionObserver();
     handleParallax();
