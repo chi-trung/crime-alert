@@ -72,7 +72,10 @@ function addLocateControl(map, onLocate) {
     var locateBtn = L.control({ position: 'topleft' });
     locateBtn.onAdd = function () {
         var div = L.DomUtil.create('div', 'leaflet-bar leaflet-control leaflet-control-custom');
-        div.innerHTML = '<button id="locateMeBtn" title="Lấy vị trí của tôi" style="background:white;border:none;padding:6px 10px;cursor:pointer;"><i class="fas fa-location-arrow"></i> Vị trí của tôi</button>';
+        // Issue #412: title= is a tooltip, not an accessible name — the same
+        // defect #408 closed on the comment like button. The glyph is
+        // decorative, so it is hidden from the accessibility tree.
+        div.innerHTML = '<button id="locateMeBtn" aria-label="Lấy vị trí của tôi" title="Lấy vị trí của tôi" style="background:white;border:none;padding:6px 10px;cursor:pointer;"><i class="fas fa-location-arrow" aria-hidden="true"></i> Vị trí của tôi</button>';
         return div;
     };
     locateBtn.addTo(map);
@@ -82,15 +85,35 @@ function addLocateControl(map, onLocate) {
     setTimeout(function () {
         var btn = document.getElementById('locateMeBtn');
         if (!btn) return;
+        // Issue #412: a raw alert() is a blocking, styleless, inaccessible
+        // dialog, and on the failure paths the button would otherwise look
+        // dead. Announce into a polite region built once and reused.
+        function announceLocation(message) {
+            var host = document.getElementById('map-location-status');
+            if (!host) {
+                host = document.createElement('span');
+                host.id = 'map-location-status';
+                host.setAttribute('role', 'status');
+                host.setAttribute('aria-live', 'polite');
+                // Visually hidden, applied inline so the region needs no
+                // stylesheet. Clipped, never display:none — that would remove
+                // it from the accessibility tree.
+                host.style.cssText = 'position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;';
+                var mapEl = document.getElementById(btn.closest('.leaflet-container') ? btn.closest('.leaflet-container').id : 'map');
+                (mapEl || document.body).appendChild(host);
+            }
+            host.textContent = message;
+        }
         btn.onclick = function () {
             if (!navigator.geolocation) {
-                alert('Trình duyệt không hỗ trợ định vị!');
+                announceLocation('Trình duyệt không hỗ trợ định vị!');
                 return;
             }
             navigator.geolocation.getCurrentPosition(function (position) {
                 onLocate(position.coords.latitude, position.coords.longitude);
+                announceLocation('Đã định vị được vị trí của bạn.');
             }, function () {
-                alert('Không thể lấy vị trí của bạn!');
+                announceLocation('Không thể lấy vị trí của bạn!');
             });
         };
     }, 0);
