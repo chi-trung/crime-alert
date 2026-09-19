@@ -47,7 +47,13 @@
                 <span class="badge bg-secondary">Đã đóng</span>
             @endif
         </div>
-        <div class="support-chat-messages" id="chat-messages">
+        {{-- Issue #402: the poll appends a new bubble every 3s but the region
+             was not a live region, so a screen reader user never learned an
+             admin had replied without scrolling to check. role="log" is the
+             semantics for an ordered, self-scrolling history; the appended
+             rows below and in the JS builder carry role="listitem" so the
+             region has structure, not just text. --}}
+        <div class="support-chat-messages" id="chat-messages" role="log" aria-live="polite" aria-label="Hội thoại hỗ trợ">
             {{-- Issue #234: $messages is the latest-100 window, oldest-first.
                  Each bubble carries its row id (data-msg-id, escaped by {{ }}
                  so nothing raw reaches the DOM) — the poll script keys its
@@ -59,7 +65,7 @@
                 </div>
             @endif
             @foreach($messages as $msg)
-                <div class="support-chat-msg {{ ($msg->user->isAdmin ?? false) ? 'admin' : 'user' }}" data-msg-id="{{ $msg->id }}">
+                <div class="support-chat-msg {{ ($msg->user->isAdmin ?? false) ? 'admin' : 'user' }}" data-msg-id="{{ $msg->id }}" role="listitem">
                     <div class="support-chat-bubble">
                         <div class="small fw-bold mb-1">
                             {{ $msg->user->name ?? 'Admin' }}
@@ -145,6 +151,9 @@ function buildBubble(msg) {
     const wrapper = document.createElement('div');
     wrapper.className = 'support-chat-msg ' + (msg.is_admin ? 'admin' : 'user');
     wrapper.dataset.msgId = msg.id;
+    // Issue #402: match the server-rendered bubbles so a row the poll builds
+    // keeps the same list semantics as the ones above it.
+    wrapper.setAttribute('role', 'listitem');
 
     const bubble = document.createElement('div');
     bubble.className = 'support-chat-bubble';

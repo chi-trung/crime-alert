@@ -516,7 +516,10 @@
             </div>
 
             <!-- Messages Area -->
-            <div class="chatbot-messages" id="chatbotMessages">
+            {{-- Issue #402: sendMessage() writes the AI's reply into this node,
+                 but it was not a live region — the reply appeared in silence
+                 even after #400 gave the container dialog semantics. --}}
+            <div class="chatbot-messages" id="chatbotMessages" role="log" aria-live="polite" aria-label="Hội thoại với trợ lý AI">
                 <div class="welcome-message">
                     <div class="icon">
                         <i class="fas fa-robot"></i>
