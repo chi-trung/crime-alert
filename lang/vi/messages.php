@@ -27,6 +27,9 @@ return [
     'submit' => 'Gửi',
     'email' => 'Email',
     'password' => 'Mật khẩu',
+    // Issue #396: register's name input had placeholder="Họ và tên" as its
+    // only label. This is the visible label that replaces it.
+    'full_name' => 'Họ và tên',
     'confirm_password' => 'Xác nhận mật khẩu',
     // Issue #335: Breeze scaffold leaves confirm-password's button on the
     // raw __('Confirm') key, which has no vi entry and silently falls back
