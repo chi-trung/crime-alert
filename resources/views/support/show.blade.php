@@ -85,7 +85,7 @@
         <form action="{{ route('support.sendMessage', $supportRequest) }}" method="POST">
             @csrf
             <div class="d-flex gap-2 mt-2">
-                <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="2" maxlength="5000" required placeholder="Nhập tin nhắn..." id="chat-input">{{ old('message') }}</textarea>
+                <textarea name="message" class="form-control @error('message') is-invalid @enderror" rows="2" maxlength="5000" required placeholder="Nhập tin nhắn..." id="chat-input" aria-label="Nội dung tin nhắn">{{ old('message') }}</textarea>
                 <button type="submit" class="btn btn-success">Gửi</button>
             </div>
             @error('message')<div class="invalid-feedback d-block">{{ $message }}</div>@enderror

@@ -50,7 +50,7 @@
             <input type="hidden" name="parent_id" value="{{ $comment->id }}">
             <input type="hidden" name="{{ $parentType }}_id" value="{{ $parentId }}">
             <div class="mb-2">
-                <textarea name="content" class="form-control rounded-3" rows="2" placeholder="Viết trả lời..." required></textarea>
+                <textarea name="content" class="form-control rounded-3" rows="2" placeholder="Viết trả lời..." required aria-label="Nội dung trả lời cho bình luận của {{ $comment->user?->name }}"></textarea>
             </div>
             <button type="submit" class="btn btn-success btn-sm rounded-pill px-3"><i class="fas fa-reply me-1"></i> Gửi trả lời</button>
             <button type="button" class="btn btn-link btn-sm text-secondary cancel-reply-btn" data-comment-id="{{ $comment->id }}">Hủy</button>

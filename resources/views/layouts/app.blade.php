@@ -532,6 +532,7 @@
                     placeholder="Nhập câu hỏi của bạn..."
                     autocomplete="off"
                     maxlength="2000"
+                    aria-label="Câu hỏi cho trợ lý ảo"
                 >
                 <button class="chatbot-send" id="chatbotSend" type="button">
                     <i class="fas fa-paper-plane"></i>
