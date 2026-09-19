@@ -35,13 +35,25 @@
                     $isLiked = $comment->likes->contains('user_id', auth()->id());
                     $likeCount = $comment->likes->count();
                 @endphp
-                <button type="button" class="btn btn-like-comment px-2 py-0{{ $isLiked ? ' liked' : '' }}" data-id="{{ $comment->id }}" data-liked="{{ $isLiked ? '1' : '0' }}">
-                    <i class="fa-heart {{ $isLiked ? 'fa-solid text-danger' : 'fa-regular text-secondary' }}"></i>
+                {{-- Issue #408: the button is an icon glyph plus a count, so its
+                     accessible name was empty — a screen reader announced
+                     "button" with no purpose. Same defect #388 closed for the
+                     neighbouring edit/delete icons. The label tracks state
+                     because the JS below swaps the icon on toggle; the count is
+                     separate, so the name must not decay to "0" when it lands
+                     on a comment with no likes yet. aria-label, never an id:
+                     this partial is recursive, so an id would collide on
+                     nested replies (same doctrine as the #384 textarea). --}}
+                <button type="button" class="btn btn-like-comment px-2 py-0{{ $isLiked ? ' liked' : '' }}" data-id="{{ $comment->id }}" data-liked="{{ $isLiked ? '1' : '0' }}" aria-label="{{ $isLiked ? 'Bỏ thích bình luận' : 'Thích bình luận' }}" aria-pressed="{{ $isLiked ? 'true' : 'false' }}">
+                    <i class="fa-heart {{ $isLiked ? 'fa-solid text-danger' : 'fa-regular text-secondary' }}" aria-hidden="true"></i>
                     <span class="like-count">{{ $likeCount }}</span>
                 </button>
             @else
-                <a href="{{ route('login') }}" class="btn btn-like-comment px-2 py-0" title="Đăng nhập để thích">
-                    <i class="fa-regular fa-heart text-secondary"></i>
+                {{-- Issue #408: title= is a tooltip hint, not an accessible
+                     name (WCAG does not treat title as a name source), so this
+                     guest link was named "link". --}}
+                <a href="{{ route('login') }}" class="btn btn-like-comment px-2 py-0" title="Đăng nhập để thích" aria-label="Đăng nhập để thích">
+                    <i class="fa-regular fa-heart text-secondary" aria-hidden="true"></i>
                     <span class="like-count">{{ $comment->likes->count() }}</span>
                 </a>
             @endauth
@@ -138,6 +150,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     btn.classList.toggle('liked', !liked);
                     const icon = btn.querySelector('i');
                     icon.className = liked ? 'fa-regular fa-heart text-secondary' : 'fa-solid fa-heart text-danger';
+                    // Issue #408: keep the announced state in step with the
+                    // icon swap above, or the label says "Thích" while the
+                    // glyph already shows a filled heart.
+                    btn.setAttribute('aria-pressed', liked ? 'false' : 'true');
+                    btn.setAttribute('aria-label', liked ? 'Thích bình luận' : 'Bỏ thích bình luận');
                     btn.querySelector('.like-count').textContent = data.count;
                 } else if(data.redirect) {
                     window.location.href = data.redirect;
