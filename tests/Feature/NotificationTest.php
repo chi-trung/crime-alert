@@ -53,7 +53,20 @@ class NotificationTest extends TestCase
 
         $html = $this->actingAs($user)->get('/dashboard')->assertOk()->getContent();
 
-        $this->assertStringContainsString('notification-badge" style="">15<', $html);
+        // Issue #400: the badge gained role="status" + aria-live so a screen
+        // reader is told when the 10s poll changes the count. Match the span as
+        // an element, not a style-attribute suffix, so the pin survives a
+        // future attribute reorder.
+        $this->assertMatchesRegularExpression(
+            '/<span[^>]*class="notification-badge"[^>]*>[^<]*15[^<]*</',
+            $html,
+            'the badge must render the true unread total'
+        );
+        $this->assertMatchesRegularExpression(
+            '/<span[^>]*class="notification-badge"[^>]*aria-live="polite"[^>]*>/',
+            $html,
+            'the badge count must be announced as it changes'
+        );
     }
 
     public function test_dropdown_renderer_does_not_interpolate_message_into_innerhtml(): void

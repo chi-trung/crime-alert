@@ -489,12 +489,16 @@
         </style>
 
         <!-- Chatbot Toggle Button -->
-        <button class="chatbot-toggle" id="chatbotToggle" title="Chat với AI">
-            <i class="fas fa-robot"></i>
+        {{-- Issue #400: title is a tooltip, not an accessible name — the button
+             is a bare robot glyph, so it announced as an unnamed button. --}}
+        <button class="chatbot-toggle" id="chatbotToggle" aria-label="Mở cửa sổ chat với trợ lý AI" aria-expanded="false" aria-haspopup="dialog">
+            <i class="fas fa-robot" aria-hidden="true"></i>
         </button>
 
         <!-- Chatbot Container -->
-        <div class="chatbot-container" id="chatbotContainer">
+        {{-- Issue #400: a shown/hidden container needs dialog semantics to be
+             announced as a named container instead of a pile of divs. --}}
+        <div class="chatbot-container" id="chatbotContainer" role="dialog" aria-modal="true" aria-label="Trợ lý AI">
             <!-- Header -->
             <div class="chatbot-header">
                 <div class="chatbot-header-info">
@@ -576,8 +580,18 @@
                     document.addEventListener('click', (e) => {
                         const container = document.getElementById('chatbotContainer');
                         const toggle = document.getElementById('chatbotToggle');
-                        
+
                         if (this.isOpen && !container?.contains(e.target) && !toggle?.contains(e.target)) {
+                            this.closeChat();
+                        }
+                    });
+
+                    // Issue #400: Escape closes the dialog. Every other panel
+                    // in this app closes on Escape; the chatbot was the one
+                    // keyboard-only path that could not close it.
+                    document.addEventListener('keydown', (e) => {
+                        if (this.isOpen && (e.key === 'Escape' || e.key === 'Esc')) {
+                            e.preventDefault();
                             this.closeChat();
                         }
                     });
@@ -590,29 +604,37 @@
                 openChat() {
                     const container = document.getElementById('chatbotContainer');
                     const toggle = document.getElementById('chatbotToggle');
-                    
+
                     if (container && toggle) {
                         container.style.display = 'flex';
                         toggle.classList.add('active');
                         toggle.style.display = 'none';
+                        toggle.setAttribute('aria-expanded', 'true');
                         this.isOpen = true;
-                        
-                        // Focus input
-                        setTimeout(() => {
-                            document.getElementById('chatbotInput')?.focus();
-                        }, 300);
+
+                        // Issue #400: move focus into the dialog on open. The
+                        // 300ms delay existed to let the CSS transition finish,
+                        // but focus does not need to wait for it — an immediate
+                        // focus is what a keyboard user is waiting on.
+                        document.getElementById('chatbotInput')?.focus();
                     }
                 }
 
                 closeChat() {
                     const container = document.getElementById('chatbotContainer');
                     const toggle = document.getElementById('chatbotToggle');
-                    
+
                     if (container && toggle) {
                         container.style.display = 'none';
                         toggle.classList.remove('active');
                         toggle.style.display = '';
+                        toggle.setAttribute('aria-expanded', 'false');
                         this.isOpen = false;
+
+                        // Issue #400: return focus to the trigger so a keyboard
+                        // user is not stranded on a hidden container's last
+                        // focused element.
+                        toggle.focus();
                     }
                 }
 

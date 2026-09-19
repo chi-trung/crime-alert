@@ -146,28 +146,35 @@
               $unreadNotifications = auth()->user()->unreadNotifications()->orderByDesc('id')->take(10)->get();
               $unreadCount = auth()->user()->unreadNotifications()->count();
             @endphp
-            <a href="#" class="notification-icon">
-              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+            {{-- Issue #400: the bell link was a bare SVG plus a number — its
+                 accessible name was empty. It also opens a dropdown without
+                 announcing the expanded state. --}}
+            <a href="#" class="notification-icon" aria-label="Thông báo" aria-expanded="false" aria-haspopup="true" id="notification-toggle">
+              <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
               </svg>
-              <span class="notification-badge" style="{{ $unreadCount > 0 ? '' : 'display:none;' }}">{{ $unreadCount }}</span>
+              {{-- Issue #400: the badge is rewritten every 10s by the poll
+                   below, so it needs to be a live region — otherwise a new
+                   notification arrives and a screen reader user is never told
+                   until they open the dropdown themselves. --}}
+              <span class="notification-badge" role="status" aria-live="polite" style="{{ $unreadCount > 0 ? '' : 'display:none;' }}">{{ $unreadCount }}</span>
             </a>
             <div class="notification-dropdown">
               <div class="dropdown-header">
                 <h4>Thông báo mới</h4>
                 <a href="{{ route('notifications.index') }}">Xem tất cả</a>
               </div>
-              <div class="notification-list">
+              <div class="notification-list" role="list">
                 @forelse($unreadNotifications as $notification)
-                  <a href="{{ route('notifications.read', $notification->id) }}" class="notification-item">
+                  <a href="{{ route('notifications.read', $notification->id) }}" class="notification-item" role="listitem">
                     <div class="notification-content">
                       {{ $notification->data['message'] ?? 'Bạn có thông báo mới' }}
                     </div>
                     <div class="notification-time">{{ $notification->created_at->diffForHumans() }}</div>
                   </a>
                 @empty
-                  <div class="notification-empty">Không có thông báo mới</div>
+                  <div class="notification-empty" role="listitem">Không có thông báo mới</div>
                 @endforelse
               </div>
             </div>
@@ -467,7 +474,8 @@
     transition: var(--transition);
   }
 
-  .user-notification:hover .notification-dropdown {
+  .user-notification:hover .notification-dropdown,
+  .user-notification.open .notification-dropdown {
     opacity: 1;
     visibility: visible;
     transform: translateY(0);
@@ -943,6 +951,12 @@
                       badge.style.display = 'none';
                   }
               }
+              // Issue #400: keep the trigger's expanded state in sync with the
+              // dropdown it owns, so a screen reader announces open/closed.
+              const toggle = document.getElementById('notification-toggle');
+              if (toggle) {
+                  toggle.setAttribute('aria-expanded', data.count > 0 ? 'true' : 'false');
+              }
               // Cập nhật danh sách thông báo
               const list = document.querySelector('.notification-list');
               if (list) {
@@ -957,6 +971,10 @@
                           // marks read and validates server-side.
                           a.href = noti.read_url ? noti.read_url : '#';
                           a.className = 'notification-item';
+                          // Issue #400: the server-side rows ship role="listitem"
+                          // inside role="list"; dynamically created rows must
+                          // too, or they land outside the a11y tree's list.
+                          a.setAttribute('role', 'listitem');
                           // textContent, not innerHTML: noti.message interpolates the
                           // notifier's name and post title, which are user input (issue #18).
                           const content = document.createElement('div');
@@ -972,6 +990,7 @@
                   } else {
                       const div = document.createElement('div');
                       div.className = 'notification-empty';
+                      div.setAttribute('role', 'listitem');
                       div.textContent = 'Không có thông báo mới';
                       list.appendChild(div);
                   }
@@ -984,6 +1003,39 @@
       }
       setInterval(fetchNotifications, 10000); // 10 giây
       document.addEventListener('DOMContentLoaded', fetchNotifications);
+
+      // Issue #400: the dropdown opened on :hover only, so a touch device or a
+      // keyboard user could never reach it — the same lockout #357 fixed for
+      // the profile menu. The bell is a link, not a button, so it takes both
+      // a click toggle and a keyboard-openable path.
+      document.addEventListener('DOMContentLoaded', function() {
+          const wrapper = document.querySelector('.user-notification');
+          const bell = document.getElementById('notification-toggle');
+          if (!wrapper || !bell) {
+              return;
+          }
+          function setOpen(open) {
+              wrapper.classList.toggle('open', open);
+              bell.setAttribute('aria-expanded', open ? 'true' : 'false');
+          }
+          bell.addEventListener('click', function(e) {
+              e.preventDefault();
+              setOpen(!wrapper.classList.contains('open'));
+          });
+          // A keyboard user tabbing past the bell must not leave the dropdown
+          // hanging open behind them.
+          bell.addEventListener('blur', function() {
+              if (!wrapper.contains(document.activeElement)) {
+                  setOpen(false);
+              }
+          });
+          document.addEventListener('keydown', function(e) {
+              if (e.key === 'Escape' && wrapper.classList.contains('open')) {
+                  setOpen(false);
+                  bell.focus();
+              }
+          });
+      });
   })();
   </script>
   @endauth
