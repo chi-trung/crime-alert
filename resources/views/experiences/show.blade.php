@@ -106,12 +106,16 @@
                                     get a dead button that 403s. --}}
                                 @if($experience->status == 'approved')
                                 @auth
-                                <button id="like-btn-exp" class="btn-like-custom{{ $experience->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $experience->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $experience->id }}" data-type="experience">
+                                <button id="like-btn-exp" class="btn-like-custom{{ $experience->likes()->where('user_id', auth()->id())->exists() ? ' liked' : '' }}" data-liked="{{ $experience->likes()->where('user_id', auth()->id())->exists() ? '1' : '0' }}" data-id="{{ $experience->id }}" data-type="experience" aria-label="Thích bài chia sẻ này">
                                     <span id="like-text-exp">{{ $experience->likes()->where('user_id', auth()->id())->exists() ? 'Đã Thích' : 'Thích' }}</span> (<span id="like-count-exp">{{ $experience->likes()->count() }}</span>)
                                 </button>
                                 @else
-                                <a href="{{ route('login') }}" class="btn-like-custom" title="Đăng nhập để thích">
-                                    Thích (<span id="like-count-exp">{{ $experience->likes()->count() }}</span>)
+                                {{-- Issue #386: see alerts/show.blade.php — the guest branch repeated
+                                     id="like-count-exp", which public/js/experiences_show.js:36
+                                     selects by bare id. This branch is a plain login link with no
+                                     JS, so it ships the class instead. --}}
+                                <a href="{{ route('login') }}" class="btn-like-custom" title="Đăng nhập để thích" aria-label="Đăng nhập để thích bài chia sẻ này">
+                                    Thích (<span class="like-count">{{ $experience->likes()->count() }}</span>)
                                 </a>
                                 @endauth
                                 @endif
