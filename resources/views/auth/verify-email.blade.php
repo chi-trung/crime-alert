@@ -7,26 +7,25 @@
         <div class="text-center mb-3">
             <div class="empty-state-icon" style="margin-bottom:1rem;"></div>
         </div>
-        <h3 class="text-center mb-2 text-success">Xác thực Email của bạn</h3>
+        <h3 class="text-center mb-2 text-success">{{ __('messages.verify_email') }}</h3>
         <p class="text-center mb-4">
-            Cảm ơn bạn đã đăng ký!<br>Vui lòng kiểm tra email và nhấn vào liên kết xác thực.<br>
-            Nếu bạn chưa nhận được email, hãy nhấn nút bên dưới để gửi lại.
+            {!! __('messages.verify_email_notice') !!}
         </p>
         @if (session('status') == 'verification-link-sent')
             <div class="alert alert-success text-center">
-                Đã gửi lại email xác thực!
+                {{ __('messages.verify_email_sent') }}
             </div>
         @endif
         <form method="POST" action="{{ route('verification.send') }}" class="d-grid gap-2 mb-2">
             @csrf
             <button type="submit" class="btn btn-success btn-lg w-100">
-                Gửi lại email xác thực
+                {{ __('messages.verify_email_resend') }}
             </button>
         </form>
         <form method="POST" action="{{ route('logout') }}" class="d-grid gap-2">
             @csrf
             <button type="submit" class="btn btn-link text-secondary w-100">
-                Đăng xuất
+                {{ __('messages.logout') }}
             </button>
         </form>
     </div>

@@ -39,8 +39,12 @@ return [
     'forgot_password' => 'Quên mật khẩu?',
     'reset_password' => 'Đặt lại mật khẩu',
     'send_password_reset_link' => 'Gửi liên kết đặt lại mật khẩu',
-    'verify_email' => 'Xác thực email',
-    'verify_email_sent' => 'Một liên kết xác thực mới đã được gửi đến địa chỉ email của bạn.',
-    'verify_email_notice' => 'Trước khi tiếp tục, vui lòng kiểm tra email của bạn để lấy liên kết xác thực.',
+    'verify_email' => 'Xác thực Email của bạn',
+    'verify_email_sent' => 'Đã gửi lại email xác thực!',
+    // Issue #380: this is the verify-email page body, not a "before you
+    // continue" prompt — the old wording was inherited from Breeze's English
+    // string and never matched the Vietnamese page it was written for.
+    'verify_email_notice' => 'Cảm ơn bạn đã đăng ký!<br>Vui lòng kiểm tra email và nhấn vào liên kết xác thực.<br>Nếu bạn chưa nhận được email, hãy nhấn nút bên dưới để gửi lại.',
+    'verify_email_resend' => 'Gửi lại email xác thực',
     'verify_email_success' => 'Email của bạn đã được xác thực!',
 ];
