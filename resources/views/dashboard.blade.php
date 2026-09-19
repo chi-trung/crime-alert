@@ -4,6 +4,22 @@
 <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 <script src="{{ asset('js/dashboard.js') }}"></script>
 <div class="container px-4">
+    {{-- Issue #382: VerifyEmailController appends ?verified=1 after a
+         successful verification and ?already=1 when the link was already
+         consumed. The success line is gated on the current user actually
+         having a verified address, so a crafted or stale ?verified=1 cannot
+         congratulate a user whose email is still unverified. --}}
+    @if(request()->query('verified') && auth()->user()->hasVerifiedEmail())
+        <div class="alert alert-success d-flex align-items-center mb-4" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            {{ __('messages.verify_email_success') }}
+        </div>
+    @elseif(request()->query('already'))
+        <div class="alert alert-info d-flex align-items-center mb-4" role="alert">
+            <i class="fas fa-info-circle me-2"></i>
+            {{ __('messages.verify_email_already') }}
+        </div>
+    @endif
     <!-- Header Section -->
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 mt-4">
         <div class="mb-3 mb-md-0">

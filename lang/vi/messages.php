@@ -47,4 +47,7 @@ return [
     'verify_email_notice' => 'Cảm ơn bạn đã đăng ký!<br>Vui lòng kiểm tra email và nhấn vào liên kết xác thực.<br>Nếu bạn chưa nhận được email, hãy nhấn nút bên dưới để gửi lại.',
     'verify_email_resend' => 'Gửi lại email xác thực',
     'verify_email_success' => 'Email của bạn đã được xác thực!',
+    // Issue #382: the user reopened an already-consumed verification link.
+    // Not an error and not a success — the state did not change.
+    'verify_email_already' => 'Email của bạn đã được xác thực trước đó.',
 ];
