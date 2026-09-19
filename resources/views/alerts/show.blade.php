@@ -166,6 +166,9 @@ window.CSRF_TOKEN = document.querySelector('meta[name=\'csrf-token\']').getAttri
                                 </a>
                                 @endauth
                                 @endif
+                                {{-- Issue #414: as experiences/show.blade.php — a failed like was a
+                                    raw alert(); now announced into a server-side live region. --}}
+                                <span class="like-status sr-only" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></span>
                             </div>
                         </div>
                     </div>

@@ -1,7 +1,15 @@
 // Issue #351: the four console.log/console.error calls that echoed the raw
 // server body into every visitor's console are gone (a rendered exception or
-// user text has no business in a production console). The alert() notices
-// stay, and errors are caught and reported — nothing is silently swallowed.
+// user text has no business in a production console). Errors are caught and
+// reported — nothing is silently swallowed.
+// Issue #414: the reports were raw alert(), a blocking semantics-free dialog;
+// now they go into the server-side live region the blade ships.
+function announceLikeFailure(btn) {
+    var host = btn.parentElement && btn.parentElement.querySelector('.like-status');
+    if (!host) return;
+    host.textContent = 'Không thể thực hiện thao tác. Vui lòng thử lại.';
+}
+
 document.getElementById('like-btn-exp')?.addEventListener('click', async function(e) {
     e.preventDefault();
     const btn = this;
@@ -27,7 +35,7 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
         try {
             data = JSON.parse(text);
         } catch (err) {
-            alert('Có lỗi xảy ra! (JSON parse error)');
+            announceLikeFailure(btn);
             btn.disabled = false;
             return;
         }
@@ -39,10 +47,10 @@ document.getElementById('like-btn-exp')?.addEventListener('click', async functio
         } else if(data.redirect) {
             window.location.href = data.redirect;
         } else {
-            alert('Có lỗi xảy ra! (API error)');
+            announceLikeFailure(btn);
         }
     } catch (err) {
-        alert('Có lỗi xảy ra! (JS error)');
+        announceLikeFailure(btn);
     }
     btn.disabled = false;
 });

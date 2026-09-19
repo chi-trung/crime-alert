@@ -3,6 +3,17 @@
 // alert-side wiring only — the old toggleSharePopupAlert/closeSharePopupAlert
 // pair did not handle Escape or focus and is gone.
 
+// Issue #414: the three failure paths of the like request were raw alert() —
+// a blocking, styleless, semantics-free dialog that left the button looking
+// dead and the reader user with no announcement. The region itself is shipped
+// by the blade, so a static-DOM reader sees it; this only writes textContent,
+// it never creates the element.
+function announceLikeFailure(btn) {
+    var host = btn.parentElement && btn.parentElement.querySelector('.like-status');
+    if (!host) return;
+    host.textContent = 'Không thể thực hiện thao tác. Vui lòng thử lại.';
+}
+
 // Like button (nếu có)
 document.addEventListener('DOMContentLoaded', function() {
     // Issue #398: the alert share button's popup wiring. The ids are
@@ -47,7 +58,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 try {
                     data = JSON.parse(text);
                 } catch (err) {
-                    alert('Có lỗi xảy ra! (JSON parse error)');
+                    announceLikeFailure(btn);
                     btn.disabled = false;
                     return;
                 }
@@ -59,10 +70,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 } else if(data.redirect) {
                     window.location.href = data.redirect;
                 } else {
-                    alert('Có lỗi xảy ra! (API error)');
+                    announceLikeFailure(btn);
                 }
             } catch (err) {
-                alert('Có lỗi xảy ra! (JS error)');
+                announceLikeFailure(btn);
             }
             btn.disabled = false;
         });

@@ -109,6 +109,13 @@
                                 </a>
                                 @endauth
                                 @endif
+                                {{-- Issue #414: a failed like used to surface through a raw alert() —
+                                    a blocking, styleless dialog with no semantics. Replaced by a
+                                    server-side live region the JS only writes textContent into, so a
+                                    static-DOM reader sees it too. Bootstrap's .sr-only is not loaded
+                                    by this app, so the clip ships inline; display:none would remove
+                                    the region from the accessibility tree and undo the fix. --}}
+                                <span class="like-status sr-only" role="status" aria-live="polite" style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;"></span>
                             </div>
                         </div>
                     </div>
