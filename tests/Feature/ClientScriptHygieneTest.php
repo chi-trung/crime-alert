@@ -114,10 +114,13 @@ class ClientScriptHygieneTest extends TestCase
                 "{$file} must not write to the visitor's console"
             );
 
-            // Positive control so the negative pin above cannot pass by the
-            // error path being deleted entirely.
-            $js = file_get_contents(public_path('js/'.$file));
-            $this->assertStringContainsString('Có lỗi xảy ra!', $js, "{$file} must still surface failures to the user");
+            // Positive control so the negative pins above cannot pass by the
+            // error path being deleted entirely. #414 replaced the raw
+            // alert() with a live region, so the guarantee that is actually
+            // being pinned is that a failure is still reported somewhere the
+            // user can perceive — not the specific string it once used.
+            $js = $this->withoutComments(file_get_contents(public_path('js/'.$file)));
+            $this->assertStringContainsString('announceLikeFailure(', $js, "{$file} must still surface failures to the user");
         }
     }
 
