@@ -16,11 +16,16 @@
                 <button class="btn btn-link btn-sm text-decoration-none text-primary px-2 py-0 reply-btn" data-comment-id="{{ $comment->id }}"><i class="fas fa-reply me-1"></i>Trả lời</button>
             @endauth
             @if(auth()->check() && (auth()->user()->isAdmin || auth()->id() === $comment->user_id))
-                <a href="{{ route('comments.edit', $comment) }}" class="btn btn-sm btn-outline-primary rounded-pill"><i class="fas fa-edit"></i></a>
+                {{-- Issue #388: both actions were icon-only, so a screen reader
+                     announced "link" and "button" with no purpose — the delete one
+                     is irreversible. aria-label, never id: this partial is
+                     recursive, so an id would collide on nested replies (same
+                     doctrine as the #384 reply textarea). --}}
+                <a href="{{ route('comments.edit', $comment) }}" class="btn btn-sm btn-outline-primary rounded-pill" aria-label="Sửa bình luận của {{ $comment->user->name ?? 'ẩn danh' }}"><i class="fas fa-edit" aria-hidden="true"></i></a>
                 <form action="{{ route('comments.destroy', $comment) }}" method="POST" class="d-inline form-delete">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill"><i class="fas fa-trash-alt"></i></button>
+                    <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill" aria-label="Xóa bình luận của {{ $comment->user->name ?? 'ẩn danh' }}"><i class="fas fa-trash-alt" aria-hidden="true"></i></button>
                 </form>
             @endif
             @auth
