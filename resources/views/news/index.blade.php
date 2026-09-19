@@ -1,5 +1,19 @@
 @extends('layouts.app')
 @section('content')
+<style>
+    {{-- Issue #376: /news loads no page stylesheet (unlike alerts/index, which
+         pulls css/alerts_index.css), so the placeholder style lives here.
+         The old img-default-news class matched no rule in any CSS file. --}}
+    .news-thumb-ph {
+        height: 180px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: repeating-linear-gradient(
+            45deg, #eef2f7, #eef2f7 6px, #e3e9f2 6px, #e3e9f2 12px);
+    }
+</style>
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-3 text-primary">Tin tức & Thông báo an ninh</h1>
     <p class="lead text-muted">Cập nhật tin tức mới nhất về tình hình an ninh, cảnh báo lừa đảo, truy nã đặc biệt...</p>
@@ -11,20 +25,27 @@
         <div class="col-md-6 col-lg-4">
             <div class="card h-100 shadow-sm">
                 <div class="position-relative" style="height:180px;">
-                    @if($item->is_video && !$item->image_url)
-                        <div style="background:#222;height:100%;width:100%;display:flex;align-items:center;justify-content:center;">
-                            
-                        </div>
-                    @else
-                        <img src="{{ $item->image_url ?? '' }}"
-                             class="card-img-top{{ $item->image_url ? '' : ' img-default-news' }}"
+                    @if($item->image_url)
+                        {{-- Issue #376: an <img> whose src resolves to the page
+                             itself is a broken-image glyph, not a placeholder,
+                             so the empty-src branch never ships an <img>. --}}
+                        <img src="{{ $item->image_url }}"
+                             class="card-img-top"
                              alt="{{ $item->title }}"
-                             style="object-fit:{{ $item->image_url ? 'cover' : 'contain' }};height:180px;width:100%;background:#f8f9fa;">
-                        @if($item->is_video)
-                            <span class="position-absolute top-50 start-50 translate-middle" style="pointer-events:none;">
-                                
-                            </span>
-                        @endif
+                             style="object-fit:cover;height:180px;width:100%;background:#f8f9fa;">
+                    @else
+                        <div class="news-thumb-ph" role="img" aria-label="{{ $item->title }}"></div>
+                    @endif
+                    @if($item->is_video)
+                        {{-- Issue #376: the badge wrapper shipped empty — no
+                             glyph, no text, no label. --}}
+                        <span class="position-absolute top-50 start-50 translate-middle" style="pointer-events:none;">
+                            <svg viewBox="0 0 24 24" width="34" height="34" aria-hidden="true"
+                                 style="filter:drop-shadow(0 1px 3px rgba(0,0,0,.6));">
+                                <circle cx="12" cy="12" r="11" fill="rgba(0,0,0,.55)"></circle>
+                                <path d="M10 8l6 4-6 4z" fill="#fff"></path>
+                            </svg>
+                        </span>
                     @endif
                 </div>
                 <div class="card-body d-flex flex-column">
