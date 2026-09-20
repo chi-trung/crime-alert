@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', "Chỉnh sửa bình luận - Crime Alert Web")
 @section('content')
 <div class="container py-5">
     {{-- Issue #343: this was the only unstyled form in the app — a bare <h4>

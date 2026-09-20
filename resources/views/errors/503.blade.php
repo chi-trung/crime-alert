@@ -2,6 +2,7 @@
      page is English with no app chrome. --}}
 @extends('layouts.app')
 
+@section('title', "Đang bảo trì - Crime Alert Web")
 @section('content')
 <div class="container mt-5">
     <div class="row justify-content-center">

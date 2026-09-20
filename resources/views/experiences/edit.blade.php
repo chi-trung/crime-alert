@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', "Chỉnh sửa bài chia sẻ - Crime Alert Web")
 @section('content')
 <div class="container py-5">
     <h1 class="display-5 fw-bold mb-4 text-success">Chỉnh sửa bài chia sẻ</h1>

@@ -3,6 +3,7 @@
      technical detail beyond the status code, and a route back. --}}
 @extends('layouts.app')
 
+@section('title', "Lỗi máy chủ - Crime Alert Web")
 @section('content')
 <div class="container mt-5">
     <div class="row justify-content-center">

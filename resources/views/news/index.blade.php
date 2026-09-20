@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', "Tin tức & Thông báo an ninh - Crime Alert Web")
 @section('content')
 <style>
     {{-- Issue #376: /news loads no page stylesheet (unlike alerts/index, which

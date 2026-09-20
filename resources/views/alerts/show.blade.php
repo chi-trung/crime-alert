@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "{{ $alert->title }} - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/alerts_show.css') }}">
 <script>

@@ -3,6 +3,7 @@
      abort(403) on a non-owner editing someone else's record. --}}
 @extends('layouts.app')
 
+@section('title', "Không có quyền truy cập - Crime Alert Web")
 @section('content')
 <div class="container mt-5">
     <div class="row justify-content-center">

@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Bảng điều khiển - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/dashboard.css') }}">
 <script src="{{ asset('js/dashboard.js') }}"></script>

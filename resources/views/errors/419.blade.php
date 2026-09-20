@@ -6,6 +6,7 @@
      reload usually works. --}}
 @extends('layouts.app')
 
+@section('title', "Phiên đã hết hạn - Crime Alert Web")
 @section('content')
 <div class="container mt-5">
     <div class="row justify-content-center">

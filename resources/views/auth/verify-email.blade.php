@@ -1,6 +1,7 @@
 @php($hideMenu = true)
 @extends('layouts.app')
 
+@section('title', "Xác thực email - Crime Alert Web")
 @section('content')
 <div class="container d-flex justify-content-center align-items-center" style="min-height: 80vh;">
     <div class="card shadow p-4" style="max-width: 420px; width: 100%; border-radius: 18px;">

@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', "Lịch sử bài đăng của bạn - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/profile_my_history.css') }}">
 <div class="container py-5">

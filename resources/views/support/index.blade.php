@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Danh sách yêu cầu hỗ trợ của bạn - Crime Alert Web")
 @section('content')
 <div class="container py-4">
     <div class="d-flex justify-content-between align-items-center mb-4">

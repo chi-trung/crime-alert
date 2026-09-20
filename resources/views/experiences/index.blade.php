@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', "Chia sẻ kinh nghiệm & Cảnh giác - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/experiences_index.css') }}">
 <div class="container py-5">
