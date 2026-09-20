@@ -13,7 +13,10 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    // Issue #420: the fallback used to be 'Laravel', so a deployment that
+    // forgot to set APP_NAME branded every page with a framework's name. The
+    // app has its own name.
+    'name' => env('APP_NAME', 'Crime Alert Web'),
 
     /*
     |--------------------------------------------------------------------------

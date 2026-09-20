@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Quản lý cảnh báo tội phạm - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/alerts_admin_index.css') }}">
 {{-- Issue #210: this page used to ship TWO extra form-reject confirm

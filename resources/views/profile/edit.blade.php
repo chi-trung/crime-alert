@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Hồ sơ cá nhân - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/profile_edit.css') }}">
 <div class="container py-5">

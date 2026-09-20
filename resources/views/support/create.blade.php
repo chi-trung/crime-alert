@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Gửi yêu cầu hỗ trợ - Crime Alert Web")
 @section('content')
 <div class="container py-4">
     <h2 class="mb-4">Gửi yêu cầu hỗ trợ</h2>

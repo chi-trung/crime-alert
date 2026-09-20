@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Bản đồ cảnh báo tội phạm - Crime Alert Web")
 @section('content')
 <!-- Nhúng thư viện Leaflet và plugin -->
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha384-sHL9NAb7lN7rfvG5lfHpm643Xkcjzp4jFvuavGOndn6pjVqS6ny56CAt3nsEVT4H" crossorigin="anonymous"/>

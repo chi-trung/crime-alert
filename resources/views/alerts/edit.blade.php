@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Chỉnh sửa cảnh báo - Crime Alert Web")
 @section('content')
 <div class="container mt-5">
     <h2>Chỉnh sửa cảnh báo</h2>

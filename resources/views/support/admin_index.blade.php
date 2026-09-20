@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Tổng hợp yêu cầu hỗ trợ - Crime Alert Web")
 @section('content')
 <div class="container py-4">
     <div class="d-flex align-items-center mb-4 gap-2">

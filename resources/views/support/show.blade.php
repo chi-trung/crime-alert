@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Trao đổi với hỗ trợ - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/support_show.css') }}">
 <script src="{{ asset('js/support_show.js') }}"></script>

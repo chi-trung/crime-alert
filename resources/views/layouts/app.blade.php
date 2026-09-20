@@ -5,7 +5,13 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Crime Alert Web') }}</title>
+        {{-- Issue #420: a page title that never varies is no title at all.
+             Every page used to ship the literal "Laravel" because
+             config('app.name') resolves to that in this environment, and the
+             fallback in the old expression could never fire. Each page now
+             pushes its own title via @section('title'); the app name is the
+             tail of the string, not the whole of it. --}}
+        <title>@yield('title', config('app.name'))</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.googleapis.com">

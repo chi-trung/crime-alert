@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@section('title', "{{ $experience->title }} - Crime Alert Web")
 @section('content')
 <link rel="stylesheet" href="{{ asset('css/experiences_show.css') }}">
 {{-- Issue #398: the share popup's keyboard/focus/ARIA behaviour. Loaded before

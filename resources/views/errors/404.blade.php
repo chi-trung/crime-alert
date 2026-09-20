@@ -9,6 +9,7 @@
      its own. --}}
 @extends('layouts.app')
 
+@section('title', "Không tìm thấy trang - Crime Alert Web")
 @section('content')
 <div class="container mt-5">
     <div class="row justify-content-center">

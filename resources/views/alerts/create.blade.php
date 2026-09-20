@@ -1,5 +1,6 @@
 @extends('layouts.app')
 
+@section('title', "Đăng cảnh báo tội phạm - Crime Alert Web")
 @section('content')
 <div class="container py-5">
     <div class="row justify-content-center">
