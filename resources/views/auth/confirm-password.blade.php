@@ -1,4 +1,4 @@
-<x-guest-layout>
+<x-guest-layout :title="__('messages.confirm_password')">
     <div class="mb-4 text-sm text-gray-600">
         {{-- Issue #335: rendered in English under locale vi; the raw key had
              no vi entry and Laravel returned the source string verbatim. --}}

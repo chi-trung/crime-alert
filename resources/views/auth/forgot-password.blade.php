@@ -1,4 +1,4 @@
-<x-guest-layout>
+<x-guest-layout :title="__('messages.forgot_password')">
     <div class="mb-4 text-sm text-gray-600">
         {{-- Issue #335: this page rendered fully in English while the app
              runs locale vi. The raw Breeze key had no vi entry and Laravel
