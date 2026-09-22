@@ -1,3 +1,12 @@
+{{--
+    Issue #422: the guest layout had the same 'Laravel' title bug #420 fixed
+    in layouts.app, but @section('title') cannot reach it — this is an
+    anonymous component, not a template that yields, so the page passes its
+    title as a prop instead. The three Breeze pages that use it already have
+    Vietnamese messages.* keys from #335, so the title comes for free.
+--}}
+@props(['title' => null])
+
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
     <head>
@@ -5,7 +14,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'Crime Alert Web') }}</title>
+        <title>{{ $title ? $title . ' - ' . config('app.name') : config('app.name') }}</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
