@@ -56,7 +56,7 @@ class GuestLayoutTitleTest extends TestCase
             'the title must name the page, not just the site'
         );
         $this->assertSame(
-            'Quên mật khẩu? - ' . config('app.name'),
+            'Quên mật khẩu? - '.config('app.name'),
             $title,
             'the layout composes page name and brand in that order'
         );
@@ -69,7 +69,7 @@ class GuestLayoutTitleTest extends TestCase
         $title = $this->titleOf('/reset-password/any-token-here');
 
         $this->assertSame(
-            'Đặt lại mật khẩu - ' . config('app.name'),
+            'Đặt lại mật khẩu - '.config('app.name'),
             $title,
             'the title must name the page, not just the site'
         );
@@ -85,7 +85,7 @@ class GuestLayoutTitleTest extends TestCase
         $title = $this->titleOf('/confirm-password');
 
         $this->assertSame(
-            'Xác nhận mật khẩu - ' . config('app.name'),
+            'Xác nhận mật khẩu - '.config('app.name'),
             $title,
             'the title must name the page, not just the site'
         );
